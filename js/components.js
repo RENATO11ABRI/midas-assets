@@ -85,7 +85,7 @@
   C._docHead = function (titulo, num, data) {
     var s = D.db().settings;
     return '<div class="doc-head">' +
-      '<div class="d-org"><img src="' + U.assetURL("assets/logo.svg") + '" alt="" class="logo" />' +
+      '<div class="d-org"><img src="' + U.logoURL(true) + '" alt="" class="logo" />' +
         "<div><strong>" + U.esc((s.instituicao || "").toUpperCase()) + "</strong><small>" +
         U.esc(s.sistema) + " — " + U.esc(s.slogan) + "</small></div></div>" +
       '<div class="d-title"><h2>' + U.esc(titulo) + "</h2>" +

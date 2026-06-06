@@ -6,6 +6,37 @@
   "use strict";
   var U = window.U, C = window.C, D = window.MidasData, V = window.V;
 
+  /* ---- Aparência (temas, cores, modo dia/noite) ------------------------- */
+  var TEMAS = {
+    "Verde Midas":              { brandTop: "#072720", brandBottom: "#082e37", primary: "#0f4d3a", primaryHover: "#146449", heroMid: "#0b3f4c", heroEnd: "#12647a", accent: "#c9a24b", accentHover: "#a07f2f" },
+    "Azul Executivo":           { brandTop: "#0a2a43", brandBottom: "#0c1f33", primary: "#155e8c", primaryHover: "#1c75ad", heroMid: "#0f4a73", heroEnd: "#2a83b8", accent: "#cf9b3f", accentHover: "#a87d2c" },
+    "Verde Escuro Institucional": { brandTop: "#04231a", brandBottom: "#062b22", primary: "#0c5a3f", primaryHover: "#11744f", heroMid: "#063a2c", heroEnd: "#0c7a57", accent: "#c9a24b", accentHover: "#9c7a2c" },
+    "Preto Premium":            { brandTop: "#0c0d0f", brandBottom: "#16181c", primary: "#23262c", primaryHover: "#33373f", heroMid: "#1a1c20", heroEnd: "#2a2e35", accent: "#caa44c", accentHover: "#a8853a" }
+  };
+  function applyAparencia() {
+    var s = D.db().settings;
+    var t = TEMAS[s.tema] || TEMAS["Verde Midas"];
+    var brand = s.corPrincipal || t.brandTop;
+    var sec = s.corSecundaria || t.heroEnd;
+    var btn = s.corBotao || t.primary;
+    var root = document.documentElement.style;
+    root.setProperty("--green-900", brand);
+    root.setProperty("--green-800", t.brandBottom);
+    root.setProperty("--teal-900", t.brandBottom);
+    root.setProperty("--teal-800", t.heroMid);
+    root.setProperty("--teal-600", sec);
+    root.setProperty("--green-700", btn);
+    root.setProperty("--green-600", t.primaryHover);
+    root.setProperty("--gold-500", t.accent);
+    root.setProperty("--gold-600", t.accentHover);
+    document.body.classList.toggle("dark", s.modo === "noite");
+    // logótipos dinâmicos
+    var url = U.logoURL(false);
+    var imgs = document.querySelectorAll("#app .logo");
+    for (var i = 0; i < imgs.length; i++) imgs[i].src = url;
+  }
+  window.applyAparencia = applyAparencia;
+
   var ROUTES = {
     dashboard: { title: "Dashboard", render: V.dashboard },
     matricula: { title: "Nova Matrícula", render: V.matricula },
@@ -194,6 +225,7 @@
       var t = tabs.querySelectorAll(".tab");
       for (var i = 0; i < t.length; i++) t[i].classList.toggle("active", t[i].getAttribute("data-tab") === tab);
       if (tab === "inst") { content.innerHTML = V.cfgInst(); wireInst(); }
+      else if (tab === "aparencia") { content.innerHTML = V.cfgAparencia(); wireAparencia(); }
       else if (tab === "emolumentos") { content.innerHTML = V.cfgEmolumentos(); wireEmolumentos(); }
       else if (tab === "listas") { content.innerHTML = V.cfgListas(); }
       else if (tab === "conta") { content.innerHTML = V.cfgConta(); wireConta(); }
@@ -206,18 +238,65 @@
     show("inst");
   }
   function wireInst() {
+    var pendingLogo = null;
+    var fileEl = document.getElementById("logoFile");
+    if (fileEl) fileEl.onchange = function (e) {
+      var file = e.target.files[0]; if (!file) return;
+      if (file.size > 600000) { C.toast("Imagem muito grande (máx. ~600 KB).", "err"); return; }
+      var reader = new FileReader();
+      reader.onload = function () { pendingLogo = reader.result; document.getElementById("logoPrev").src = reader.result; };
+      reader.readAsDataURL(file);
+    };
+    document.getElementById("logoRemover").onclick = function () {
+      pendingLogo = ""; document.getElementById("logoPrev").src = U.assetURL("assets/logo.svg");
+      C.toast("Logótipo será removido ao guardar.", "ok");
+    };
     document.getElementById("formInst").addEventListener("submit", function (ev) {
       ev.preventDefault();
       var fd = new FormData(ev.target);
       var s = D.db().settings;
-      ["instituicao", "sistema", "slogan", "anoLetivo", "nif", "telefone", "email", "endereco", "secretaria", "diretora"].forEach(function (k) {
-        s[k] = fd.get(k);
-      });
+      ["instituicao", "sistema", "slogan", "anoLetivo", "anoLectivo", "nif", "telefone", "whatsapp",
+        "email", "website", "endereco", "secretaria", "diretora", "directorGeral", "moeda",
+        "prefixoMatricula", "prefixoRecibo"].forEach(function (k) { s[k] = fd.get(k); });
+      s.casasDecimais = parseInt(fd.get("casasDecimais"), 10);
+      s.digitosMatricula = parseInt(fd.get("digitosMatricula"), 10) || 4;
+      s.digitosRecibo = parseInt(fd.get("digitosRecibo"), 10) || 4;
       s.seqMatricula = parseInt(fd.get("seqMatricula"), 10) || s.seqMatricula;
       s.seqRecibo = parseInt(fd.get("seqRecibo"), 10) || s.seqRecibo;
+      if (pendingLogo !== null) s.logoPrincipal = pendingLogo;
       D.save();
+      applyAparencia();
       C.toast("Configurações guardadas.", "ok");
     });
+  }
+  function wireAparencia() {
+    var form = document.getElementById("formAparencia");
+    var s = D.db().settings;
+    document.getElementById("temaCards").addEventListener("click", function (e) {
+      var card = e.target.closest("[data-tema]"); if (!card) return;
+      var t = card.getAttribute("data-tema");
+      document.getElementById("temaInput").value = t;
+      var cards = this.querySelectorAll(".tema-card");
+      for (var i = 0; i < cards.length; i++) cards[i].classList.toggle("sel", cards[i] === card);
+    });
+    document.getElementById("apModo").onclick = function () {
+      s.modo = s.modo === "noite" ? "dia" : "noite"; D.save(); applyAparencia();
+      this.textContent = "Modo: " + (s.modo === "noite" ? "Noite" : "Dia");
+    };
+    var aplicar = function () {
+      var fd = new FormData(form);
+      s.tema = fd.get("tema") || s.tema;
+      if (fd.get("usarCores")) {
+        s.corPrincipal = fd.get("corPrincipal") || "";
+        s.corSecundaria = fd.get("corSecundaria") || "";
+        s.corBotao = fd.get("corBotao") || "";
+      } else {
+        s.corPrincipal = ""; s.corSecundaria = ""; s.corBotao = "";
+      }
+      D.save(); applyAparencia();
+    };
+    document.getElementById("apPrever").onclick = aplicar;
+    form.addEventListener("submit", function (ev) { ev.preventDefault(); aplicar(); C.toast("Aparência guardada.", "ok"); });
   }
   function wireEmolumentos() {
     V.renderEmolumentos();
@@ -510,15 +589,21 @@
 
   /* ---- Boot ------------------------------------------------------------- */
   function boot() {
+    applyAparencia();
     // Gate behind login first; only start the app once authenticated.
     window.Auth.gate(startApp);
   }
 
   function startApp() {
+    applyAparencia();
     // user chip + logout
     var a = D.auth();
     var chip = document.getElementById("userChip");
     if (chip) chip.textContent = "" + (a.nome || a.user);
+    var modo = document.getElementById("modoToggle");
+    if (modo) modo.onclick = function () {
+      var s = D.db().settings; s.modo = s.modo === "noite" ? "dia" : "noite"; D.save(); applyAparencia();
+    };
     var logout = document.getElementById("logoutBtn");
     if (logout) logout.onclick = function () {
       C.confirm("Terminar a sessão?", function () {

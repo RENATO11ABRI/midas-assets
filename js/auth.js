@@ -38,7 +38,7 @@
       screen.hidden = false;
       screen.innerHTML =
         '<div class="login-card">' +
-          '<img src="assets/logo.svg" alt="Grupo Midas Angola" class="login-logo" />' +
+          '<img src="' + U.logoURL(false) + '" alt="Grupo Midas Angola" class="login-logo" />' +
           "<h1>" + U.esc(s.instituicao) + "</h1>" +
           '<div class="login-sys">' + U.esc(s.sistema) + "</div>" +
           '<span class="slogan">' + U.esc(s.slogan) + "</span>" +

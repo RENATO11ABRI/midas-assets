@@ -100,12 +100,28 @@
         nif: "",
         endereco: "Luanda, Angola",
         telefone: "",
+        whatsapp: "",
         email: "",
+        website: "",
         secretaria: "",
         diretora: "",
+        directorGeral: "",
+        logoPrincipal: "",
+        logoImpressao: "",
+        tema: "Verde Midas",
+        modo: "dia",
+        corPrincipal: "",
+        corSecundaria: "",
+        corBotao: "",
+        casasDecimais: 2,
+        anoLetivo: "2026",
+        anoLectivo: "2025/2026",
+        prefixoMatricula: "MIDAS",
+        digitosMatricula: 6,
+        prefixoRecibo: "REC",
+        digitosRecibo: 6,
         seqMatricula: 1,
         seqRecibo: 1,
-        anoLetivo: "2026",
         catalogoVersao: CATALOG_VERSION
       },
       auth: {
@@ -241,26 +257,30 @@
       _db = data; this.save(); return _db;
     },
 
-    // ---- Sequence helpers --------------------------------------------------
+    // ---- Sequence helpers (prefixo/dígitos configuráveis) ------------------
+    _fmtNum: function (prefixo, n, digitos) {
+      var s = this.load().settings;
+      return (prefixo || "MIDAS") + "-" + s.anoLetivo + "-" + String(n).padStart(digitos || 4, "0");
+    },
     nextMatricula: function () {
       var db = this.load();
       var n = db.settings.seqMatricula++;
       this.save();
-      return "MAT-" + db.settings.anoLetivo + "-" + String(n).padStart(4, "0");
+      return this._fmtNum(db.settings.prefixoMatricula, n, db.settings.digitosMatricula);
     },
     peekMatricula: function () {
       var db = this.load();
-      return "MAT-" + db.settings.anoLetivo + "-" + String(db.settings.seqMatricula).padStart(4, "0");
+      return this._fmtNum(db.settings.prefixoMatricula, db.settings.seqMatricula, db.settings.digitosMatricula);
     },
     nextRecibo: function () {
       var db = this.load();
       var n = db.settings.seqRecibo++;
       this.save();
-      return "REC-" + db.settings.anoLetivo + "-" + String(n).padStart(5, "0");
+      return this._fmtNum(db.settings.prefixoRecibo, n, db.settings.digitosRecibo);
     },
     peekRecibo: function () {
       var db = this.load();
-      return "REC-" + db.settings.anoLetivo + "-" + String(db.settings.seqRecibo).padStart(5, "0");
+      return this._fmtNum(db.settings.prefixoRecibo, db.settings.seqRecibo, db.settings.digitosRecibo);
     },
 
     // ---- Emolumentos (cadastro com valor, categoria, curso/unidade…) -------

@@ -407,6 +407,34 @@ table.data td .row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 }
 .btn-logout:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
 
+/* ===== Modo Noite ===== */
+body.dark {
+  --ink: #e7eef0; --muted: #9fb0b7; --soft: #7f8d95;
+  --bg: #0f1418; --panel: #161f25; --line: #27333a; --line-2: #1b242a;
+  --green-050: #16302a; --teal-050: #142b33;
+}
+body.dark table.data th { background: #1b262d; color: #dfe8ea; }
+body.dark .field input, body.dark .field select, body.dark .field textarea { background: #0f1519; color: var(--ink); border-color: var(--line); }
+body.dark .btn-light { background: #1b262d; color: var(--ink); border-color: var(--line); }
+body.dark .search-box input { background: #0f1519; }
+body.dark table.data tbody tr:hover { background: #1a242a; }
+body.dark .stat-card::before { opacity: .9; }
+body.dark .modal-close { color: var(--muted); }
+body.dark .toast { box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+/* documentos mantêm-se claros para impressão */
+body.dark .via, body.dark .doc-a4, body.dark .print-sheet, body.dark .login-card { color: #111; }
+body.dark .login-card { background: #fff; }
+
+.modo-toggle {
+  width: 100%; text-align: left; cursor: pointer; background: rgba(255,255,255,.05);
+  color: #d7e2dd; border: 1px solid rgba(255,255,255,.16); border-radius: 8px;
+  padding: 9px 12px; font-weight: 600; font-size: 12.5px; margin-bottom: 8px; font-family: inherit;
+}
+.modo-toggle:hover { background: rgba(255,255,255,.12); }
+.tema-card { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; }
+.tema-card.sel { border-color: var(--gold-500); box-shadow: 0 0 0 2px rgba(201,162,75,.25); }
+.tema-swatch { width: 22px; height: 22px; border-radius: 6px; flex: 0 0 auto; }
+
 /* ===== Responsive ===== */
 @media (max-width: 1080px) { .stats { grid-template-columns: repeat(2, 1fr); } .two-col { grid-template-columns: 1fr; } }
 @media (max-width: 820px) {
