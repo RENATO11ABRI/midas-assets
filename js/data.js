@@ -10,7 +10,8 @@
   // ---- Defaults / seed -----------------------------------------------------
   var DEFAULT_PERIODOS = ["Manhã", "Tarde", "Noite", "Fim de Semana"];
   var DEFAULT_REGIMES = ["Dias úteis", "Sábado", "Domingo", "Sábado e Domingo"];
-  var DEFAULT_TIPOS = ["Intensivo", "Imersão", "Capacitação"];
+  var DEFAULT_TIPOS = ["Médio", "Intensivo", "Imersão", "Premium", "Capacitação"];
+  var CATALOG_VERSION = 2;
   var DEFAULT_UNIDADES = ["Polo Sede — Luanda", "Polo Viana", "Polo Cacuaco"];
   var DEFAULT_EMOLUMENTOS = [
     "Propina", "Matrícula", "Inscrição", "Estágio Preliminar", "Estágio Curricular",
@@ -32,22 +33,49 @@
         valorTotal: total, unidade: sede, estado: "ativo"
       };
     }
+    var sem = "4 semanas ou 8 sábados";
     return [
-      // total = inscrição + matrícula + (mensalidade × nº de meses). Valores indicativos — editáveis no painel.
-      c("Técnica de Enfermagem & Cuidados Diretos", "Intensivo", "6 meses", "Manhã", "Dias úteis", 5000, 15000, 25000, 170000),
-      c("Diagnóstico, Laboratório & Imagiologia", "Intensivo", "6 meses", "Tarde", "Dias úteis", 5000, 15000, 25000, 170000),
-      c("Farmácia", "Intensivo", "6 meses", "Manhã", "Dias úteis", 5000, 15000, 22000, 152000),
-      c("Análises Clínicas", "Intensivo", "5 meses", "Tarde", "Dias úteis", 5000, 15000, 22000, 130000),
-      c("Flebotomia", "Capacitação", "1 mês", "Fim de Semana", "Sábado", 3000, 7000, 0, 35000),
-      c("Recepcionista Hospitalar", "Capacitação", "2 meses", "Noite", "Dias úteis", 3000, 8000, 12000, 35000),
-      c("Primeiros Socorros", "Capacitação", "3 semanas", "Fim de Semana", "Sábado e Domingo", 2500, 7000, 0, 30000),
-      c("Ecografia Obstétrica, Ginecológica & Doppler", "Imersão", "2 meses", "Noite", "Dias úteis", 8000, 25000, 0, 120000),
-      c("Fisioterapia e Reabilitação", "Intensivo", "6 meses", "Manhã", "Dias úteis", 5000, 15000, 25000, 170000),
-      c("Nutrição e Dietética", "Intensivo", "5 meses", "Tarde", "Dias úteis", 5000, 15000, 22000, 130000),
-      c("Saúde Ambiental", "Intensivo", "5 meses", "Manhã", "Dias úteis", 5000, 15000, 20000, 120000),
-      c("Imersão em Urgência e Emergência", "Imersão", "1 mês", "Fim de Semana", "Sábado e Domingo", 6000, 18000, 0, 70000),
-      c("Imersão em UTI", "Imersão", "1 mês", "Fim de Semana", "Sábado e Domingo", 6000, 18000, 0, 75000),
-      c("Capacitação em Administração de Medicamentos Injetáveis", "Capacitação", "3 semanas", "Noite", "Dias úteis", 3000, 9000, 0, 38000)
+      // ===== Cursos Médios (18 meses) — inscrição 10.000 + 12.500/mês =====
+      // total = inscrição + (mensalidade × 18)
+      c("Curso Médio de Enfermagem", "Médio", "18 meses", "", "", 10000, 0, 12500, 235000),
+      c("Curso Médio de Farmácia", "Médio", "18 meses", "", "", 10000, 0, 12500, 235000),
+      c("Curso Médio de Análises Clínicas", "Médio", "18 meses", "", "", 10000, 0, 12500, 235000),
+
+      // ===== Intensivos / Imersão — inscrição presencial 17.500 (online 10.000) =====
+      c("Técnico de Fisioterapia", "Intensivo", "18 meses", "", "", 17500, 0, 0, 0),
+      c("Flebotomia Avançado", "Intensivo", sem, "Fim de Semana", "Sábado", 17500, 0, 0, 35000),
+      c("Tratamento de Feridas", "Intensivo", sem, "Fim de Semana", "Sábado", 17500, 0, 0, 35000),
+      c("Primeiros Socorros", "Intensivo", sem, "Fim de Semana", "Sábado", 17500, 0, 0, 35000),
+      c("Urgência e Emergência", "Intensivo", sem, "Fim de Semana", "Sábado", 17500, 0, 0, 35000),
+      c("Recepcionista Hospitalar", "Intensivo", sem, "Fim de Semana", "Sábado", 17500, 0, 0, 35000),
+      c("Enfermagem do Trabalho", "Intensivo", sem, "Fim de Semana", "Sábado", 17500, 0, 0, 35000),
+      c("Imagiologia (Ultrassonografia)", "Imersão", "6 meses", "", "", 17500, 0, 50000, 317500),
+      c("Logística", "Intensivo", sem, "Fim de Semana", "Sábado", 10000, 0, 0, 25000),
+
+      // ===== Técnicos Premium — Saúde & Enfermagem (inscrição 30.000) =====
+      c("Bloco 1: Técnica de Enfermagem & Cuidados Diretos", "Premium", "4 meses", "", "", 30000, 0, 0, 0),
+      c("Bloco 2: Diagnóstico, Laboratório & Imagiologia", "Premium", "6 meses", "", "", 30000, 0, 0, 0),
+      c("Bloco 3: Saúde da Mulher, Criança & Ciclo de Vida", "Premium", "6 meses", "", "", 30000, 0, 0, 0),
+      c("Bloco 4: Reabilitação & Funcionalidade", "Premium", "6 meses", "", "", 30000, 0, 0, 0),
+      c("Bloco 5: Gestão, Administração & Poder em Saúde", "Premium", "6 meses", "", "", 30000, 0, 0, 0),
+      c("Bloco 6: Marketing, Tecnologia & Futuro da Saúde", "Premium", "6 meses", "", "", 30000, 0, 0, 0),
+      c("Bloco 7: Ecografia Obstétrica, Ginecológica & Doppler", "Premium", "6 meses", "", "", 30000, 0, 0, 0),
+      c("Bloco 8: Fisioterapia Neurológica & Reabilitação Funcional", "Premium", "6 meses", "", "", 30000, 0, 0, 0),
+
+      // ===== Premium — Estética & Beleza (inscrição 30.000) =====
+      c("Bloco B1: Estética Facial & Dermocosmética", "Premium", "4 meses", "", "", 30000, 0, 0, 0),
+      c("Bloco B2: Estética Corporal & Modelagem", "Premium", "4 meses", "", "", 30000, 0, 0, 0),
+      c("Bloco B3: Massagem Terapêutica, Relaxante & Bem-Estar", "Premium", "4 meses", "", "", 30000, 0, 0, 0),
+      c("Bloco B4: Estética Avançada & Procedimentos Não Invasivos", "Premium", "6 meses", "", "", 30000, 0, 0, 0),
+      c("Bloco B5: Depilação Profissional & Design Corporal", "Premium", "4 meses", "", "", 30000, 0, 0, 0),
+      c("Bloco B6: Maquiagem Profissional & Imagem Pessoal", "Premium", "4 meses", "", "", 30000, 0, 0, 0),
+      c("Bloco B7: Estética Capilar & Terapias do Couro Cabeludo", "Premium", "4 meses", "", "", 30000, 0, 0, 0),
+      c("Bloco B8: Unhas de Gel, Acrílico & Nail Art", "Premium", "4 meses", "", "", 30000, 0, 0, 0),
+
+      // ===== Premium — Medicina Natural (inscrição 30.000) =====
+      c("Bloco MN1: Emagrecimento Saudável & Controlo de Peso", "Premium", "4 meses", "", "", 30000, 0, 0, 0),
+      c("Bloco MN2: Desintoxicação Natural & Limpeza do Organismo", "Premium", "4 meses", "", "", 30000, 0, 0, 0),
+      c("Bloco MN3: Fitoterapia & Plantas Medicinais", "Premium", "4 meses", "", "", 30000, 0, 0, 0)
     ];
   }
 
@@ -66,7 +94,8 @@
         diretora: "",
         seqMatricula: 1,
         seqRecibo: 1,
-        anoLetivo: "2026"
+        anoLetivo: "2026",
+        catalogoVersao: CATALOG_VERSION
       },
       auth: {
         enabled: true,
@@ -130,6 +159,8 @@
         var raw = window.localStorage.getItem(STORAGE_KEY);
         if (raw) {
           _db = JSON.parse(raw);
+          // versão do catálogo ANTES do forward-compat (que preencheria a chave)
+          var prevCatalogo = (_db.settings && _db.settings.catalogoVersao) || 0;
           // forward-compat: ensure new keys exist
           var def = defaultDB();
           for (var k in def) { if (!(k in _db)) _db[k] = def[k]; }
@@ -137,6 +168,16 @@
           // migração não destrutiva: garante a forma de pagamento Multicaixa Express
           if (_db.formasPagamento && _db.formasPagamento.indexOf("Multicaixa Express") < 0) {
             _db.formasPagamento.push("Multicaixa Express");
+          }
+          // atualiza o catálogo oficial de cursos (preserva estudantes e pagamentos)
+          if (prevCatalogo < CATALOG_VERSION) {
+            _db.cursos = seedCursos();
+            _db.settings.catalogoVersao = CATALOG_VERSION;
+            // garante que os tipos de curso novos existem na lista
+            DEFAULT_TIPOS.forEach(function (t) {
+              if (_db.tiposCurso && _db.tiposCurso.indexOf(t) < 0) _db.tiposCurso.push(t);
+            });
+            this.save();
           }
           return _db;
         }
@@ -194,11 +235,17 @@
     // Cursos ordenados com prioridade institucional: Enfermagem, Farmácia,
     // Análises Clínicas no topo; depois os restantes por ordem alfabética.
     cursosOrdenados: function () {
+      var exact = {
+        "curso médio de enfermagem": 0,
+        "curso médio de farmácia": 1,
+        "curso médio de análises clínicas": 2
+      };
       var prio = function (nome) {
         var n = (nome || "").toLowerCase();
-        if (n.indexOf("enfermagem") >= 0) return 0;
-        if (n.indexOf("farm") >= 0) return 1;
-        if (n.indexOf("anális") >= 0 || n.indexOf("analis") >= 0) return 2;
+        if (exact[n] !== undefined) return exact[n];
+        if (n.indexOf("enfermagem") >= 0) return 3;
+        if (n.indexOf("farm") >= 0) return 4;
+        if (n.indexOf("anális") >= 0 || n.indexOf("analis") >= 0) return 5;
         return 9;
       };
       return this.cursos().slice().sort(function (a, b) {
@@ -223,6 +270,14 @@
       var db = this.load();
       db.cursos = db.cursos.filter(function (c) { return c.id !== id; });
       this.save();
+    },
+    // Repõe o catálogo oficial de cursos (preserva estudantes e pagamentos)
+    reporCatalogo: function () {
+      var db = this.load();
+      db.cursos = seedCursos();
+      db.settings.catalogoVersao = CATALOG_VERSION;
+      this.save();
+      return db.cursos;
     },
 
     // ---- Estudantes --------------------------------------------------------

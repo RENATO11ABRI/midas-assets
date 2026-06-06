@@ -245,6 +245,11 @@
       };
       reader.readAsText(file);
     };
+    document.getElementById("bkCatalogo").onclick = function () {
+      C.confirm("Repor o catálogo de cursos oficial? Os estudantes e pagamentos são mantidos.", function () {
+        D.reporCatalogo(); C.toast("Catálogo de cursos atualizado.", "ok"); App.refresh();
+      }, { yes: "Repor catálogo" });
+    };
     document.getElementById("bkReset").onclick = function () {
       C.confirm("Repor dados de fábrica? Todos os estudantes, pagamentos e cursos serão apagados.", function () {
         D.reset(); C.toast("Dados repostos.", "ok"); App.navigate("dashboard");
