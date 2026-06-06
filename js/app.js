@@ -81,7 +81,7 @@
   function afterPagamentos() {
     V.renderPagamentos();
     document.getElementById("novoPag").onclick = function () { V.novoPagamento(null); };
-    ["pagSearch", "pagFiltroCurso", "pagFiltroEmol", "pagDe", "pagAte"].forEach(function (id) {
+    ["pagSearch", "pagFiltroCurso", "pagFiltroEmol", "pagFiltroUnidade", "pagDe", "pagAte"].forEach(function (id) {
       var el = document.getElementById(id);
       el.addEventListener(el.tagName === "INPUT" && el.type !== "date" ? "input" : "change",
         U.debounce(V.renderPagamentos, 150));
@@ -112,6 +112,13 @@
       setVal("curso", est.curso); setVal("periodo", est.periodo); setVal("unidade", est.unidade);
     });
 
+    // auto-fill value when selecting the emolumento
+    var recEmol = document.getElementById("recEmol");
+    if (recEmol) recEmol.addEventListener("change", function () {
+      var v = D.emolumentoValor(this.value);
+      if (v > 0) setVal("valorPago", v);
+    });
+
     document.getElementById("recLimpar").onclick = function () {
       form.reset();
       setVal("data", U.hoje());
@@ -126,13 +133,15 @@
       if (!nome) { C.toast("Indique o nome do estudante.", "err"); return; }
       if (!(valor > 0)) { C.toast("O valor pago deve ser maior que zero.", "err"); return; }
       var dataVal = g("data");
+      var emo = D.emolumentoById(g("emolumentoId"));
       var pag = {
         recibo: D.nextRecibo(),
         estudanteId: g("estudanteId") || "",
         estudanteNome: nome, matricula: g("matricula"), contacto: g("contacto"),
         curso: g("curso"), periodo: g("periodo"), unidade: g("unidade"),
         tipoCurso: "", duracao: "", regime: "",
-        emolumento: g("emolumento") || "Outro", mesReferencia: g("mesReferencia"),
+        emolumentoId: emo ? emo.id : "", emolumento: emo ? emo.nome : "Outros",
+        categoria: emo ? emo.categoria : "Outros", mesReferencia: g("mesReferencia"),
         valorPago: valor, formaPagamento: g("formaPagamento"),
         funcionario: g("funcionario"), referencia: "", observacoes: g("observacoes"),
         data: dataVal ? dataVal + "T" + new Date().toTimeString().slice(0, 8) : U.agoraISO()
@@ -185,6 +194,7 @@
       var t = tabs.querySelectorAll(".tab");
       for (var i = 0; i < t.length; i++) t[i].classList.toggle("active", t[i].getAttribute("data-tab") === tab);
       if (tab === "inst") { content.innerHTML = V.cfgInst(); wireInst(); }
+      else if (tab === "emolumentos") { content.innerHTML = V.cfgEmolumentos(); wireEmolumentos(); }
       else if (tab === "listas") { content.innerHTML = V.cfgListas(); }
       else if (tab === "conta") { content.innerHTML = V.cfgConta(); wireConta(); }
       else { content.innerHTML = V.cfgDados(); wireDados(); }
@@ -207,6 +217,14 @@
       s.seqRecibo = parseInt(fd.get("seqRecibo"), 10) || s.seqRecibo;
       D.save();
       C.toast("Configurações guardadas.", "ok");
+    });
+  }
+  function wireEmolumentos() {
+    V.renderEmolumentos();
+    document.getElementById("emNovo").onclick = function () { V.editarEmolumento(null); };
+    ["emSearch", "emFiltroCat", "emFiltroEstado"].forEach(function (id) {
+      var el = document.getElementById(id);
+      el.addEventListener(el.tagName === "INPUT" ? "input" : "change", U.debounce(V.renderEmolumentos, 120));
     });
   }
   function wireConta() {
@@ -255,6 +273,12 @@
         D.reset(); C.toast("Dados repostos.", "ok"); App.navigate("dashboard");
       }, { danger: true, yes: "Repor tudo" });
     };
+    V.renderLixo();
+    document.getElementById("lixoEsvaziar").onclick = function () {
+      C.confirm("Esvaziar a reciclagem? Os registos eliminados não poderão ser recuperados.", function () {
+        D.esvaziarLixo(); C.toast("Reciclagem esvaziada.", "ok"); V.renderLixo();
+      }, { danger: true, yes: "Esvaziar" });
+    };
   }
 
   /* ---- Matrícula form ---------------------------------------------------- */
@@ -279,6 +303,13 @@
       setIfEmpty("valorMatricula", c.valorMatricula);
     });
 
+    // auto-fill value when selecting the emolumento (if configured)
+    var matEmol = document.getElementById("matEmol");
+    if (matEmol) matEmol.addEventListener("change", function () {
+      var v = D.emolumentoValor(this.value);
+      if (v > 0 && form.elements["valorPago"]) form.elements["valorPago"].value = v;
+    });
+
     function gerarMatricula() {
       var fd = new FormData(form);
       var nome = (fd.get("nome") || "").trim();
@@ -301,7 +332,7 @@
         valorMatricula: U.parseMoeda(fd.get("valorMatricula")),
         valorPago: U.parseMoeda(fd.get("valorPago")),
         formaPagamento: fd.get("formaPagamento"),
-        emolumento: fd.get("emolumento"),
+        emolumentoId: fd.get("emolumentoId"),
         funcionario: fd.get("funcionario"),
         estado: fd.get("estado") || "ativo",
         observacoes: fd.get("observacoes")
@@ -312,8 +343,10 @@
       var gerar = document.getElementById("gerarRecibo") && document.getElementById("gerarRecibo").checked;
       var msg = editing ? "Alterações guardadas." : "Matrícula " + est.matricula + " gerada.";
       if (!editing && gerar && valorPago > 0) {
+        var emo = D.emolumentoById(fd.get("emolumentoId"));
         var pag = V._criarPagamento(est, {
-          emolumento: fd.get("emolumento") || "Matrícula",
+          emolumentoId: emo ? emo.id : "", emolumento: emo ? emo.nome : "Matrícula",
+          categoria: emo ? emo.categoria : "Matrícula",
           valorPago: valorPago, formaPagamento: fd.get("formaPagamento"),
           funcionario: fd.get("funcionario"), data: U.agoraISO(), observacoes: fd.get("observacoes")
         });
@@ -396,7 +429,8 @@
   /* ---- Global delegated click handler ----------------------------------- */
   document.addEventListener("click", function (e) {
     var t = e.target.closest("[data-go],[data-est-view],[data-est-ficha],[data-est-edit],[data-est-pay],[data-est-del]," +
-      "[data-curso-edit],[data-curso-del],[data-pag-view],[data-pag-del],[data-lista-add],[data-lista-del]");
+      "[data-curso-edit],[data-curso-del],[data-pag-view],[data-pag-del],[data-lista-add],[data-lista-del]," +
+      "[data-em-edit],[data-em-toggle],[data-em-del],[data-lixo-restore]");
     if (!t) return;
 
     var go = t.getAttribute("data-go");
@@ -424,12 +458,27 @@
     }
     if ((id = t.getAttribute("data-pag-view"))) { var p = D.pagamentoById(id); if (p) C.viewReceipt(p); return; }
     if ((id = t.getAttribute("data-pag-del"))) {
-      C.confirm("Eliminar este pagamento/recibo? Esta ação não pode ser desfeita.", function () {
-        D.deletePagamento(id); C.toast("Pagamento eliminado.", "ok");
+      C.confirm("Eliminar este pagamento/recibo? Poderá recuperá-lo na Reciclagem (Configurações → Dados).", function () {
+        D.deletePagamento(id); C.toast("Pagamento movido para a reciclagem.", "ok");
         if (App.current === "pagamentos") V.renderPagamentos();
         else if (App.current === "recibos") V.renderRecibos();
         else App.refresh();
       }, { danger: true, yes: "Eliminar" });
+      return;
+    }
+    // emolumentos (config)
+    if ((id = t.getAttribute("data-em-edit"))) { V.editarEmolumento(id); return; }
+    if ((id = t.getAttribute("data-em-toggle"))) { D.toggleEmolumento(id); V.renderEmolumentos(); return; }
+    if ((id = t.getAttribute("data-em-del"))) {
+      var emo = D.emolumentoById(id);
+      C.confirm("Eliminar o emolumento " + (emo ? emo.nome : "") + "?", function () {
+        D.deleteEmolumento(id); C.toast("Emolumento eliminado.", "ok"); V.renderEmolumentos();
+      }, { danger: true, yes: "Eliminar" });
+      return;
+    }
+    if ((id = t.getAttribute("data-lixo-restore"))) {
+      D.restaurarLixo(id); C.toast("Registo restaurado.", "ok");
+      V.renderLixo();
       return;
     }
     // listas (config)
