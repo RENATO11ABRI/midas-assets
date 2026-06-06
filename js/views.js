@@ -518,9 +518,49 @@
      6. RECIBOS
      ======================================================================= */
   V.recibos = function () {
-    return C.pageHead("Recibos", "Gerador e pesquisa de recibos de pagamento",
-      '<button class="btn btn-primary" id="gerarReciboBtn">Novo Recibo</button>') +
-      '<div class="card">' +
+    var db = D.db();
+    var estOpts = '<option value="">— Selecionar estudante (opcional) —</option>' +
+      D.estudantes().slice().sort(function (a, b) { return a.nome < b.nome ? -1 : 1; }).map(function (e) {
+        return '<option value="' + e.id + '">' + U.esc(e.nome + " · " + e.matricula) + "</option>";
+      }).join("");
+    var cursoOpts = '<option value="">—</option>' +
+      D.cursosOrdenados().map(function (c) { return '<option value="' + U.esc(c.nome) + '">' + U.esc(c.nome) + "</option>"; }).join("");
+
+    return C.pageHead("Recibos", "Gerador e pesquisa de recibos de pagamento") +
+      // ---- 1. Formulário ----
+      '<div class="card mb"><div class="card-head"><h3>Recibo de Pagamento</h3>' +
+        '<span class="help">Nº do recibo (automático): <strong id="recNum">' + U.esc(D.peekRecibo()) + "</strong></span></div>" +
+        '<form id="formRecibo"><div class="form-grid">' +
+          '<div class="field full"><label>Estudante (preenche os dados automaticamente)</label>' +
+            '<select name="estudanteId" id="recEst">' + estOpts + "</select></div>" +
+          '<div class="fieldset-title">Dados do estudante</div>' +
+          V._f("nome", "Nome completo do estudante", "text", "", true) +
+          V._f("contacto", "Contacto", "tel") +
+          V._f("matricula", "Nº de matrícula", "text") +
+          '<div class="field"><label>Curso</label><select name="curso">' + cursoOpts + "</select></div>" +
+          V._fselect("periodo", "Período", db.periodos) +
+          V._fselect("unidade", "Unidade / Polo", db.unidades) +
+          '<div class="fieldset-title">Dados do pagamento</div>' +
+          '<div class="field"><label>Tipo de pagamento <span class="req">*</span></label>' +
+            '<select name="emolumento" required>' + U.optionList(db.emolumentos, "Propina") + "</select></div>" +
+          '<div class="field"><label>Mês de referência</label><input type="month" name="mesReferencia"></div>' +
+          V._f("valorPago", "Valor pago (Kz)", "number", "", true) +
+          V._fselect("formaPagamento", "Forma de pagamento", db.formasPagamento) +
+          V._fselect("funcionario", "Funcionário que recebeu", db.funcionarios) +
+          V._f("data", "Data do pagamento", "date", U.hoje(), true) +
+          '<div class="field full"><label>Observações</label><textarea name="observacoes"></textarea></div>' +
+        "</div>" +
+        '<div class="form-actions">' +
+          '<button type="button" class="btn btn-light" id="recLimpar">Limpar formulário</button>' +
+          '<button type="button" class="btn btn-primary" id="recGerar">Gerar recibo</button>' +
+        "</div></form></div>" +
+      // ---- 2. Pré-visualização (A4, 2 vias) ----
+      '<div class="card mb" id="recPreviewCard" hidden><div class="card-head"><h3>Pré-visualização — Folha A4, 2 vias</h3>' +
+        '<div class="flex"><button class="btn btn-gold" id="recImprimir">Imprimir recibo</button>' +
+        '<button class="btn btn-primary" id="recPdf">Guardar em PDF</button></div></div>' +
+        '<div id="recPreview"></div></div>' +
+      // ---- 3. Pesquisa ----
+      '<div class="card"><div class="card-head"><h3>Pesquisar recibos</h3></div>' +
         '<div class="toolbar">' +
           '<div class="search-box"><input id="recSearch" placeholder="Pesquisar por nº recibo, nome, contacto, curso..."></div>' +
           '<div class="field"><label>De</label><input type="date" id="recDe"></div>' +

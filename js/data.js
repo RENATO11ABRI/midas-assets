@@ -18,7 +18,7 @@
     "Mesa do Júri", "Sala da Defesa", "Emolumentos da Defesa", "Aula prática",
     "Orientação", "Exame prático", "Cartão de estudante", "Fascículo", "Outros"
   ];
-  var DEFAULT_FORMAS = ["Dinheiro", "TPA", "Transferência", "Referência bancária"];
+  var DEFAULT_FORMAS = ["Dinheiro", "TPA", "Transferência", "Multicaixa Express"];
   var DEFAULT_FUNCIONARIOS = ["Secretaria Geral"];
 
   // Cursos iniciais (valores indicativos em Kz — editáveis no painel)
@@ -134,6 +134,10 @@
           var def = defaultDB();
           for (var k in def) { if (!(k in _db)) _db[k] = def[k]; }
           for (var s in def.settings) { if (!(s in _db.settings)) _db.settings[s] = def.settings[s]; }
+          // migração não destrutiva: garante a forma de pagamento Multicaixa Express
+          if (_db.formasPagamento && _db.formasPagamento.indexOf("Multicaixa Express") < 0) {
+            _db.formasPagamento.push("Multicaixa Express");
+          }
           return _db;
         }
       } catch (e) { console.warn("Falha ao ler dados, a reiniciar.", e); }
