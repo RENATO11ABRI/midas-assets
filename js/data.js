@@ -13,12 +13,22 @@
   var DEFAULT_TIPOS = ["Médio", "Intensivo", "Imersão", "Premium", "Capacitação"];
   var CATALOG_VERSION = 2;
   var DEFAULT_UNIDADES = ["Polo Sede — Luanda", "Polo Viana", "Polo Cacuaco"];
-  var DEFAULT_EMOLUMENTOS = [
-    "Propina", "Matrícula", "Inscrição", "Estágio Preliminar", "Estágio Curricular",
+  // Categorias de emolumentos
+  var CATEGORIAS_EMOLUMENTO = [
+    "Matrícula", "Inscrição", "Propina", "Estágio Preliminar", "Estágio Curricular",
     "Declaração", "Túnica", "Certificado de Participação", "Certificado de Fim do Curso",
-    "Mesa do Júri", "Sala da Defesa", "Emolumentos da Defesa", "Aula prática",
-    "Orientação", "Exame prático", "Cartão de estudante", "Fascículo", "Outros"
+    "Mesa do Júri", "Sala da Defesa", "Emolumentos da Defesa", "Aula Prática",
+    "Orientação", "Exame Prático", "Cartão de Estudante", "Fascículo", "Outros"
   ];
+  // Catálogo inicial de emolumentos (um por categoria, valor a definir nas Definições)
+  function seedEmolumentos() {
+    return CATEGORIAS_EMOLUMENTO.map(function (cat) {
+      return {
+        id: MidasData.uid("emo"), nome: cat, categoria: cat, valor: 0,
+        curso: "", tipoCurso: "", unidade: "", estado: "ativo", observacoes: ""
+      };
+    });
+  }
   var DEFAULT_FORMAS = ["Dinheiro", "TPA", "Transferência", "Multicaixa Express"];
   var DEFAULT_FUNCIONARIOS = ["Secretaria Geral"];
 
@@ -30,6 +40,7 @@
         id: MidasData.uid("crs"),
         nome: nome, tipo: tipo, duracao: dur, periodo: periodo, regime: regime,
         valorInscricao: insc, valorMatricula: matr, valorMensalidade: mens,
+        valorEstagio: 0, valorDefesa: 0, valorCertificado: 0,
         valorTotal: total, unidade: sede, estado: "ativo"
       };
     }
@@ -109,12 +120,13 @@
       regimes: DEFAULT_REGIMES.slice(),
       tiposCurso: DEFAULT_TIPOS.slice(),
       unidades: DEFAULT_UNIDADES.slice(),
-      emolumentos: DEFAULT_EMOLUMENTOS.slice(),
+      emolumentos: [],
       formasPagamento: DEFAULT_FORMAS.slice(),
       funcionarios: DEFAULT_FUNCIONARIOS.slice(),
       cursos: [],
       estudantes: [],
-      pagamentos: []
+      pagamentos: [],
+      lixo: []
     };
   }
 
@@ -169,6 +181,25 @@
           if (_db.formasPagamento && _db.formasPagamento.indexOf("Multicaixa Express") < 0) {
             _db.formasPagamento.push("Multicaixa Express");
           }
+          // migração: emolumentos passam a objetos completos (categoria, valor, estado…)
+          if (!_db.emolumentos || !_db.emolumentos.length) {
+            _db.emolumentos = seedEmolumentos();
+          } else {
+            _db.emolumentos = _db.emolumentos.map(function (e) {
+              if (typeof e === "string") {
+                return { id: MidasData.uid("emo"), nome: e, categoria: e, valor: 0, curso: "", tipoCurso: "", unidade: "", estado: "ativo", observacoes: "" };
+              }
+              return {
+                id: e.id || MidasData.uid("emo"),
+                nome: e.nome || e.categoria || "Emolumento",
+                categoria: e.categoria || e.nome || "Outros",
+                valor: Number(e.valor) || 0,
+                curso: e.curso || "", tipoCurso: e.tipoCurso || "", unidade: e.unidade || "",
+                estado: e.estado || "ativo", observacoes: e.observacoes || ""
+              };
+            });
+          }
+          if (!_db.lixo) _db.lixo = [];
           // atualiza o catálogo oficial de cursos (preserva estudantes e pagamentos)
           if (prevCatalogo < CATALOG_VERSION) {
             _db.cursos = seedCursos();
@@ -184,6 +215,7 @@
       } catch (e) { console.warn("Falha ao ler dados, a reiniciar.", e); }
       _db = defaultDB();
       _db.cursos = seedCursos();
+      _db.emolumentos = seedEmolumentos();
       this.save();
       return _db;
     },
@@ -197,6 +229,7 @@
     reset: function () {
       _db = defaultDB();
       _db.cursos = seedCursos();
+      _db.emolumentos = seedEmolumentos();
       this.save();
       return _db;
     },
@@ -229,6 +262,81 @@
       var db = this.load();
       return "REC-" + db.settings.anoLetivo + "-" + String(db.settings.seqRecibo).padStart(5, "0");
     },
+
+    // ---- Emolumentos (cadastro com valor, categoria, curso/unidade…) -------
+    categoriasEmolumento: function () { return CATEGORIAS_EMOLUMENTO.slice(); },
+    emolumentos: function () { return this.load().emolumentos; },
+    emolumentosAtivos: function () {
+      return this.load().emolumentos.filter(function (e) { return e.estado === "ativo"; });
+    },
+    emolumentoById: function (id) {
+      return this.load().emolumentos.filter(function (e) { return e.id === id; })[0];
+    },
+    emolumentoValor: function (id) {
+      var e = this.emolumentoById(id);
+      return e ? (Number(e.valor) || 0) : 0;
+    },
+    // Primeiro emolumento ativo de uma categoria (para pré-seleção)
+    emolumentoPadrao: function (categoria) {
+      var e = this.emolumentosAtivos().filter(function (x) { return x.categoria === categoria; })[0];
+      return e ? e.id : (this.emolumentosAtivos()[0] ? this.emolumentosAtivos()[0].id : "");
+    },
+    saveEmolumento: function (emo) {
+      var db = this.load();
+      var nome = (emo.nome || "").trim();
+      if (!nome) return { error: "Indique o nome do emolumento." };
+      // impede duplicação: mesmo nome + curso + unidade
+      var dup = db.emolumentos.filter(function (e) {
+        return e.id !== emo.id &&
+          e.nome.toLowerCase() === nome.toLowerCase() &&
+          (e.curso || "") === (emo.curso || "") &&
+          (e.unidade || "") === (emo.unidade || "");
+      })[0];
+      if (dup) return { error: "Já existe este emolumento para o mesmo curso e unidade." };
+      var rec = {
+        id: emo.id || this.uid("emo"),
+        nome: nome, categoria: emo.categoria || "Outros", valor: Number(emo.valor) || 0,
+        curso: emo.curso || "", tipoCurso: emo.tipoCurso || "", unidade: emo.unidade || "",
+        estado: emo.estado || "ativo", observacoes: emo.observacoes || ""
+      };
+      if (emo.id) {
+        for (var i = 0; i < db.emolumentos.length; i++) {
+          if (db.emolumentos[i].id === emo.id) { db.emolumentos[i] = rec; this.save(); return { emolumento: rec }; }
+        }
+      }
+      db.emolumentos.push(rec); this.save(); return { emolumento: rec };
+    },
+    toggleEmolumento: function (id) {
+      var e = this.emolumentoById(id);
+      if (e) { e.estado = e.estado === "ativo" ? "inativo" : "ativo"; this.save(); }
+      return e;
+    },
+    deleteEmolumento: function (id) {
+      var db = this.load();
+      db.emolumentos = db.emolumentos.filter(function (e) { return e.id !== id; });
+      this.save();
+    },
+
+    // ---- Reciclagem (recuperação de eliminados) ----------------------------
+    lixo: function () { return this.load().lixo || []; },
+    _paraLixo: function (tipo, registo) {
+      var db = this.load();
+      if (!db.lixo) db.lixo = [];
+      db.lixo.unshift({ id: this.uid("lix"), tipo: tipo, registo: registo, eliminadoEm: this.now() });
+      if (db.lixo.length > 200) db.lixo = db.lixo.slice(0, 200);
+    },
+    restaurarLixo: function (lixoId) {
+      var db = this.load();
+      var item = (db.lixo || []).filter(function (x) { return x.id === lixoId; })[0];
+      if (!item) return false;
+      if (item.tipo === "estudante") db.estudantes.push(item.registo);
+      else if (item.tipo === "pagamento") db.pagamentos.push(item.registo);
+      db.lixo = db.lixo.filter(function (x) { return x.id !== lixoId; });
+      this.save();
+      return true;
+    },
+    esvaziarLixo: function () { var db = this.load(); db.lixo = []; this.save(); },
+    now: function () { return new Date().toISOString(); },
 
     // ---- Cursos ------------------------------------------------------------
     cursos: function () { return this.load().cursos; },
@@ -295,6 +403,8 @@
     },
     deleteEstudante: function (id) {
       var db = this.load();
+      var rec = this.estudanteById(id);
+      if (rec) this._paraLixo("estudante", rec);
       db.estudantes = db.estudantes.filter(function (e) { return e.id !== id; });
       this.save();
     },
@@ -317,11 +427,20 @@
     },
     deletePagamento: function (id) {
       var db = this.load();
+      var rec = this.pagamentoById(id);
+      if (rec) this._paraLixo("pagamento", rec);
       db.pagamentos = db.pagamentos.filter(function (p) { return p.id !== id; });
       this.save();
     },
 
     // ---- Aggregations ------------------------------------------------------
+    // Saldo em dívida de um estudante (valor do curso - total pago)
+    saldoDevedor: function (est) {
+      var curso = est && est.curso ? this.cursoByNome(est.curso) : null;
+      var total = curso ? (Number(curso.valorTotal) || 0) : 0;
+      if (!total) return 0;
+      return Math.max(0, total - this.totalPagoEstudante(est.id));
+    },
     totalRecebido: function () {
       return this.load().pagamentos.reduce(function (s, p) { return s + (Number(p.valorPago) || 0); }, 0);
     },

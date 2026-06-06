@@ -21,10 +21,15 @@
     });
     var turmasAbertas = Object.keys(turmas).length;
 
-    var hoje = U.hoje();
-    var matsHoje = estudantes.filter(function (e) { return U.ymd(e.dataMatricula) === hoje; }).length;
+    var hoje = U.hoje(), mes = U.ym(U.agoraISO()), ano = (U.agoraISO() || "").slice(0, 4);
     var pagsHoje = db.pagamentos.filter(function (p) { return U.ymd(p.data) === hoje; });
     var recHoje = U.sum(pagsHoje, function (p) { return p.valorPago; });
+    var recMes = U.sum(db.pagamentos.filter(function (p) { return U.ym(p.data) === mes; }), function (p) { return p.valorPago; });
+    var recAno = U.sum(db.pagamentos.filter(function (p) { return (p.data || "").slice(0, 4) === ano; }), function (p) { return p.valorPago; });
+
+    var ativos = estudantes.filter(function (e) { return e.estado === "ativo"; }).length;
+    var concluidos = estudantes.filter(function (e) { return e.estado === "concluído" || e.estado === "concluido"; }).length;
+    var comDivida = estudantes.filter(function (e) { return D.saldoDevedor(e) > 0; }).length;
 
     var recentes = estudantes.slice().sort(U.by("dataMatricula")).slice(0, 6);
     var ultPag = db.pagamentos.slice().sort(U.by("data")).slice(0, 6);
@@ -32,8 +37,8 @@
     var html =
       '<div class="hero">' +
         "<h1>" + U.esc(s.sistema) + '</h1><span class="slogan">' + U.esc(s.slogan) + "</span>" +
-        "<p>Plataforma de gestão de matrículas, cursos, pagamentos e recibos do " + U.esc(s.instituicao) +
-        ". Rápida, simples e profissional — pensada para a secretaria.</p>" +
+        "<p>Plataforma centralizada de gestão académica e financeira do " + U.esc(s.instituicao) +
+        ". Uma matrícula alimenta automaticamente estudantes, pagamentos, recibos, relatórios e este painel.</p>" +
         '<div class="hero-actions">' +
           '<button class="btn btn-gold" data-go="matricula">Nova Matrícula</button>' +
           '<button class="btn btn-ghost" data-go="recibos">Emitir Recibo</button>' +
@@ -43,17 +48,29 @@
       "</div>" +
 
       '<div class="grid stats">' +
-        V._stat("Estudantes matriculados", estudantes.length, "") +
-        V._stat("Total recebido", U.moeda(totalRec), "") +
-        V._stat("Cursos ativos", cursosAtivos, "") +
-        V._stat("Turmas abertas", turmasAbertas, "") +
+        V._stat("Estudantes matriculados", estudantes.length) +
+        V._stat("Estudantes ativos", ativos) +
+        V._stat("Estudantes concluídos", concluidos) +
+        V._stat("Estudantes com dívida", comDivida) +
       "</div>" +
 
       '<div class="grid stats mt">' +
-        V._stat("Matrículas de hoje", matsHoje, "") +
-        V._stat("Pagamentos de hoje", pagsHoje.length, "") +
-        V._stat("Recebido hoje", U.moeda(recHoje), "") +
-        V._stat("Cursos registados", db.cursos.length, "") +
+        V._stat("Recebido hoje", U.moeda(recHoje)) +
+        V._stat("Recebido no mês", U.moeda(recMes)) +
+        V._stat("Recebido no ano", U.moeda(recAno)) +
+        V._stat("Total recebido", U.moeda(totalRec)) +
+      "</div>" +
+
+      '<div class="grid stats mt">' +
+        V._stat("Cursos ativos", cursosAtivos) +
+        V._stat("Turmas abertas", turmasAbertas) +
+        V._stat("Pagamentos de hoje", pagsHoje.length) +
+        V._stat("Pagamentos registados", db.pagamentos.length) +
+      "</div>" +
+
+      '<div class="grid two-col mt">' +
+        '<div class="card"><div class="card-head"><h3>Recebido por curso</h3></div>' + V._dashAgg("curso") + "</div>" +
+        '<div class="card"><div class="card-head"><h3>Recebido por unidade</h3></div>' + V._dashAgg("unidade") + "</div>" +
       "</div>" +
 
       '<div class="grid two-col mt">' +
@@ -68,6 +85,20 @@
       "</div>";
 
     return html;
+  };
+  V._dashAgg = function (campo) {
+    var by = {};
+    D.pagamentos().forEach(function (p) {
+      var k = p[campo] || "—"; by[k] = (by[k] || 0) + (Number(p.valorPago) || 0);
+    });
+    var keys = Object.keys(by).sort(function (a, b) { return by[b] - by[a]; }).slice(0, 8);
+    if (!keys.length) return C.empty("", "Sem pagamentos registados.");
+    var rows = keys.map(function (k) {
+      return "<tr><td>" + U.esc(k) + "</td><td class='text-right num'><strong>" + U.moeda(by[k]) + "</strong></td></tr>";
+    }).join("");
+    return '<div class="table-wrap"><table class="data"><thead><tr><th>' +
+      (campo === "curso" ? "Curso" : "Unidade") + '</th><th class="text-right">Recebido</th></tr></thead><tbody>' +
+      rows + "</tbody></table></div>";
   };
   V._stat = function (label, value) {
     return '<div class="stat-card"><div class="label">' + U.esc(label) + "</div>" +
@@ -139,7 +170,7 @@
         V._f("valorPago", "Valor pago (Kz)", "number", e.valorPago) +
         V._fselect("formaPagamento", "Forma de pagamento", db.formasPagamento, e.formaPagamento) +
         '<div class="field"><label>Tipo de pagamento (emolumento)</label>' +
-          '<select name="emolumento">' + U.optionList(db.emolumentos, e.emolumento || "Matrícula") + "</select></div>" +
+          '<select name="emolumentoId" id="matEmol">' + V.emolumentoOptions(e.emolumentoId || D.emolumentoPadrao("Matrícula")) + "</select></div>" +
         V._fselect("funcionario", "Funcionário que recebeu", db.funcionarios, e.funcionario) +
         '<div class="field full"><label>Observações</label><textarea name="observacoes">' + U.esc(e.observacoes || "") + "</textarea></div>" +
       "</div>" +
@@ -195,6 +226,24 @@
     return '<div class="field"><label>' + U.esc(label) + (req ? ' <span class="req">*</span>' : "") + "</label>" +
       '<select name="' + name + '"' + (req ? " required" : "") + ">" +
       '<option value="">—</option>' + U.optionList(arr, sel) + "</select></div>";
+  };
+  // <option>s dos emolumentos ATIVOS (valor preenchido automaticamente ao selecionar)
+  V.emolumentoOptions = function (selectedId) {
+    var ativos = D.emolumentosAtivos();
+    if (!ativos.length) return '<option value="">(sem emolumentos ativos)</option>';
+    return ativos.map(function (e) {
+      var ctx = [];
+      if (e.curso) ctx.push(e.curso);
+      if (e.unidade) ctx.push(e.unidade);
+      var label = e.nome + (ctx.length ? " (" + ctx.join(" · ") + ")" : "") + (e.valor ? " — " + U.moeda(e.valor) : "");
+      return '<option value="' + e.id + '" data-valor="' + (Number(e.valor) || 0) + '" data-nome="' + U.esc(e.nome) +
+        '" data-categoria="' + U.esc(e.categoria) + '"' + (e.id === selectedId ? " selected" : "") + ">" + U.esc(label) + "</option>";
+    }).join("");
+  };
+  V.emolumentoNomesUnicos = function () {
+    var seen = {}, out = [];
+    D.emolumentos().forEach(function (e) { if (!seen[e.nome]) { seen[e.nome] = 1; out.push(e.nome); } });
+    return out;
   };
 
   /* =======================================================================
@@ -385,7 +434,10 @@
         sel("regime", "Regime", db.regimes, c.regime) +
         f("valorInscricao", "Valor da inscrição (Kz)", "number", c.valorInscricao) +
         f("valorMatricula", "Valor da matrícula (Kz)", "number", c.valorMatricula) +
-        f("valorMensalidade", "Valor da mensalidade (Kz)", "number", c.valorMensalidade) +
+        f("valorMensalidade", "Valor da propina / mensalidade (Kz)", "number", c.valorMensalidade) +
+        f("valorEstagio", "Valor do estágio (Kz)", "number", c.valorEstagio) +
+        f("valorDefesa", "Valor da defesa (Kz)", "number", c.valorDefesa) +
+        f("valorCertificado", "Valor do certificado (Kz)", "number", c.valorCertificado) +
         f("valorTotal", "Valor total do curso (Kz)", "number", c.valorTotal) +
         sel("unidade", "Unidade / Polo", db.unidades, c.unidade) +
         sel("estado", "Estado", ["ativo", "inativo"], c.estado || "ativo") +
@@ -405,6 +457,9 @@
             valorInscricao: U.parseMoeda(fd.get("valorInscricao")),
             valorMatricula: U.parseMoeda(fd.get("valorMatricula")),
             valorMensalidade: U.parseMoeda(fd.get("valorMensalidade")),
+            valorEstagio: U.parseMoeda(fd.get("valorEstagio")),
+            valorDefesa: U.parseMoeda(fd.get("valorDefesa")),
+            valorCertificado: U.parseMoeda(fd.get("valorCertificado")),
             valorTotal: U.parseMoeda(fd.get("valorTotal")),
             unidade: fd.get("unidade"), estado: fd.get("estado") || "ativo"
           };
@@ -429,8 +484,10 @@
           '<div class="search-box"><input id="pagSearch" placeholder="Pesquisar por estudante, recibo, curso..."></div>' +
           '<div class="field"><label>Curso</label><select id="pagFiltroCurso"><option value="">Todos</option>' +
             U.optionList(D.cursos().map(function (c) { return c.nome; })) + "</select></div>" +
-          '<div class="field"><label>Emolumento</label><select id="pagFiltroEmol"><option value="">Todos</option>' +
-            U.optionList(D.db().emolumentos) + "</select></div>" +
+          '<div class="field"><label>Tipo de pagamento</label><select id="pagFiltroEmol"><option value="">Todos</option>' +
+            U.optionList(V.emolumentoNomesUnicos()) + "</select></div>" +
+          '<div class="field"><label>Unidade</label><select id="pagFiltroUnidade"><option value="">Todas</option>' +
+            U.optionList(D.db().unidades) + "</select></div>" +
           '<div class="field"><label>De</label><input type="date" id="pagDe"></div>' +
           '<div class="field"><label>Até</label><input type="date" id="pagAte"></div>' +
         '</div><div id="pagTable"></div></div>';
@@ -439,11 +496,13 @@
     var q = (document.getElementById("pagSearch").value || "").toLowerCase();
     var fc = document.getElementById("pagFiltroCurso").value;
     var fem = document.getElementById("pagFiltroEmol").value;
+    var fu = document.getElementById("pagFiltroUnidade").value;
     var de = document.getElementById("pagDe").value;
     var ate = document.getElementById("pagAte").value;
     return D.pagamentos().filter(function (p) {
       if (fc && p.curso !== fc) return false;
       if (fem && p.emolumento !== fem) return false;
+      if (fu && p.unidade !== fu) return false;
       var d = U.ymd(p.data);
       if (de && d < de) return false;
       if (ate && d > ate) return false;
@@ -500,10 +559,10 @@
       body: '<form id="formPag"><div class="form-grid">' +
         '<div class="field full"><label>Estudante <span class="req">*</span></label>' +
           "<select name='estudanteId' id='payEst' required>" + estOpts + "</select></div>" +
-        '<div class="field"><label>Tipo de pagamento <span class="req">*</span></label><select name="emolumento" required>' +
-          U.optionList(db.emolumentos, "Propina") + "</select></div>" +
+        '<div class="field"><label>Tipo de pagamento <span class="req">*</span></label><select name="emolumentoId" id="payEmol" required>' +
+          V.emolumentoOptions(D.emolumentoPadrao("Propina")) + "</select></div>" +
         '<div class="field"><label>Valor pago (Kz) <span class="req">*</span></label>' +
-          "<input type='number' name='valorPago' min='0.01' step='0.01' required></div>" +
+          "<input type='number' name='valorPago' id='payValor' min='0.01' step='0.01' required></div>" +
         '<div class="field"><label>Forma de pagamento</label><select name="formaPagamento">' +
           U.optionList(db.formasPagamento) + "</select></div>" +
         '<div class="field"><label>Data</label><input type="date" name="data" value="' + U.hoje() + '"></div>' +
@@ -516,14 +575,22 @@
         '<button class="btn btn-light" onclick="App.closeModal()">Cancelar</button>' +
         '<button class="btn btn-primary" id="savePag">Registar e gerar recibo</button>',
       onOpen: function () {
+        var payEmol = document.getElementById("payEmol");
+        if (payEmol) payEmol.addEventListener("change", function () {
+          var v = D.emolumentoValor(this.value);
+          var vi = document.getElementById("payValor");
+          if (v > 0 && vi) vi.value = v;
+        });
         document.getElementById("savePag").onclick = function () {
           var fd = new FormData(document.getElementById("formPag"));
           var est = D.estudanteById(fd.get("estudanteId"));
           var valor = U.parseMoeda(fd.get("valorPago"));
           if (!est) { C.toast("Selecione o estudante.", "err"); return; }
           if (!(valor > 0)) { C.toast("O valor pago deve ser maior que zero.", "err"); return; }
+          var emo = D.emolumentoById(fd.get("emolumentoId"));
           var pag = V._criarPagamento(est, {
-            emolumento: fd.get("emolumento"), valorPago: valor,
+            emolumentoId: emo ? emo.id : "", emolumento: emo ? emo.nome : "Outros",
+            categoria: emo ? emo.categoria : "Outros", valorPago: valor,
             formaPagamento: fd.get("formaPagamento"), funcionario: fd.get("funcionario"),
             data: fd.get("data") ? fd.get("data") + "T" + new Date().toTimeString().slice(0, 8) : U.agoraISO(),
             referencia: fd.get("referencia"), observacoes: fd.get("observacoes")
@@ -544,7 +611,10 @@
       contacto: est.contacto, curso: est.curso, periodo: est.periodo,
       unidade: est.unidade, tipoCurso: est.tipoCurso, duracao: est.duracao, regime: est.regime,
       data: extra.data || U.agoraISO(),
+      emolumentoId: extra.emolumentoId || "",
       emolumento: extra.emolumento || "Outros",
+      categoria: extra.categoria || "",
+      mesReferencia: extra.mesReferencia || "",
       valorPago: extra.valorPago || 0,
       formaPagamento: extra.formaPagamento || "",
       funcionario: extra.funcionario || "",
@@ -582,7 +652,7 @@
           V._fselect("unidade", "Unidade / Polo", db.unidades) +
           '<div class="fieldset-title">Dados do pagamento</div>' +
           '<div class="field"><label>Tipo de pagamento <span class="req">*</span></label>' +
-            '<select name="emolumento" required>' + U.optionList(db.emolumentos, "Propina") + "</select></div>" +
+            '<select name="emolumentoId" id="recEmol" required>' + V.emolumentoOptions(D.emolumentoPadrao("Propina")) + "</select></div>" +
           '<div class="field"><label>Mês de referência</label><input type="month" name="mesReferencia"></div>' +
           V._f("valorPago", "Valor pago (Kz)", "number", "", true) +
           V._fselect("formaPagamento", "Forma de pagamento", db.formasPagamento) +
@@ -646,12 +716,17 @@
       '<div class="card mb"><div class="form-grid">' +
         '<div class="field"><label>Tipo de relatório</label><select id="relTipo">' +
           '<option value="matriculas">Matrículas (diário/período)</option>' +
-          '<option value="pagamentos">Pagamentos (diário/período)</option>' +
+          '<option value="pagamentos">Receitas / Pagamentos (diário/período)</option>' +
+          '<option value="estudantes">Estudantes (lista completa)</option>' +
           '<option value="receitasMes">Receitas mensais</option>' +
           '<option value="porCurso">Por curso</option>' +
           '<option value="porFuncionario">Por funcionário</option>' +
           '<option value="porPeriodo">Estudantes por período</option>' +
           '<option value="porUnidade">Estudantes por unidade</option>' +
+          '<option value="dividas">Dívidas (saldo em falta)</option>' +
+          '<option value="estagios">Estágios</option>' +
+          '<option value="certificados">Certificados</option>' +
+          '<option value="defesa">Defesa Final</option>' +
         "</select></div>" +
         '<div class="field"><label>De</label><input type="date" id="relDe"></div>' +
         '<div class="field"><label>Até</label><input type="date" id="relAte"></div>' +
@@ -765,6 +840,52 @@
         totals: ["TOTAL", g]
       };
     }
+    if (tipo === "estudantes") {
+      var le = D.estudantes().filter(function (e) { return inRange(e.dataMatricula); }).sort(U.by("dataMatricula"));
+      return {
+        titulo: "Relatório de Estudantes", sub: rangeTxt,
+        headers: ["Matrícula", "Nome", "Curso", "Período", "Unidade", "Estado", "Total pago"],
+        rows: le.map(function (e) {
+          return [U.esc(e.matricula), U.esc(e.nome), U.esc(e.curso), U.esc(e.periodo || ""), U.esc(e.unidade || ""), U.esc(e.estado), U.num(D.totalPagoEstudante(e.id))];
+        }),
+        totals: ["", "", "", "", "", "Total", le.length + " estudante(s)"]
+      };
+    }
+    if (tipo === "dividas") {
+      var devedores = D.estudantes().map(function (e) {
+        return { e: e, pago: D.totalPagoEstudante(e.id), divida: D.saldoDevedor(e) };
+      }).filter(function (x) { return x.divida > 0; }).sort(function (a, b) { return b.divida - a.divida; });
+      var totDiv = U.sum(devedores, function (x) { return x.divida; });
+      return {
+        titulo: "Relatório de Dívidas", sub: rangeTxt,
+        headers: ["Matrícula", "Nome", "Curso", "Total pago (Kz)", "Em dívida (Kz)"],
+        rows: devedores.map(function (x) {
+          return [U.esc(x.e.matricula), U.esc(x.e.nome), U.esc(x.e.curso), U.num(x.pago), U.num(x.divida)];
+        }),
+        totals: ["", "", "", "TOTAL EM DÍVIDA", U.moeda(totDiv)]
+      };
+    }
+    if (tipo === "estagios" || tipo === "certificados" || tipo === "defesa") {
+      var match = function (nome) {
+        var n = (nome || "").toLowerCase();
+        if (tipo === "estagios") return n.indexOf("estágio") >= 0 || n.indexOf("estagio") >= 0;
+        if (tipo === "certificados") return n.indexOf("certificado") >= 0;
+        return n.indexOf("defesa") >= 0 || n.indexOf("júri") >= 0 || n.indexOf("juri") >= 0;
+      };
+      var pe = D.pagamentos().filter(function (p) {
+        return inRange(p.data) && (match(p.emolumento) || match(p.categoria));
+      }).sort(U.by("data"));
+      var totPe = U.sum(pe, function (p) { return p.valorPago; });
+      var titulos = { estagios: "Relatório de Estágios", certificados: "Relatório de Certificados", defesa: "Relatório de Defesa Final" };
+      return {
+        titulo: titulos[tipo], sub: rangeTxt,
+        headers: ["Data", "Recibo", "Estudante", "Curso", "Tipo", "Valor (Kz)"],
+        rows: pe.map(function (p) {
+          return [U.dataPT(p.data), U.esc(p.recibo), U.esc(p.estudanteNome), U.esc(p.curso || ""), U.esc(p.emolumento), U.num(p.valorPago)];
+        }),
+        totals: ["", "", "", "", "TOTAL", U.moeda(totPe)]
+      };
+    }
     return { titulo: "Relatório", sub: rangeTxt, headers: [], rows: [], totals: [] };
   };
 
@@ -776,6 +897,7 @@
     return C.pageHead("Configurações", "Painel administrativo — dados institucionais e listas do sistema") +
       '<div class="tabs" id="cfgTabs">' +
         '<div class="tab active" data-tab="inst">Instituição</div>' +
+        '<div class="tab" data-tab="emolumentos">Emolumentos e Valores</div>' +
         '<div class="tab" data-tab="listas">Listas (períodos, unidades, etc.)</div>' +
         '<div class="tab" data-tab="conta">Conta e segurança</div>' +
         '<div class="tab" data-tab="dados">Dados (backup)</div>' +
@@ -804,13 +926,92 @@
       f("seqRecibo", "Próximo nº de recibo", s.seqRecibo, "number") +
       "</div><div class='form-actions'><button type='submit' class='btn btn-primary'>Guardar</button></div></form>";
   };
+  // ---- Emolumentos e Valores (cadastro completo) ----
+  V.cfgEmolumentos = function () {
+    return '<div class="card"><div class="card-head"><h3>Emolumentos e Valores</h3>' +
+        '<button class="btn btn-primary" id="emNovo">Novo emolumento</button></div>' +
+        '<p class="help">Cadastre os valores cobrados pelo Grupo Midas Angola. Ao emitir um recibo ou matrícula, ' +
+        "ao selecionar o tipo de pagamento o valor é preenchido automaticamente. Apenas emolumentos ativos aparecem nos formulários.</p>" +
+        '<div class="toolbar">' +
+          '<div class="search-box"><input id="emSearch" placeholder="Pesquisar por nome, categoria ou curso..."></div>' +
+          '<div class="field"><label>Categoria</label><select id="emFiltroCat"><option value="">Todas</option>' +
+            U.optionList(D.categoriasEmolumento()) + "</select></div>" +
+          '<div class="field"><label>Estado</label><select id="emFiltroEstado"><option value="">Todos</option>' +
+            U.optionList(["ativo", "inativo"]) + "</select></div>" +
+        '</div><div id="emTable"></div></div>';
+  };
+  V.renderEmolumentos = function () {
+    var q = (document.getElementById("emSearch").value || "").toLowerCase();
+    var fc = document.getElementById("emFiltroCat").value;
+    var fe = document.getElementById("emFiltroEstado").value;
+    var list = D.emolumentos().filter(function (e) {
+      if (fc && e.categoria !== fc) return false;
+      if (fe && e.estado !== fe) return false;
+      if (q && (e.nome + " " + e.categoria + " " + (e.curso || "") + " " + (e.unidade || "")).toLowerCase().indexOf(q) < 0) return false;
+      return true;
+    });
+    var host = document.getElementById("emTable");
+    if (!list.length) { host.innerHTML = C.empty("", "Nenhum emolumento encontrado."); return; }
+    var rows = list.map(function (e) {
+      return "<tr><td><strong>" + U.esc(e.nome) + "</strong></td>" +
+        '<td><span class="badge gold">' + U.esc(e.categoria) + "</span></td>" +
+        "<td class='text-right num'>" + (e.valor ? U.moeda(e.valor) : "—") + "</td>" +
+        "<td>" + U.esc(e.curso || "—") + "</td>" +
+        "<td>" + U.esc(e.unidade || "—") + "</td>" +
+        "<td>" + C.estadoBadge(e.estado) + "</td>" +
+        '<td><div class="row-actions">' +
+          '<button class="btn btn-light btn-sm" data-em-edit="' + e.id + '">Editar</button>' +
+          '<button class="btn btn-light btn-sm" data-em-toggle="' + e.id + '">' + (e.estado === "ativo" ? "Desativar" : "Ativar") + "</button>" +
+          '<button class="btn btn-danger btn-sm" data-em-del="' + e.id + '">Eliminar</button>' +
+        "</div></td></tr>";
+    }).join("");
+    host.innerHTML = '<div class="table-wrap"><table class="data"><thead><tr>' +
+      "<th>Emolumento</th><th>Categoria</th><th class='text-right'>Valor</th><th>Curso</th><th>Unidade</th><th>Estado</th><th>Ações</th>" +
+      "</tr></thead><tbody>" + rows + "</tbody></table></div>" +
+      '<p class="help mt">' + list.length + " emolumento(s).</p>";
+  };
+  V.editarEmolumento = function (id) {
+    var db = D.db();
+    var e = id ? D.emolumentoById(id) : {};
+    var cursoOpts = '<option value="">Todos / Não aplicável</option>' +
+      D.cursosOrdenados().map(function (c) { return '<option value="' + U.esc(c.nome) + '"' + (e.curso === c.nome ? " selected" : "") + ">" + U.esc(c.nome) + "</option>"; }).join("");
+    C.modal({
+      title: id ? "Editar Emolumento" : "Novo Emolumento",
+      body: '<form id="formEmol"><div class="form-grid">' +
+        '<div class="field"><label>Nome do emolumento <span class="req">*</span></label><input name="nome" required value="' + U.esc(e.nome || "") + '"></div>' +
+        '<div class="field"><label>Categoria</label><select name="categoria">' + U.optionList(D.categoriasEmolumento(), e.categoria || "Outros") + "</select></div>" +
+        '<div class="field"><label>Valor padrão (Kz)</label><input type="number" name="valor" min="0" step="0.01" value="' + (Number(e.valor) || 0) + '"></div>' +
+        '<div class="field"><label>Estado</label><select name="estado">' + U.optionList(["ativo", "inativo"], e.estado || "ativo") + "</select></div>" +
+        '<div class="field"><label>Curso associado (opcional)</label><select name="curso">' + cursoOpts + "</select></div>" +
+        '<div class="field"><label>Tipo de curso (opcional)</label><select name="tipoCurso"><option value="">—</option>' + U.optionList(db.tiposCurso, e.tipoCurso) + "</select></div>" +
+        '<div class="field"><label>Unidade / Polo (opcional)</label><select name="unidade"><option value="">—</option>' + U.optionList(db.unidades, e.unidade) + "</select></div>" +
+        '<div class="field"></div>' +
+        '<div class="field full"><label>Observações</label><textarea name="observacoes">' + U.esc(e.observacoes || "") + "</textarea></div>" +
+        "</div>" + (id ? '<input type="hidden" name="id" value="' + id + '">' : "") + "</form>",
+      footer:
+        '<button class="btn btn-light" onclick="App.closeModal()">Cancelar</button>' +
+        '<button class="btn btn-primary" id="emSave">Guardar</button>',
+      onOpen: function () {
+        document.getElementById("emSave").onclick = function () {
+          var fd = new FormData(document.getElementById("formEmol"));
+          var res = D.saveEmolumento({
+            id: fd.get("id") || undefined, nome: fd.get("nome"), categoria: fd.get("categoria"),
+            valor: U.parseMoeda(fd.get("valor")), curso: fd.get("curso"), tipoCurso: fd.get("tipoCurso"),
+            unidade: fd.get("unidade"), estado: fd.get("estado"), observacoes: fd.get("observacoes")
+          });
+          if (res.error) { C.toast(res.error, "err"); return; }
+          C.closeModal(); C.toast("Emolumento guardado.", "ok"); V.renderEmolumentos();
+        };
+      }
+    });
+  };
+
   V.cfgListas = function () {
     var db = D.db();
     var listas = [
       ["periodos", "Períodos"], ["regimes", "Regimes de aulas"],
       ["tiposCurso", "Tipos de curso"], ["unidades", "Unidades / Polos"],
-      ["emolumentos", "Emolumentos"], ["formasPagamento", "Formas de pagamento"],
-      ["funcionarios", "Funcionários"]
+      ["formasPagamento", "Formas de pagamento"], ["funcionarios", "Funcionários"]
     ];
     return '<div class="grid two-col" style="grid-template-columns:1fr 1fr">' +
       listas.map(function (l) {
@@ -862,7 +1063,26 @@
         '<button class="btn btn-danger" id="bkReset">Repor dados de fábrica</button>' +
       "</div>" +
       "<p class='help mt'>“Repor catálogo de cursos” substitui apenas a lista de cursos pelo catálogo oficial, mantendo estudantes e pagamentos.</p>" +
-      "</div>";
+      "</div>" +
+      '<div class="card mt"><div class="card-head"><h3>Reciclagem (recuperação de eliminados)</h3>' +
+        '<button class="btn btn-light" id="lixoEsvaziar">Esvaziar reciclagem</button></div>' +
+        '<p class="help">Estudantes e pagamentos eliminados ficam aqui e podem ser restaurados.</p>' +
+        '<div id="lixoArea"></div></div>';
+  };
+  V.renderLixo = function () {
+    var host = document.getElementById("lixoArea");
+    if (!host) return;
+    var list = D.lixo();
+    if (!list.length) { host.innerHTML = C.empty("", "A reciclagem está vazia."); return; }
+    var rows = list.map(function (it) {
+      var r = it.registo || {};
+      var desc = it.tipo === "estudante" ? (r.nome + " · " + r.matricula) : (r.recibo + " · " + r.estudanteNome + " · " + U.moeda(r.valorPago));
+      return "<tr><td>" + (it.tipo === "estudante" ? "Estudante" : "Pagamento") + "</td>" +
+        "<td>" + U.esc(desc) + "</td><td>" + U.dataHoraPT(it.eliminadoEm) + "</td>" +
+        '<td><button class="btn btn-primary btn-sm" data-lixo-restore="' + it.id + '">Restaurar</button></td></tr>';
+    }).join("");
+    host.innerHTML = '<div class="table-wrap"><table class="data"><thead><tr><th>Tipo</th><th>Registo</th><th>Eliminado em</th><th></th></tr></thead><tbody>' +
+      rows + "</tbody></table></div>";
   };
 
   window.V = V;
