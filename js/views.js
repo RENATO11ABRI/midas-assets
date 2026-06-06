@@ -103,22 +103,28 @@
           U.esc(c.nome) + "</option>";
       }).join("");
 
-    return C.pageHead(editing ? "Editar Matrícula" : "Nova Matrícula",
-      editing ? e.matricula + " · " + e.nome : "Preencha os dados do estudante — número de matrícula: " + nextMat,
-      '<button class="btn btn-light" data-go="estudantes">Voltar</button>') +
-      '<form id="formMatricula" class="card"><div class="form-grid">' +
-        '<div class="fieldset-title">Dados pessoais</div>' +
-        V._f("nome", "Nome completo", "text", e.nome, true) +
-        V._f("bi", "Número do BI", "text", e.bi) +
+    return C.pageHead("Nova Matrícula", "Cadastro, impressão e arquivo da ficha de matrícula",
+      editing ? '<button class="btn btn-light" data-go="estudantes">Voltar</button>' : "") +
+      // ---- 1. Formulário ----
+      '<div class="card mb"><div class="card-head"><h3>' + (editing ? "Editar Matrícula" : "Ficha de Matrícula") + "</h3>" +
+        '<span class="help">Nº de matrícula: <strong id="matNum">' + U.esc(nextMat) + "</strong></span></div>" +
+      '<form id="formMatricula"><div class="form-grid">' +
+        '<div class="fieldset-title">Dados do estudante</div>' +
+        V._f("nome", "Nome completo do estudante", "text", e.nome, true) +
         V._f("dataNascimento", "Data de nascimento", "date", e.dataNascimento) +
-        V._f("contacto", "Contacto telefónico", "tel", e.contacto, true) +
+        V._f("bi", "Número do BI", "text", e.bi) +
+        V._f("contacto", "Contacto principal", "tel", e.contacto, true) +
         V._f("whatsapp", "WhatsApp", "tel", e.whatsapp) +
         V._f("morada", "Morada", "text", e.morada) +
 
+        '<div class="fieldset-title">Encarregado de educação</div>' +
+        V._f("encarregado", "Nome do encarregado de educação", "text", e.encarregado) +
+        V._f("encarregadoContacto", "Contacto do encarregado", "tel", e.encarregadoContacto) +
+
         '<div class="fieldset-title">Dados do curso</div>' +
-        '<div class="field"><label>Curso escolhido <span class="req">*</span></label>' +
+        '<div class="field"><label>Curso <span class="req">*</span></label>' +
           '<select name="curso" id="selCurso" required>' + cursoOpts + "</select>" +
-          '<span class="help">Ao escolher o curso, os campos abaixo preenchem automaticamente.</span></div>' +
+          '<span class="help">Ao escolher o curso, os valores preenchem automaticamente.</span></div>' +
         V._fselect("unidade", "Unidade / Polo", db.unidades, e.unidade) +
         V._fselect("periodo", "Período", db.periodos, e.periodo) +
         V._fselect("tipoCurso", "Tipo de curso", db.tiposCurso, e.tipoCurso) +
@@ -130,9 +136,9 @@
         V._fselect("estado", "Estado", ["ativo", "pendente", "desistente", "concluído"], e.estado || "ativo") +
         V._f("valorInscricao", "Valor da inscrição (Kz)", "number", e.valorInscricao) +
         V._f("valorMatricula", "Valor da matrícula (Kz)", "number", e.valorMatricula) +
-        V._f("valorPago", "Valor pago agora (Kz)", "number", e.valorPago) +
+        V._f("valorPago", "Valor pago (Kz)", "number", e.valorPago) +
         V._fselect("formaPagamento", "Forma de pagamento", db.formasPagamento, e.formaPagamento) +
-        '<div class="field"><label>Emolumento deste pagamento</label>' +
+        '<div class="field"><label>Tipo de pagamento (emolumento)</label>' +
           '<select name="emolumento">' + U.optionList(db.emolumentos, e.emolumento || "Matrícula") + "</select></div>" +
         V._fselect("funcionario", "Funcionário que recebeu", db.funcionarios, e.funcionario) +
         '<div class="field full"><label>Observações</label><textarea name="observacoes">' + U.esc(e.observacoes || "") + "</textarea></div>" +
@@ -142,9 +148,43 @@
       '<div class="form-actions">' +
         '<label class="flex" style="margin-right:auto;font-size:13px;font-weight:600">' +
           '<input type="checkbox" id="gerarRecibo" ' + (editing ? "" : "checked") + '> Gerar recibo do valor pago</label>' +
-        '<button type="button" class="btn btn-light" data-go="estudantes">Cancelar</button>' +
-        '<button type="submit" class="btn btn-primary">' + (editing ? "Guardar alterações" : "Salvar matrícula") + "</button>" +
-      "</div></form>";
+        '<button type="button" class="btn btn-light" id="matLimpar">Limpar formulário</button>' +
+        '<button type="submit" class="btn btn-primary" id="matGerar">' + (editing ? "Guardar alterações" : "Gerar matrícula") + "</button>" +
+      "</div></form></div>" +
+      // ---- 2. Pré-visualização (A4, 2 vias) ----
+      '<div class="card mb" id="matPreviewCard" hidden><div class="card-head"><h3>Pré-visualização — Folha A4, 2 vias</h3>' +
+        '<div class="flex"><button class="btn btn-gold" id="matImprimir">Imprimir ficha</button>' +
+        '<button class="btn btn-primary" id="matPdf">Guardar em PDF</button></div></div>' +
+        '<div id="matPreview"></div></div>' +
+      // ---- 3. Pesquisa ----
+      '<div class="card"><div class="card-head"><h3>Pesquisar matrícula</h3></div>' +
+        '<div class="toolbar"><div class="search-box"><input id="matSearch" placeholder="Pesquisar por nome, contacto, nº de matrícula ou curso..."></div></div>' +
+        '<div id="matSearchTable"></div></div>';
+  };
+  V.renderMatriculaSearch = function () {
+    var host = document.getElementById("matSearchTable");
+    if (!host) return;
+    var q = (document.getElementById("matSearch").value || "").toLowerCase().trim();
+    var list = D.estudantes().slice().sort(U.by("dataMatricula"));
+    if (q) {
+      list = list.filter(function (e) {
+        return (e.nome + " " + (e.contacto || "") + " " + e.matricula + " " + (e.curso || "")).toLowerCase().indexOf(q) >= 0;
+      });
+    }
+    list = list.slice(0, 12);
+    if (!list.length) { host.innerHTML = C.empty("", q ? "Nenhuma matrícula encontrada." : "Ainda não há matrículas registadas."); return; }
+    var rows = list.map(function (e) {
+      return "<tr><td><strong>" + U.esc(e.matricula) + "</strong></td>" +
+        "<td>" + U.esc(e.nome) + "<br><small>" + U.esc(e.contacto || "") + "</small></td>" +
+        "<td>" + U.esc(e.curso || "—") + "</td><td>" + C.estadoBadge(e.estado) + "</td>" +
+        '<td><div class="row-actions">' +
+          '<button class="btn btn-light btn-sm" data-est-edit="' + e.id + '">Carregar</button>' +
+          '<button class="btn btn-gold btn-sm" data-est-ficha="' + e.id + '">Ficha</button>' +
+        "</div></td></tr>";
+    }).join("");
+    host.innerHTML = '<div class="table-wrap"><table class="data"><thead><tr>' +
+      "<th>Matrícula</th><th>Nome / Contacto</th><th>Curso</th><th>Estado</th><th>Ações</th>" +
+      "</tr></thead><tbody>" + rows + "</tbody></table></div>";
   };
   V._f = function (name, label, type, val, req) {
     return '<div class="field"><label>' + U.esc(label) + (req ? ' <span class="req">*</span>' : "") + "</label>" +

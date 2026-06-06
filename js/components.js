@@ -97,6 +97,9 @@
     return '<div class="di' + (full ? " full" : "") + '"><span class="k">' + U.esc(k) +
       '</span><span class="v">' + U.esc(v) + "</span></div>";
   };
+  C._docSection = function (titulo) {
+    return '<div class="doc-sec">' + U.esc(titulo) + "</div>";
+  };
   C._docSign = function () {
     var s = D.db().settings;
     return '<div class="doc-sign">' +
@@ -143,7 +146,7 @@
   C.receiptHTML = function (pag) {
     return '<div class="doc-a4" id="receiptDoc">' +
       C._receiptVia(pag, "Via do Estudante") +
-      '<div class="cut-line">corte aqui</div>' +
+      '<div class="cut-line">cortar aqui</div>' +
       C._receiptVia(pag, "Via da Secretaria") +
     "</div>";
   };
@@ -151,29 +154,48 @@
   // ---- Ficha de Matrícula (2 vias, A4) ------------------------------------
   // est = estudante; pag (opcional) = pagamento associado para o valor pago
   C._fichaVia = function (est, valorPago, label) {
+    var s = D.db().settings;
     return '<div class="via">' +
-      '<span class="via-label">' + U.esc(label) + "</span>" +
+      '<span class="via-label">Via: ' + U.esc(label) + "</span>" +
       C._docHead("Ficha de Matrícula", est.matricula, est.dataMatricula) +
       '<div class="doc-grid">' +
-        C._docItem("Nome do estudante", est.nome, true) +
+        C._docSection("Dados da matrícula") +
+        C._docItem("Nº de matrícula", est.matricula) +
+        C._docItem("Data da matrícula", U.dataPT(est.dataMatricula)) +
+        C._docItem("Via", label) +
+        C._docItem("Estado", est.estado) +
+        C._docSection("Dados do estudante") +
+        C._docItem("Nome completo", est.nome, true) +
+        C._docItem("Data de nascimento", U.dataPT(est.dataNascimento)) +
         C._docItem("Nº do BI", est.bi) +
         C._docItem("Contacto", est.contacto) +
+        C._docItem("WhatsApp", est.whatsapp) +
+        C._docItem("Morada", est.morada, true) +
+        C._docSection("Dados do encarregado") +
+        C._docItem("Encarregado de educação", est.encarregado) +
+        C._docItem("Contacto do encarregado", est.encarregadoContacto) +
+        C._docSection("Dados do curso") +
         C._docItem("Curso", est.curso, true) +
-        C._docItem("Período", est.periodo) +
-        C._docItem("Unidade", est.unidade) +
         C._docItem("Tipo de curso", est.tipoCurso) +
         C._docItem("Duração", est.duracao) +
+        C._docItem("Período", est.periodo) +
         C._docItem("Regime de aulas", est.regime) +
-        C._docItem("Data da matrícula", U.dataPT(est.dataMatricula)) +
+        C._docItem("Unidade / Polo", est.unidade, true) +
+        C._docSection("Dados financeiros") +
+        C._docItem("Valor da inscrição", U.moeda(est.valorInscricao || 0)) +
+        C._docItem("Valor da matrícula", U.moeda(est.valorMatricula || 0)) +
+        C._docItem("Valor pago", U.moeda(valorPago)) +
+        C._docItem("Forma de pagamento", est.formaPagamento) +
       "</div>" +
-      '<div class="doc-amount"><span class="k">Valor pago</span><span class="v num">' + U.moeda(valorPago) + "</span></div>" +
-      C._docSign() + C._docFoot() + "</div>";
+      C._docSign() +
+      '<div class="doc-foot">Documento emitido pelo sistema interno do ' + U.esc(s.instituicao) + ".</div>" +
+      "</div>";
   };
   C.fichaMatriculaHTML = function (est) {
     var valor = D.totalPagoEstudante(est.id) || est.valorPago || 0;
     return '<div class="doc-a4" id="fichaMatDoc">' +
       C._fichaVia(est, valor, "Via do Estudante") +
-      '<div class="cut-line">corte aqui</div>' +
+      '<div class="cut-line">cortar aqui</div>' +
       C._fichaVia(est, valor, "Via da Secretaria") +
     "</div>";
   };

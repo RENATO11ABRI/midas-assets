@@ -257,10 +257,14 @@
     };
   }
 
-  /* ---- Matrícula form submit -------------------------------------------- */
+  /* ---- Matrícula form ---------------------------------------------------- */
   function wireMatriculaForm() {
     var form = document.getElementById("formMatricula");
     if (!form) return;
+
+    function setVal(name, v) { var el = form.elements[name]; if (el && !el.value) el.value = v == null ? "" : v; }
+    function setIfEmpty(name, v) { var el = form.elements[name]; if (el && (!el.value || el.value === "0")) el.value = v == null ? "" : v; }
+
     // auto-fill on course select
     var selCurso = document.getElementById("selCurso");
     selCurso.addEventListener("change", function () {
@@ -274,11 +278,8 @@
       setIfEmpty("valorInscricao", c.valorInscricao);
       setIfEmpty("valorMatricula", c.valorMatricula);
     });
-    function setVal(name, v) { var el = form.elements[name]; if (el && !el.value) el.value = v == null ? "" : v; }
-    function setIfEmpty(name, v) { var el = form.elements[name]; if (el && (!el.value || el.value === "0")) el.value = v == null ? "" : v; }
 
-    form.addEventListener("submit", function (ev) {
-      ev.preventDefault();
+    function gerarMatricula() {
       var fd = new FormData(form);
       var nome = (fd.get("nome") || "").trim();
       var contacto = (fd.get("contacto") || "").trim();
@@ -292,6 +293,7 @@
         matricula: editing ? fd.get("matricula") : D.nextMatricula(),
         nome: nome, bi: fd.get("bi"), dataNascimento: fd.get("dataNascimento"),
         contacto: contacto, whatsapp: fd.get("whatsapp"), morada: fd.get("morada"),
+        encarregado: fd.get("encarregado"), encarregadoContacto: fd.get("encarregadoContacto"),
         curso: curso, unidade: fd.get("unidade"), periodo: fd.get("periodo"),
         tipoCurso: fd.get("tipoCurso"), duracao: fd.get("duracao"), regime: fd.get("regime"),
         dataMatricula: fd.get("dataMatricula") || U.hoje(),
@@ -299,32 +301,56 @@
         valorMatricula: U.parseMoeda(fd.get("valorMatricula")),
         valorPago: U.parseMoeda(fd.get("valorPago")),
         formaPagamento: fd.get("formaPagamento"),
+        emolumento: fd.get("emolumento"),
         funcionario: fd.get("funcionario"),
         estado: fd.get("estado") || "ativo",
         observacoes: fd.get("observacoes")
       };
       D.saveEstudante(est);
 
-      var valorPago = U.parseMoeda(fd.get("valorPago"));
+      var valorPago = est.valorPago;
       var gerar = document.getElementById("gerarRecibo") && document.getElementById("gerarRecibo").checked;
+      var msg = editing ? "Alterações guardadas." : "Matrícula " + est.matricula + " gerada.";
       if (!editing && gerar && valorPago > 0) {
         var pag = V._criarPagamento(est, {
           emolumento: fd.get("emolumento") || "Matrícula",
-          valorPago: valorPago,
-          formaPagamento: fd.get("formaPagamento"),
-          funcionario: fd.get("funcionario"),
-          data: U.agoraISO(),
-          observacoes: fd.get("observacoes")
+          valorPago: valorPago, formaPagamento: fd.get("formaPagamento"),
+          funcionario: fd.get("funcionario"), data: U.agoraISO(), observacoes: fd.get("observacoes")
         });
-        C.toast("Matrícula " + est.matricula + " salva. Recibo " + pag.recibo + " gerado.", "ok");
-        App.navigate("estudantes");
-        C.viewFichaMatricula(est);
-        return;
+        msg += " Recibo " + pag.recibo + " gerado.";
       }
-      C.toast(editing ? "Alterações guardadas." : "Matrícula " + est.matricula + " salva.", "ok");
-      App.navigate("estudantes");
-      if (!editing) C.viewFichaMatricula(est);
-    });
+      App._lastFicha = est;
+      document.getElementById("matPreview").innerHTML = C.fichaMatriculaHTML(est);
+      document.getElementById("matPreviewCard").hidden = false;
+      document.getElementById("matNum").textContent = D.peekMatricula();
+      C.toast(msg, "ok");
+      V.renderMatriculaSearch();
+      document.getElementById("matPreviewCard").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    form.addEventListener("submit", function (ev) { ev.preventDefault(); gerarMatricula(); });
+
+    document.getElementById("matLimpar").onclick = function () {
+      var idEl = form.elements["id"];
+      if (idEl) { App.navigate("matricula"); return; } // sai do modo edição
+      form.reset();
+      if (form.elements["dataMatricula"]) form.elements["dataMatricula"].value = U.hoje();
+      var pc = document.getElementById("matPreviewCard"); pc.hidden = true;
+      document.getElementById("matPreview").innerHTML = "";
+    };
+
+    var printFicha = function () {
+      if (!App._lastFicha) { C.toast("Gere a matrícula primeiro.", "err"); return; }
+      U.printElement("fichaMatDoc", "Ficha de Matrícula " + App._lastFicha.matricula);
+    };
+    document.getElementById("matImprimir").onclick = printFicha;
+    document.getElementById("matPdf").onclick = function () {
+      C.toast("Na janela de impressão escolha “Guardar como PDF”.", "ok"); printFicha();
+    };
+
+    // pesquisa de matrículas
+    V.renderMatriculaSearch();
+    document.getElementById("matSearch").addEventListener("input", U.debounce(V.renderMatriculaSearch, 150));
   }
 
   /* ---- Exports ---------------------------------------------------------- */
