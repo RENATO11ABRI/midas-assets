@@ -5,10 +5,25 @@
   "use strict";
 
   var U = {
+    _settings: function () {
+      try { return (window.MidasData && window.MidasData.db) ? window.MidasData.db().settings : {}; }
+      catch (e) { return {}; }
+    },
     moeda: function (v) {
+      var st = U._settings();
+      var d = st.casasDecimais == null ? 2 : Number(st.casasDecimais);
+      var sym = st.moeda || "Kz";
       var n = Number(v) || 0;
-      var s = n.toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      return s + " Kz";
+      var s = n.toLocaleString("pt-PT", { minimumFractionDigits: d, maximumFractionDigits: d });
+      return s + " " + sym;
+    },
+    // URL do logótipo (impressão usa o logótipo de impressão se definido)
+    logoURL: function (paraImpressao) {
+      var st = U._settings();
+      if (paraImpressao && st.logoImpressao) return st.logoImpressao;
+      if (st.logoPrincipal) return st.logoPrincipal;
+      if (paraImpressao && st.logoPrincipal) return st.logoPrincipal;
+      return U.assetURL("assets/logo.svg");
     },
     num: function (v) {
       var n = Number(v) || 0;

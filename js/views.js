@@ -897,6 +897,7 @@
     return C.pageHead("Configurações", "Painel administrativo — dados institucionais e listas do sistema") +
       '<div class="tabs" id="cfgTabs">' +
         '<div class="tab active" data-tab="inst">Instituição</div>' +
+        '<div class="tab" data-tab="aparencia">Aparência</div>' +
         '<div class="tab" data-tab="emolumentos">Emolumentos e Valores</div>' +
         '<div class="tab" data-tab="listas">Listas (períodos, unidades, etc.)</div>' +
         '<div class="tab" data-tab="conta">Conta e segurança</div>' +
@@ -908,23 +909,73 @@
     var f = function (n, l, v, t) {
       return '<div class="field"><label>' + l + "</label><input type='" + (t || "text") + "' name='" + n + "' value='" + U.esc(v || "") + "'></div>";
     };
+    var logoP = s.logoPrincipal || U.assetURL("assets/logo.svg");
     return '<form id="formInst" class="card"><div class="form-grid">' +
       '<div class="fieldset-title">Dados institucionais</div>' +
       f("instituicao", "Nome da instituição", s.instituicao) +
       f("sistema", "Nome do sistema", s.sistema) +
       f("slogan", "Slogan", s.slogan) +
-      f("anoLetivo", "Ano letivo", s.anoLetivo) +
-      f("nif", "NIF", s.nif) +
-      f("telefone", "Telefone", s.telefone) +
-      f("email", "Email", s.email, "email") +
       f("endereco", "Endereço", s.endereco) +
-      '<div class="fieldset-title">Assinaturas dos documentos</div>' +
-      f("secretaria", "Nome da Secretaria", s.secretaria) +
+      f("telefone", "Telefone principal", s.telefone) +
+      f("whatsapp", "WhatsApp", s.whatsapp) +
+      f("email", "E-mail", s.email, "email") +
+      f("website", "Website", s.website) +
+      f("nif", "NIF", s.nif) +
+      '<div class="fieldset-title">Direção e assinaturas</div>' +
+      f("directorGeral", "Nome do Director Geral", s.directorGeral) +
       f("diretora", "Nome da Directora Administrativa", s.diretora) +
-      '<div class="fieldset-title">Numeração</div>' +
+      f("secretaria", "Nome da Secretaria", s.secretaria) +
+      '<div class="fieldset-title">Logótipo</div>' +
+      '<div class="field"><label>Logótipo principal</label>' +
+        '<div class="flex"><img src="' + logoP + '" alt="" style="width:54px;height:54px;border-radius:10px;border:1px solid var(--line)" id="logoPrev">' +
+        '<input type="file" accept="image/*" id="logoFile"></div>' +
+        '<span class="help">PNG/JPG/SVG. Aparece na barra lateral, login, dashboard, recibos, matrículas e PDF.</span></div>' +
+      '<div class="field" style="align-self:end"><button type="button" class="btn btn-light btn-sm" id="logoRemover">Remover logótipo</button></div>' +
+      '<div class="fieldset-title">Ano lectivo e moeda</div>' +
+      '<div class="field"><label>Ano lectivo activo</label><select name="anoLectivo">' +
+        U.optionList(["2024/2025", "2025/2026", "2026/2027", "2027/2028"], s.anoLectivo) + "</select></div>" +
+      f("anoLetivo", "Ano de numeração (ex.: 2026)", s.anoLetivo) +
+      '<div class="field"><label>Moeda</label><input name="moeda" value="' + U.esc(s.moeda || "Kz") + '"></div>' +
+      '<div class="field"><label>Casas decimais</label><select name="casasDecimais">' +
+        U.optionList(["0", "1", "2"], String(s.casasDecimais == null ? 2 : s.casasDecimais)) + "</select></div>" +
+      '<div class="fieldset-title">Numeração automática</div>' +
+      f("prefixoMatricula", "Prefixo das matrículas", s.prefixoMatricula) +
+      f("digitosMatricula", "Dígitos das matrículas", s.digitosMatricula, "number") +
+      f("prefixoRecibo", "Prefixo dos recibos", s.prefixoRecibo) +
+      f("digitosRecibo", "Dígitos dos recibos", s.digitosRecibo, "number") +
       f("seqMatricula", "Próximo nº de matrícula", s.seqMatricula, "number") +
       f("seqRecibo", "Próximo nº de recibo", s.seqRecibo, "number") +
-      "</div><div class='form-actions'><button type='submit' class='btn btn-primary'>Guardar</button></div></form>";
+      "</div>" +
+      '<p class="help">Pré-visualização: matrícula <strong>' + U.esc(D.peekMatricula()) + "</strong> · recibo <strong>" + U.esc(D.peekRecibo()) + "</strong></p>" +
+      "<div class='form-actions'><button type='submit' class='btn btn-primary'>Guardar</button></div></form>";
+  };
+  // ---- Aparência do sistema ----
+  V.cfgAparencia = function () {
+    var s = D.db().settings;
+    var temas = ["Verde Midas", "Azul Executivo", "Verde Escuro Institucional", "Preto Premium"];
+    var sw = { "Verde Midas": "#0f4d3a", "Azul Executivo": "#155e8c", "Verde Escuro Institucional": "#0c5a3f", "Preto Premium": "#16181c" };
+    var cards = temas.map(function (t) {
+      return '<div class="tema-card' + (s.tema === t ? " sel" : "") + '" data-tema="' + U.esc(t) + '">' +
+        '<span class="tema-swatch" style="background:' + sw[t] + '"></span><strong>' + U.esc(t) + "</strong></div>";
+    }).join("");
+    var cor = function (n, l, v) {
+      return '<div class="field"><label>' + l + '</label><input type="color" name="' + n + '" value="' + (v || "#0f4d3a") + '"></div>';
+    };
+    return '<form id="formAparencia" class="card"><div class="card-head"><h3>Aparência do sistema</h3>' +
+      '<button type="button" class="btn btn-light" id="apModo">Modo: ' + (s.modo === "noite" ? "Noite" : "Dia") + "</button></div>" +
+      '<div class="fieldset-title" style="margin-top:0">Temas pré-definidos</div>' +
+      '<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:8px" id="temaCards">' + cards + "</div>" +
+      '<input type="hidden" name="tema" id="temaInput" value="' + U.esc(s.tema) + '">' +
+      '<div class="fieldset-title">Cores personalizadas (substituem o tema)</div>' +
+      '<label class="flex" style="font-size:13px;font-weight:600;margin-bottom:10px">' +
+        '<input type="checkbox" name="usarCores" id="apUsarCores" ' + (s.corPrincipal ? "checked" : "") + "> Usar cores personalizadas</label>" +
+      '<div class="form-grid">' +
+        cor("corPrincipal", "Cor principal", s.corPrincipal) +
+        cor("corSecundaria", "Cor secundária", s.corSecundaria) +
+        cor("corBotao", "Cor dos botões", s.corBotao) +
+      "</div>" +
+      '<div class="form-actions"><button type="button" class="btn btn-light" id="apPrever">Pré-visualizar</button>' +
+        '<button type="submit" class="btn btn-primary">Guardar aparência</button></div></form>';
   };
   // ---- Emolumentos e Valores (cadastro completo) ----
   V.cfgEmolumentos = function () {
