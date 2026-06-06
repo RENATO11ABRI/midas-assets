@@ -87,7 +87,7 @@
     return '' +
     '<div class="receipt" id="receiptDoc">' +
       '<div class="receipt-head">' +
-        '<div class="r-brand"><span class="brand-mark">M</span><div>' +
+        '<div class="r-brand"><img src="' + U.assetURL("assets/logo.svg") + '" alt="" class="logo logo-lg" /><div>' +
           '<strong>' + U.esc(s.instituicao) + "</strong>" +
           '<small>' + U.esc(s.slogan) + "</small></div></div>" +
         '<div class="r-title"><h2>RECIBO DE PAGAMENTO</h2>' +

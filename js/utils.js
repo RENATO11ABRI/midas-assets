@@ -45,6 +45,12 @@
     ymd: function (iso) { return (iso || "").slice(0, 10); },
     ym: function (iso) { return (iso || "").slice(0, 7); },
 
+    // Absolute URL for an asset (so it resolves inside the print window too)
+    assetURL: function (path) {
+      try { return new URL(path, window.location.href).href; }
+      catch (e) { return path; }
+    },
+
     esc: function (s) {
       if (s === null || s === undefined) return "";
       return String(s)

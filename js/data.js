@@ -32,15 +32,16 @@
       };
     }
     return [
-      c("Técnica de Enfermagem & Cuidados Diretos", "Intensivo", "6 meses", "Manhã", "Dias úteis", 5000, 15000, 25000, 165000),
-      c("Diagnóstico, Laboratório & Imagiologia", "Intensivo", "6 meses", "Tarde", "Dias úteis", 5000, 15000, 25000, 165000),
-      c("Farmácia", "Intensivo", "6 meses", "Manhã", "Dias úteis", 5000, 15000, 22000, 147000),
+      // total = inscrição + matrícula + (mensalidade × nº de meses). Valores indicativos — editáveis no painel.
+      c("Técnica de Enfermagem & Cuidados Diretos", "Intensivo", "6 meses", "Manhã", "Dias úteis", 5000, 15000, 25000, 170000),
+      c("Diagnóstico, Laboratório & Imagiologia", "Intensivo", "6 meses", "Tarde", "Dias úteis", 5000, 15000, 25000, 170000),
+      c("Farmácia", "Intensivo", "6 meses", "Manhã", "Dias úteis", 5000, 15000, 22000, 152000),
       c("Análises Clínicas", "Intensivo", "5 meses", "Tarde", "Dias úteis", 5000, 15000, 22000, 130000),
-      c("Flebotomia", "Capacitação", "1 mês", "Fim de Semana", "Sábado", 3000, 8000, 0, 35000),
-      c("Recepcionista Hospitalar", "Capacitação", "2 meses", "Noite", "Dias úteis", 3000, 8000, 12000, 47000),
+      c("Flebotomia", "Capacitação", "1 mês", "Fim de Semana", "Sábado", 3000, 7000, 0, 35000),
+      c("Recepcionista Hospitalar", "Capacitação", "2 meses", "Noite", "Dias úteis", 3000, 8000, 12000, 35000),
       c("Primeiros Socorros", "Capacitação", "3 semanas", "Fim de Semana", "Sábado e Domingo", 2500, 7000, 0, 30000),
       c("Ecografia Obstétrica, Ginecológica & Doppler", "Imersão", "2 meses", "Noite", "Dias úteis", 8000, 25000, 0, 120000),
-      c("Fisioterapia e Reabilitação", "Intensivo", "6 meses", "Manhã", "Dias úteis", 5000, 15000, 25000, 165000),
+      c("Fisioterapia e Reabilitação", "Intensivo", "6 meses", "Manhã", "Dias úteis", 5000, 15000, 25000, 170000),
       c("Nutrição e Dietética", "Intensivo", "5 meses", "Tarde", "Dias úteis", 5000, 15000, 22000, 130000),
       c("Saúde Ambiental", "Intensivo", "5 meses", "Manhã", "Dias úteis", 5000, 15000, 20000, 120000),
       c("Imersão em Urgência e Emergência", "Imersão", "1 mês", "Fim de Semana", "Sábado e Domingo", 6000, 18000, 0, 70000),
@@ -64,6 +65,14 @@
         seqRecibo: 1,
         anoLetivo: "2026"
       },
+      auth: {
+        enabled: true,
+        user: "secretaria",
+        nome: "Secretaria",
+        // Palavra-passe inicial: midas2026 (deve ser alterada em Configurações → Conta)
+        passHash: MidasData.hash("midas2026"),
+        precisaTrocar: true
+      },
       periodos: DEFAULT_PERIODOS.slice(),
       regimes: DEFAULT_REGIMES.slice(),
       tiposCurso: DEFAULT_TIPOS.slice(),
@@ -84,6 +93,32 @@
     uid: function (prefix) {
       return (prefix || "id") + "_" + Date.now().toString(36) +
         Math.random().toString(36).slice(2, 7);
+    },
+
+    // Hash simples (ofuscação) para a palavra-passe. Nota: login do lado do
+    // cliente — protege contra acesso casual, não substitui autenticação real.
+    hash: function (str) {
+      var h = 5381;
+      str = String(str);
+      for (var i = 0; i < str.length; i++) {
+        h = ((h << 5) + h + str.charCodeAt(i)) >>> 0;
+      }
+      return "h" + h.toString(36);
+    },
+
+    // ---- Auth --------------------------------------------------------------
+    auth: function () { return this.load().auth; },
+    verificarLogin: function (user, pass) {
+      var a = this.load().auth;
+      return user === a.user && this.hash(pass) === a.passHash;
+    },
+    definirCredenciais: function (user, nome, novaPass) {
+      var a = this.load().auth;
+      if (user) a.user = user;
+      if (nome != null) a.nome = nome;
+      if (novaPass) { a.passHash = this.hash(novaPass); a.precisaTrocar = false; }
+      this.save();
+      return a;
     },
 
     load: function () {

@@ -19,10 +19,27 @@ exportação em PDF/CSV.
 | **Relatórios** | Matrículas, pagamentos, receitas mensais, por curso/funcionário/período/unidade |
 | **Configurações** | Dados institucionais, numeração, listas (períodos, unidades, emolumentos, funcionários…), backup |
 
+## 🌐 Site online
+
+Publicado automaticamente via **GitHub Pages** a cada `push` no `main`:
+
+**https://renato11abri.github.io/midas-assets/**
+
+## 🔐 Acesso (login)
+
+O sistema abre num ecrã de login.
+
+- **Utilizador:** `secretaria`
+- **Palavra-passe inicial:** `midas2026`
+
+> Altere a palavra-passe em **Configurações → Conta e segurança** no primeiro acesso.
+> O login é do lado do cliente (no navegador): impede o acesso casual, mas não
+> substitui um servidor seguro. Pode desativá-lo no mesmo painel.
+
 ## 🚀 Como usar
 
 Não precisa de instalação nem servidor. Basta abrir o ficheiro **`index.html`**
-num navegador moderno (Chrome, Edge, Firefox).
+num navegador moderno (Chrome, Edge, Firefox) — ou usar o link acima.
 
 Para imprimir/guardar em PDF, use o botão **Imprimir** e escolha
 *"Guardar como PDF"* na janela de impressão.

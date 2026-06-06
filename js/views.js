@@ -693,6 +693,7 @@
       '<div class="tabs" id="cfgTabs">' +
         '<div class="tab active" data-tab="inst">Instituição</div>' +
         '<div class="tab" data-tab="listas">Listas (períodos, unidades, etc.)</div>' +
+        '<div class="tab" data-tab="conta">Conta e segurança</div>' +
         '<div class="tab" data-tab="dados">Dados (backup)</div>' +
       '</div><div id="cfgContent"></div>';
   };
@@ -738,6 +739,25 @@
           '<button class="btn btn-light" data-lista-add="' + key + '">＋</button></div></div>';
       }).join("") + "</div>";
   };
+  V.cfgConta = function () {
+    var a = D.auth();
+    return '<form id="formConta" class="card"><div class="card-head"><h3>Conta da secretaria</h3></div>' +
+      '<p class="help">O acesso ao sistema é protegido por utilizador e palavra-passe. ' +
+      "Trata-se de uma proteção do lado do cliente (no navegador): impede o acesso casual, " +
+      "mas não substitui um servidor seguro. Mantenha a palavra-passe reservada.</p>" +
+      '<div class="form-grid">' +
+        '<div class="field"><label>Exigir login ao abrir</label><select name="enabled">' +
+          U.optionList(["Sim", "Não"], a.enabled ? "Sim" : "Não") + "</select></div>" +
+        '<div class="field"><label>Nome a mostrar</label><input name="nome" value="' + U.esc(a.nome || "") + '"></div>' +
+        '<div class="field"><label>Utilizador</label><input name="user" value="' + U.esc(a.user) + '" required></div>' +
+        '<div class="field"></div>' +
+        '<div class="fieldset-title">Alterar palavra-passe</div>' +
+        '<div class="field"><label>Nova palavra-passe</label><input type="password" name="novaPass" autocomplete="new-password" placeholder="(deixe vazio para manter)"></div>' +
+        '<div class="field"><label>Confirmar nova palavra-passe</label><input type="password" name="novaPass2" autocomplete="new-password"></div>' +
+      "</div>" +
+      '<div class="form-actions"><button type="submit" class="btn btn-primary">💾 Guardar conta</button></div></form>';
+  };
+
   V.cfgDados = function () {
     var db = D.db();
     return '<div class="card"><div class="card-head"><h3>Cópia de segurança e reposição</h3></div>' +
