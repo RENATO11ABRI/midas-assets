@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 780" font-family="Segoe UI, Roboto, Arial, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0c2e22"/><stop offset="1" stop-color="#155e43"/></linearGradient>
+    <radialGradient id="glow" cx="80%" cy="0%" r="60%"><stop offset="0" stop-color="rgba(212,175,55,.30)"/><stop offset="1" stop-color="rgba(212,175,55,0)"/></radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f0d98a"/><stop offset="1" stop-color="#b8902f"/></linearGradient>
+    <linearGradient id="emb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#103d2d"/><stop offset="1" stop-color="#0c2e22"/></linearGradient>
+  </defs>
+  <rect width="1200" height="780" fill="url(#bg)"/>
+  <rect width="1200" height="780" fill="url(#glow)"/>
+
+  <!-- card -->
+  <rect x="410" y="150" width="380" height="460" rx="18" fill="#fff"/>
+  <!-- logo -->
+  <g transform="translate(558,186)">
+    <rect width="84" height="84" rx="20" fill="url(#emb)" stroke="url(#gold)" stroke-width="3"/>
+    <path fill="url(#gold)" d="M18 62 L18 22 L32 22 L42 46 L52 22 L66 22 L66 62 L54 62 L54 40 L46 58 L38 58 L30 40 L30 62 Z"/>
+  </g>
+  <text x="600" y="304" text-anchor="middle" fill="#0c2e22" font-size="20" font-weight="800">Grupo Midas Angola</text>
+  <text x="600" y="326" text-anchor="middle" fill="#155e43" font-size="14" font-weight="700">Turmas Midas 2026</text>
+  <rect x="512" y="338" width="176" height="24" rx="12" fill="#d4af37"/>
+  <text x="600" y="355" text-anchor="middle" fill="#0c2e22" font-size="12" font-weight="700">Do Zero ao Emprego</text>
+
+  <!-- form -->
+  <text x="440" y="398" fill="#1b2421" font-size="13" font-weight="600">Utilizador</text>
+  <rect x="440" y="406" width="320" height="40" rx="9" fill="#fff" stroke="#e2e8e4"/>
+  <text x="456" y="431" fill="#1b2421" font-size="13">secretaria</text>
+
+  <text x="440" y="470" fill="#1b2421" font-size="13" font-weight="600">Palavra-passe</text>
+  <rect x="440" y="478" width="320" height="40" rx="9" fill="#fff" stroke="#24946b"/>
+  <text x="456" y="503" fill="#5d6b65" font-size="14">••••••••••</text>
+
+  <rect x="440" y="536" width="320" height="44" rx="10" fill="#d4af37"/>
+  <text x="600" y="563" text-anchor="middle" fill="#0c2e22" font-size="15" font-weight="700">Entrar</text>
+
+  <text x="600" y="640" text-anchor="middle" fill="rgba(255,255,255,.75)" font-size="12">© 2026 Grupo Midas Angola · Do Zero ao Emprego</text>
+</svg>
