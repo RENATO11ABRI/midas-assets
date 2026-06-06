@@ -86,7 +86,8 @@
     var s = D.db().settings;
     return '<div class="doc-head">' +
       '<div class="d-org"><img src="' + U.assetURL("assets/logo.svg") + '" alt="" class="logo" />' +
-        "<div><strong>" + U.esc(s.instituicao) + "</strong><small>" + U.esc(s.slogan) + "</small></div></div>" +
+        "<div><strong>" + U.esc((s.instituicao || "").toUpperCase()) + "</strong><small>" +
+        U.esc(s.sistema) + " — " + U.esc(s.slogan) + "</small></div></div>" +
       '<div class="d-title"><h2>' + U.esc(titulo) + "</h2>" +
         '<div class="d-num">Nº ' + U.esc(num) + "</div>" +
         '<div class="d-date">' + U.dataPT(data) + "</div></div></div>";
@@ -115,23 +116,29 @@
   // ---- Receipt (2 vias, A4) -----------------------------------------------
   // pag = pagamento record
   C._receiptVia = function (pag, label) {
+    var s = D.db().settings;
+    var obs = pag.observacoes || pag.referencia;
     return '<div class="via">' +
-      '<span class="via-label">' + U.esc(label) + "</span>" +
+      '<span class="via-label">Via: ' + U.esc(label) + "</span>" +
       C._docHead("Recibo de Pagamento", pag.recibo, pag.data) +
       '<div class="doc-grid">' +
+        C._docItem("Via", label) +
+        C._docItem("Recebido por", pag.funcionario) +
         C._docItem("Estudante", pag.estudanteNome, true) +
         C._docItem("Contacto", pag.contacto) +
-        C._docItem("Matrícula", pag.matricula) +
+        C._docItem("Nº de matrícula", pag.matricula) +
         C._docItem("Curso", pag.curso) +
         C._docItem("Período", pag.periodo) +
-        C._docItem("Unidade", pag.unidade) +
+        C._docItem("Unidade / Polo", pag.unidade) +
         C._docItem("Tipo de pagamento", pag.emolumento) +
+        C._docItem("Mês de referência", U.mesRef(pag.mesReferencia)) +
         C._docItem("Forma de pagamento", pag.formaPagamento) +
-        C._docItem("Referência / Observação", pag.referencia || pag.observacoes, true) +
-        C._docItem("Recebido por", pag.funcionario, true) +
+        C._docItem("Observações", obs, true) +
       "</div>" +
       '<div class="doc-amount"><span class="k">Valor pago</span><span class="v num">' + U.moeda(pag.valorPago) + "</span></div>" +
-      C._docSign() + C._docFoot() + "</div>";
+      C._docSign() +
+      '<div class="doc-foot">Documento emitido pelo sistema interno do ' + U.esc(s.instituicao) + ".</div>" +
+      "</div>";
   };
   C.receiptHTML = function (pag) {
     return '<div class="doc-a4" id="receiptDoc">' +

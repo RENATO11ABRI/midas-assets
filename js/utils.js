@@ -44,6 +44,13 @@
     },
     ymd: function (iso) { return (iso || "").slice(0, 10); },
     ym: function (iso) { return (iso || "").slice(0, 7); },
+    mesRef: function (v) {
+      if (/^\d{4}-\d{2}$/.test(v || "")) {
+        var m = U.mesAno(v + "-01");
+        return m.charAt(0).toUpperCase() + m.slice(1);
+      }
+      return v || "";
+    },
 
     // Absolute URL for an asset (so it resolves inside the print window too)
     assetURL: function (path) {

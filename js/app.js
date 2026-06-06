@@ -95,11 +95,66 @@
 
   function afterRecibos() {
     V.renderRecibos();
-    document.getElementById("gerarReciboBtn").onclick = function () { V.novoPagamento(null); };
+    // search listeners
     ["recSearch", "recDe", "recAte"].forEach(function (id) {
       var el = document.getElementById(id);
       el.addEventListener(el.type === "date" ? "change" : "input", U.debounce(V.renderRecibos, 150));
     });
+
+    var form = document.getElementById("formRecibo");
+    var setVal = function (n, v) { if (form.elements[n]) form.elements[n].value = v == null ? "" : v; };
+
+    // auto-fill from selected student
+    document.getElementById("recEst").addEventListener("change", function () {
+      var est = D.estudanteById(this.value);
+      if (!est) return;
+      setVal("nome", est.nome); setVal("contacto", est.contacto); setVal("matricula", est.matricula);
+      setVal("curso", est.curso); setVal("periodo", est.periodo); setVal("unidade", est.unidade);
+    });
+
+    document.getElementById("recLimpar").onclick = function () {
+      form.reset();
+      setVal("data", U.hoje());
+      var pc = document.getElementById("recPreviewCard"); pc.hidden = true;
+      document.getElementById("recPreview").innerHTML = "";
+    };
+
+    document.getElementById("recGerar").onclick = function () {
+      var g = function (n) { return form.elements[n] ? form.elements[n].value : ""; };
+      var nome = (g("nome") || "").trim();
+      var valor = U.parseMoeda(g("valorPago"));
+      if (!nome) { C.toast("Indique o nome do estudante.", "err"); return; }
+      if (!(valor > 0)) { C.toast("O valor pago deve ser maior que zero.", "err"); return; }
+      var dataVal = g("data");
+      var pag = {
+        recibo: D.nextRecibo(),
+        estudanteId: g("estudanteId") || "",
+        estudanteNome: nome, matricula: g("matricula"), contacto: g("contacto"),
+        curso: g("curso"), periodo: g("periodo"), unidade: g("unidade"),
+        tipoCurso: "", duracao: "", regime: "",
+        emolumento: g("emolumento") || "Outro", mesReferencia: g("mesReferencia"),
+        valorPago: valor, formaPagamento: g("formaPagamento"),
+        funcionario: g("funcionario"), referencia: "", observacoes: g("observacoes"),
+        data: dataVal ? dataVal + "T" + new Date().toTimeString().slice(0, 8) : U.agoraISO()
+      };
+      D.savePagamento(pag);
+      App._lastRecibo = pag;
+      document.getElementById("recPreview").innerHTML = C.receiptHTML(pag);
+      document.getElementById("recPreviewCard").hidden = false;
+      document.getElementById("recNum").textContent = D.peekRecibo();
+      C.toast("Recibo " + pag.recibo + " gerado.", "ok");
+      V.renderRecibos();
+      document.getElementById("recPreviewCard").scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+
+    var printRec = function () {
+      if (!App._lastRecibo) { C.toast("Gere um recibo primeiro.", "err"); return; }
+      U.printElement("receiptDoc", "Recibo " + App._lastRecibo.recibo);
+    };
+    document.getElementById("recImprimir").onclick = printRec;
+    document.getElementById("recPdf").onclick = function () {
+      C.toast("Na janela de impressão escolha “Guardar como PDF”.", "ok"); printRec();
+    };
   }
 
   function afterRelatorios() {
