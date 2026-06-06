@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Turmas Midas 2026 — Do Zero ao Emprego | Grupo Midas Angola</title>
+  <meta name="description" content="Sistema de gestão de matrículas, cursos, pagamentos e recibos do Grupo Midas Angola." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <!-- ===== App Shell ===== -->
+  <div id="app">
+    <!-- Topbar (mobile) -->
+    <header class="topbar">
+      <button class="menu-toggle" id="menuToggle" aria-label="Abrir menu">&#9776;</button>
+      <div class="topbar-brand">
+        <span class="brand-mark">M</span>
+        <div class="brand-text">
+          <strong>Grupo Midas Angola</strong>
+          <small>Turmas Midas 2026</small>
+        </div>
+      </div>
+    </header>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <span class="brand-mark">M</span>
+        <div class="brand-text">
+          <strong>Grupo Midas Angola</strong>
+          <small>Do Zero ao Emprego</small>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="#dashboard" class="nav-link" data-route="dashboard"><span class="ico">▦</span> Dashboard</a>
+        <a href="#matricula" class="nav-link" data-route="matricula"><span class="ico">＋</span> Nova Matrícula</a>
+        <a href="#estudantes" class="nav-link" data-route="estudantes"><span class="ico">☰</span> Estudantes</a>
+        <a href="#cursos" class="nav-link" data-route="cursos"><span class="ico">▤</span> Cursos</a>
+        <a href="#pagamentos" class="nav-link" data-route="pagamentos"><span class="ico">₭</span> Pagamentos</a>
+        <a href="#recibos" class="nav-link" data-route="recibos"><span class="ico">🧾</span> Recibos</a>
+        <a href="#relatorios" class="nav-link" data-route="relatorios"><span class="ico">▣</span> Relatórios</a>
+        <a href="#config" class="nav-link" data-route="config"><span class="ico">⚙</span> Configurações</a>
+      </nav>
+      <div class="sidebar-footer">
+        <small>© 2026 Grupo Midas Angola</small>
+      </div>
+    </aside>
+
+    <div class="overlay" id="overlay"></div>
+
+    <!-- Main content -->
+    <main class="content" id="view"></main>
+  </div>
+
+  <!-- Modal host -->
+  <div class="modal-host" id="modalHost"></div>
+  <!-- Toast host -->
+  <div class="toast-host" id="toastHost"></div>
+
+  <!-- Scripts (plain scripts so it works from file:// and any host) -->
+  <script src="js/data.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/views.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
