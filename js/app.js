@@ -131,6 +131,7 @@
       for (var i = 0; i < t.length; i++) t[i].classList.toggle("active", t[i].getAttribute("data-tab") === tab);
       if (tab === "inst") { content.innerHTML = V.cfgInst(); wireInst(); }
       else if (tab === "listas") { content.innerHTML = V.cfgListas(); }
+      else if (tab === "conta") { content.innerHTML = V.cfgConta(); wireConta(); }
       else { content.innerHTML = V.cfgDados(); wireDados(); }
     }
     tabs.addEventListener("click", function (e) {
@@ -151,6 +152,27 @@
       s.seqRecibo = parseInt(fd.get("seqRecibo"), 10) || s.seqRecibo;
       D.save();
       C.toast("Configurações guardadas.", "ok");
+    });
+  }
+  function wireConta() {
+    document.getElementById("formConta").addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var fd = new FormData(ev.target);
+      var user = (fd.get("user") || "").trim();
+      var nome = (fd.get("nome") || "").trim();
+      var p1 = fd.get("novaPass"), p2 = fd.get("novaPass2");
+      if (!user) { C.toast("Indique o utilizador.", "err"); return; }
+      if (p1 || p2) {
+        if (p1 !== p2) { C.toast("As palavras-passe não coincidem.", "err"); return; }
+        if (p1.length < 4) { C.toast("A palavra-passe deve ter pelo menos 4 caracteres.", "err"); return; }
+      }
+      var a = D.auth();
+      a.enabled = fd.get("enabled") !== "Não";
+      D.definirCredenciais(user, nome, p1 || null);
+      D.save();
+      var chip = document.getElementById("userChip");
+      if (chip) chip.textContent = "👤 " + (a.nome || a.user);
+      C.toast("Conta atualizada." + (p1 ? " Palavra-passe alterada." : ""), "ok");
     });
   }
   function wireDados() {
@@ -351,6 +373,23 @@
 
   /* ---- Boot ------------------------------------------------------------- */
   function boot() {
+    // Gate behind login first; only start the app once authenticated.
+    window.Auth.gate(startApp);
+  }
+
+  function startApp() {
+    // user chip + logout
+    var a = D.auth();
+    var chip = document.getElementById("userChip");
+    if (chip) chip.textContent = "👤 " + (a.nome || a.user);
+    var logout = document.getElementById("logoutBtn");
+    if (logout) logout.onclick = function () {
+      C.confirm("Terminar a sessão?", function () {
+        window.Auth.logout();
+        location.reload();
+      }, { yes: "Terminar sessão" });
+    };
+
     document.getElementById("menuToggle").addEventListener("click", openNav);
     document.getElementById("overlay").addEventListener("click", closeNav);
 

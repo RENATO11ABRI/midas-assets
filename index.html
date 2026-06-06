@@ -5,17 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Turmas Midas 2026 — Do Zero ao Emprego | Grupo Midas Angola</title>
   <meta name="description" content="Sistema de gestão de matrículas, cursos, pagamentos e recibos do Grupo Midas Angola." />
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
+  <!-- ===== Login screen ===== -->
+  <div id="loginScreen" class="login-screen" hidden></div>
+
   <!-- ===== App Shell ===== -->
-  <div id="app">
+  <div id="app" hidden>
     <!-- Topbar (mobile) -->
     <header class="topbar">
       <button class="menu-toggle" id="menuToggle" aria-label="Abrir menu">&#9776;</button>
       <div class="topbar-brand">
-        <span class="brand-mark">M</span>
+        <img src="assets/logo.svg" alt="Grupo Midas Angola" class="logo" />
         <div class="brand-text">
           <strong>Grupo Midas Angola</strong>
           <small>Turmas Midas 2026</small>
@@ -26,7 +30,7 @@
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-brand">
-        <span class="brand-mark">M</span>
+        <img src="assets/logo.svg" alt="Grupo Midas Angola" class="logo" />
         <div class="brand-text">
           <strong>Grupo Midas Angola</strong>
           <small>Do Zero ao Emprego</small>
@@ -43,6 +47,8 @@
         <a href="#config" class="nav-link" data-route="config"><span class="ico">⚙</span> Configurações</a>
       </nav>
       <div class="sidebar-footer">
+        <div class="user-chip" id="userChip"></div>
+        <button class="btn-logout" id="logoutBtn">⎋ Terminar sessão</button>
         <small>© 2026 Grupo Midas Angola</small>
       </div>
     </aside>
@@ -61,6 +67,7 @@
   <!-- Scripts (plain scripts so it works from file:// and any host) -->
   <script src="js/data.js"></script>
   <script src="js/utils.js"></script>
+  <script src="js/auth.js"></script>
   <script src="js/components.js"></script>
   <script src="js/views.js"></script>
   <script src="js/app.js"></script>
