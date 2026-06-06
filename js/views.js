@@ -818,8 +818,11 @@
         '<button class="btn btn-primary" id="bkExport">Exportar backup (JSON)</button>' +
         '<button class="btn btn-light" id="bkImportBtn">Importar backup</button>' +
         '<input type="file" id="bkImportFile" accept="application/json" style="display:none">' +
+        '<button class="btn btn-light" id="bkCatalogo">Repor catálogo de cursos oficial</button>' +
         '<button class="btn btn-danger" id="bkReset">Repor dados de fábrica</button>' +
-      "</div></div>";
+      "</div>" +
+      "<p class='help mt'>“Repor catálogo de cursos” substitui apenas a lista de cursos pelo catálogo oficial, mantendo estudantes e pagamentos.</p>" +
+      "</div>";
   };
 
   window.V = V;
