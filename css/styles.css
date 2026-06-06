@@ -362,6 +362,11 @@ table.data td .row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .doc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 20px; margin: 14px 0 6px; }
 .doc-grid .di { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px dotted #dfe5e2; font-size: 12px; }
 .doc-grid .di.full { grid-column: 1 / -1; }
+.doc-grid .doc-sec {
+  grid-column: 1 / -1; font-weight: 700; font-size: 10.5px; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--green-800);
+  border-bottom: 1px solid var(--green-700); padding: 8px 0 4px; margin-top: 8px;
+}
 .doc-grid .di .k { color: #5a6168; font-weight: 600; }
 .doc-grid .di .v { color: #111; font-weight: 700; text-align: right; }
 .doc-amount {
