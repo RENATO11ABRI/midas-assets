@@ -35,44 +35,43 @@
         "<p>Plataforma de gestão de matrículas, cursos, pagamentos e recibos do " + U.esc(s.instituicao) +
         ". Rápida, simples e profissional — pensada para a secretaria.</p>" +
         '<div class="hero-actions">' +
-          '<button class="btn btn-gold" data-go="matricula">＋ Nova Matrícula</button>' +
-          '<button class="btn btn-ghost" data-go="recibos">🧾 Gerar Recibo</button>' +
-          '<button class="btn btn-ghost" data-go="cursos">▤ Ver Cursos</button>' +
-          '<button class="btn btn-ghost" data-go="relatorios">▣ Relatórios</button>' +
+          '<button class="btn btn-gold" data-go="matricula">Nova Matrícula</button>' +
+          '<button class="btn btn-ghost" data-go="recibos">Emitir Recibo</button>' +
+          '<button class="btn btn-ghost" data-go="cursos">Ver Cursos</button>' +
+          '<button class="btn btn-ghost" data-go="relatorios">Relatórios</button>' +
         "</div>" +
       "</div>" +
 
       '<div class="grid stats">' +
-        V._stat("Estudantes matriculados", estudantes.length, "👥") +
-        V._stat("Total recebido", U.moeda(totalRec), "₭") +
-        V._stat("Cursos ativos", cursosAtivos, "▤") +
-        V._stat("Turmas abertas", turmasAbertas, "🏫") +
+        V._stat("Estudantes matriculados", estudantes.length, "") +
+        V._stat("Total recebido", U.moeda(totalRec), "") +
+        V._stat("Cursos ativos", cursosAtivos, "") +
+        V._stat("Turmas abertas", turmasAbertas, "") +
       "</div>" +
 
       '<div class="grid stats mt">' +
-        V._stat("Matrículas de hoje", matsHoje, "📅") +
-        V._stat("Pagamentos de hoje", pagsHoje.length, "🧾") +
-        V._stat("Recebido hoje", U.moeda(recHoje), "💰") +
-        V._stat("Cursos registados", db.cursos.length, "📚") +
+        V._stat("Matrículas de hoje", matsHoje, "") +
+        V._stat("Pagamentos de hoje", pagsHoje.length, "") +
+        V._stat("Recebido hoje", U.moeda(recHoje), "") +
+        V._stat("Cursos registados", db.cursos.length, "") +
       "</div>" +
 
       '<div class="grid two-col mt">' +
         '<div class="card"><div class="card-head"><h3>Matrículas recentes</h3>' +
           '<button class="btn btn-light btn-sm" data-go="estudantes">Ver todos</button></div>' +
-          (recentes.length ? V._dashStudents(recentes) : C.empty("👤", "Ainda não há matrículas. Comece pela Nova Matrícula.")) +
+          (recentes.length ? V._dashStudents(recentes) : C.empty("", "Ainda não há matrículas. Comece pela Nova Matrícula.")) +
         "</div>" +
         '<div class="card"><div class="card-head"><h3>Últimos pagamentos</h3>' +
           '<button class="btn btn-light btn-sm" data-go="pagamentos">Ver todos</button></div>' +
-          (ultPag.length ? V._dashPagamentos(ultPag) : C.empty("🧾", "Sem pagamentos registados.")) +
+          (ultPag.length ? V._dashPagamentos(ultPag) : C.empty("", "Sem pagamentos registados.")) +
         "</div>" +
       "</div>";
 
     return html;
   };
-  V._stat = function (label, value, ico) {
+  V._stat = function (label, value) {
     return '<div class="stat-card"><div class="label">' + U.esc(label) + "</div>" +
-      '<div class="value">' + (typeof value === "number" ? value : U.esc(value)) + "</div>" +
-      '<div class="ico-badge">' + ico + "</div></div>";
+      '<div class="value num">' + (typeof value === "number" ? value : U.esc(value)) + "</div></div>";
   };
   V._dashStudents = function (list) {
     var rows = list.map(function (e) {
@@ -99,14 +98,14 @@
     var nextMat = editing ? e.matricula : D.peekMatricula();
 
     var cursoOpts = '<option value="">— Selecione o curso —</option>' +
-      db.cursos.map(function (c) {
+      D.cursosOrdenados().map(function (c) {
         return '<option value="' + U.esc(c.nome) + '"' + (e.curso === c.nome ? " selected" : "") + ">" +
           U.esc(c.nome) + "</option>";
       }).join("");
 
     return C.pageHead(editing ? "Editar Matrícula" : "Nova Matrícula",
       editing ? e.matricula + " · " + e.nome : "Preencha os dados do estudante — número de matrícula: " + nextMat,
-      '<button class="btn btn-light" data-go="estudantes">← Voltar</button>') +
+      '<button class="btn btn-light" data-go="estudantes">Voltar</button>') +
       '<form id="formMatricula" class="card"><div class="form-grid">' +
         '<div class="fieldset-title">Dados pessoais</div>' +
         V._f("nome", "Nome completo", "text", e.nome, true) +
@@ -144,7 +143,7 @@
         '<label class="flex" style="margin-right:auto;font-size:13px;font-weight:600">' +
           '<input type="checkbox" id="gerarRecibo" ' + (editing ? "" : "checked") + '> Gerar recibo do valor pago</label>' +
         '<button type="button" class="btn btn-light" data-go="estudantes">Cancelar</button>' +
-        '<button type="submit" class="btn btn-primary">💾 ' + (editing ? "Guardar alterações" : "Salvar matrícula") + "</button>" +
+        '<button type="submit" class="btn btn-primary">' + (editing ? "Guardar alterações" : "Salvar matrícula") + "</button>" +
       "</div></form>";
   };
   V._f = function (name, label, type, val, req) {
@@ -163,9 +162,9 @@
      ======================================================================= */
   V.estudantes = function () {
     return C.pageHead("Estudantes", "Lista de todos os estudantes matriculados",
-      '<button class="btn btn-primary" data-go="matricula">＋ Nova Matrícula</button>' +
-      '<button class="btn btn-light" id="expEstCsv">⬇️ Exportar CSV</button>' +
-      '<button class="btn btn-light" id="expEstPdf">📄 PDF</button>') +
+      '<button class="btn btn-primary" data-go="matricula">Nova Matrícula</button>' +
+      '<button class="btn btn-light" id="expEstCsv">Exportar CSV</button>' +
+      '<button class="btn btn-light" id="expEstPdf">PDF</button>') +
       '<div class="card">' +
         '<div class="toolbar">' +
           '<div class="search-box"><input id="estSearch" placeholder="Pesquisar por nome, contacto, matrícula..."></div>' +
@@ -192,7 +191,7 @@
     }).sort(U.by("dataMatricula"));
 
     var host = document.getElementById("estTable");
-    if (!list.length) { host.innerHTML = C.empty("👤", "Nenhum estudante encontrado."); return; }
+    if (!list.length) { host.innerHTML = C.empty("", "Nenhum estudante encontrado."); return; }
 
     var rows = list.map(function (e) {
       var pago = D.totalPagoEstudante(e.id);
@@ -206,9 +205,10 @@
         "<td>" + U.dataPT(e.dataMatricula) + "</td>" +
         '<td><div class="row-actions">' +
           '<button class="btn btn-light btn-sm" data-est-view="' + e.id + '">Ver</button>' +
+          '<button class="btn btn-light btn-sm" data-est-ficha="' + e.id + '">Ficha</button>' +
           '<button class="btn btn-light btn-sm" data-est-edit="' + e.id + '">Editar</button>' +
-          '<button class="btn btn-light btn-sm" data-est-pay="' + e.id + '">＋ Pag.</button>' +
-          '<button class="btn btn-danger btn-sm" data-est-del="' + e.id + '">🗑</button>' +
+          '<button class="btn btn-light btn-sm" data-est-pay="' + e.id + '">Pagamento</button>' +
+          '<button class="btn btn-danger btn-sm" data-est-del="' + e.id + '">Eliminar</button>' +
         "</div></td></tr>";
     }).join("");
 
@@ -252,9 +252,9 @@
           dl("Regime", e.regime) + dl("Data da matrícula", U.dataPT(e.dataMatricula)) +
         "</div>" +
         '<div class="grid stats mb" style="grid-template-columns:repeat(3,1fr)">' +
-          V._stat("Total pago", U.moeda(pago), "💰") +
-          V._stat("Valor do curso", totalCurso ? U.moeda(totalCurso) : "—", "📚") +
-          V._stat("Saldo em falta", totalCurso ? U.moeda(saldo) : "—", "⚠") +
+          V._stat("Total pago", U.moeda(pago), "") +
+          V._stat("Valor do curso", totalCurso ? U.moeda(totalCurso) : "—", "") +
+          V._stat("Saldo em falta", totalCurso ? U.moeda(saldo) : "—", "") +
         "</div>" +
         "<h4>Histórico de pagamentos</h4>" +
         '<div class="table-wrap"><table class="data"><thead><tr><th>Data</th><th>Recibo</th><th>Emolumento</th><th>Forma</th><th class="text-right">Valor</th><th></th></tr></thead><tbody>' +
@@ -264,11 +264,13 @@
       footer:
         '<button class="btn btn-light" onclick="App.closeModal()">Fechar</button>' +
         '<button class="btn btn-light" id="fichaEdit">Editar</button>' +
-        '<button class="btn btn-gold" id="fichaPay">＋ Novo pagamento</button>' +
-        '<button class="btn btn-primary" id="fichaPrint">🖨️ Imprimir ficha</button>',
+        '<button class="btn btn-gold" id="fichaPay">Novo pagamento</button>' +
+        '<button class="btn btn-light" id="fichaMat">Ficha de Matrícula</button>' +
+        '<button class="btn btn-primary" id="fichaPrint">Imprimir histórico</button>',
       onOpen: function () {
         document.getElementById("fichaEdit").onclick = function () { C.closeModal(); App.navigate("matricula", { id: id }); };
         document.getElementById("fichaPay").onclick = function () { C.closeModal(); V.novoPagamento(id); };
+        document.getElementById("fichaMat").onclick = function () { C.closeModal(); C.viewFichaMatricula(e); };
         document.getElementById("fichaPrint").onclick = function () { U.printElement("fichaDoc", "Ficha " + e.nome); };
       }
     });
@@ -279,8 +281,8 @@
      ======================================================================= */
   V.cursos = function () {
     return C.pageHead("Cursos", "Tabelas pré-definidas de cursos, valores e turmas",
-      '<button class="btn btn-primary" id="novoCurso">＋ Novo Curso</button>' +
-      '<button class="btn btn-light" id="expCursoCsv">⬇️ Exportar CSV</button>') +
+      '<button class="btn btn-primary" id="novoCurso">Novo Curso</button>' +
+      '<button class="btn btn-light" id="expCursoCsv">Exportar CSV</button>') +
       '<div class="card">' +
         '<div class="toolbar">' +
           '<div class="search-box"><input id="cursoSearch" placeholder="Pesquisar curso..."></div>' +
@@ -301,7 +303,7 @@
       return true;
     });
     var host = document.getElementById("cursoTable");
-    if (!list.length) { host.innerHTML = C.empty("📚", "Nenhum curso encontrado."); return; }
+    if (!list.length) { host.innerHTML = C.empty("", "Nenhum curso encontrado."); return; }
     var rows = list.map(function (c) {
       return "<tr><td><strong>" + U.esc(c.nome) + "</strong><br><small>" + U.esc(c.unidade || "") + "</small></td>" +
         '<td><span class="badge gold">' + U.esc(c.tipo) + "</span></td>" +
@@ -312,7 +314,7 @@
         "<td>" + C.estadoBadge(c.estado) + "</td>" +
         '<td><div class="row-actions">' +
           '<button class="btn btn-light btn-sm" data-curso-edit="' + c.id + '">Editar</button>' +
-          '<button class="btn btn-danger btn-sm" data-curso-del="' + c.id + '">🗑</button>' +
+          '<button class="btn btn-danger btn-sm" data-curso-del="' + c.id + '">Eliminar</button>' +
         "</div></td></tr>";
     }).join("");
     host.innerHTML = '<div class="table-wrap"><table class="data"><thead><tr>' +
@@ -350,7 +352,7 @@
         "</div>" + (id ? "<input type='hidden' name='id' value='" + id + "'>" : "") + "</form>",
       footer:
         '<button class="btn btn-light" onclick="App.closeModal()">Cancelar</button>' +
-        '<button class="btn btn-primary" id="saveCurso">💾 Guardar</button>',
+        '<button class="btn btn-primary" id="saveCurso">Guardar</button>',
       onOpen: function () {
         document.getElementById("saveCurso").onclick = function () {
           var fd = new FormData(document.getElementById("formCurso"));
@@ -378,9 +380,9 @@
      ======================================================================= */
   V.pagamentos = function () {
     return C.pageHead("Pagamentos", "Gestão e controlo de todos os pagamentos",
-      '<button class="btn btn-primary" id="novoPag">＋ Registar Pagamento</button>' +
-      '<button class="btn btn-light" id="expPagCsv">⬇️ Exportar CSV</button>' +
-      '<button class="btn btn-light" id="expPagPdf">📄 Relatório PDF</button>') +
+      '<button class="btn btn-primary" id="novoPag">Registar Pagamento</button>' +
+      '<button class="btn btn-light" id="expPagCsv">Exportar CSV</button>' +
+      '<button class="btn btn-light" id="expPagPdf">Relatório PDF</button>') +
       '<div class="grid stats mb" id="pagStats"></div>' +
       '<div class="card">' +
         '<div class="toolbar">' +
@@ -420,13 +422,13 @@
     var totalMes = U.sum(D.pagamentos().filter(function (p) { return U.ym(p.data) === mes; }), function (p) { return p.valorPago; });
 
     document.getElementById("pagStats").innerHTML =
-      V._stat("Total filtrado", U.moeda(totalFiltro), "🔎") +
-      V._stat("Recebido hoje", U.moeda(totalHoje), "📅") +
-      V._stat("Recebido este mês", U.moeda(totalMes), "🗓") +
-      V._stat("Nº de pagamentos", list.length, "🧾");
+      V._stat("Total filtrado", U.moeda(totalFiltro), "") +
+      V._stat("Recebido hoje", U.moeda(totalHoje), "") +
+      V._stat("Recebido este mês", U.moeda(totalMes), "") +
+      V._stat("Nº de pagamentos", list.length, "");
 
     var host = document.getElementById("pagTable");
-    if (!list.length) { host.innerHTML = C.empty("🧾", "Nenhum pagamento encontrado."); return; }
+    if (!list.length) { host.innerHTML = C.empty("", "Nenhum pagamento encontrado."); return; }
     var rows = list.map(function (p) {
       return "<tr><td>" + U.dataPT(p.data) + "</td>" +
         "<td><strong>" + U.esc(p.recibo) + "</strong></td>" +
@@ -436,7 +438,7 @@
         "<td class='text-right num'><strong>" + U.moeda(p.valorPago) + "</strong></td>" +
         '<td><div class="row-actions">' +
           '<button class="btn btn-light btn-sm" data-pag-view="' + p.id + '">Recibo</button>' +
-          '<button class="btn btn-danger btn-sm" data-pag-del="' + p.id + '">🗑</button>' +
+          '<button class="btn btn-danger btn-sm" data-pag-del="' + p.id + '">Eliminar</button>' +
         "</div></td></tr>";
     }).join("");
     host.innerHTML = '<div class="table-wrap"><table class="data"><thead><tr>' +
@@ -458,20 +460,21 @@
       body: '<form id="formPag"><div class="form-grid">' +
         '<div class="field full"><label>Estudante <span class="req">*</span></label>' +
           "<select name='estudanteId' id='payEst' required>" + estOpts + "</select></div>" +
-        '<div class="field"><label>Emolumento <span class="req">*</span></label><select name="emolumento" required>' +
-          U.optionList(db.emolumentos, "Mensalidade") + "</select></div>" +
+        '<div class="field"><label>Tipo de pagamento <span class="req">*</span></label><select name="emolumento" required>' +
+          U.optionList(db.emolumentos, "Propina") + "</select></div>" +
         '<div class="field"><label>Valor pago (Kz) <span class="req">*</span></label>' +
           "<input type='number' name='valorPago' min='0.01' step='0.01' required></div>" +
         '<div class="field"><label>Forma de pagamento</label><select name="formaPagamento">' +
           U.optionList(db.formasPagamento) + "</select></div>" +
         '<div class="field"><label>Data</label><input type="date" name="data" value="' + U.hoje() + '"></div>' +
-        '<div class="field"><label>Funcionário</label><select name="funcionario">' +
+        '<div class="field"><label>Funcionário que recebeu</label><select name="funcionario">' +
           U.optionList(db.funcionarios) + "</select></div>" +
+        '<div class="field"><label>Referência</label><input name="referencia" placeholder="Nº de referência / TPA / transferência"></div>' +
         '<div class="field full"><label>Observações</label><textarea name="observacoes"></textarea></div>' +
         "</div></form>",
       footer:
         '<button class="btn btn-light" onclick="App.closeModal()">Cancelar</button>' +
-        '<button class="btn btn-primary" id="savePag">💾 Registar e gerar recibo</button>',
+        '<button class="btn btn-primary" id="savePag">Registar e gerar recibo</button>',
       onOpen: function () {
         document.getElementById("savePag").onclick = function () {
           var fd = new FormData(document.getElementById("formPag"));
@@ -483,7 +486,7 @@
             emolumento: fd.get("emolumento"), valorPago: valor,
             formaPagamento: fd.get("formaPagamento"), funcionario: fd.get("funcionario"),
             data: fd.get("data") ? fd.get("data") + "T" + new Date().toTimeString().slice(0, 8) : U.agoraISO(),
-            observacoes: fd.get("observacoes")
+            referencia: fd.get("referencia"), observacoes: fd.get("observacoes")
           });
           C.closeModal();
           C.toast("Pagamento registado — recibo " + pag.recibo, "ok");
@@ -499,12 +502,13 @@
       recibo: D.nextRecibo(),
       estudanteId: est.id, estudanteNome: est.nome, matricula: est.matricula,
       contacto: est.contacto, curso: est.curso, periodo: est.periodo,
-      tipoCurso: est.tipoCurso, duracao: est.duracao, regime: est.regime,
+      unidade: est.unidade, tipoCurso: est.tipoCurso, duracao: est.duracao, regime: est.regime,
       data: extra.data || U.agoraISO(),
-      emolumento: extra.emolumento || "Outro",
+      emolumento: extra.emolumento || "Outros",
       valorPago: extra.valorPago || 0,
       formaPagamento: extra.formaPagamento || "",
       funcionario: extra.funcionario || "",
+      referencia: extra.referencia || "",
       observacoes: extra.observacoes || ""
     };
     return D.savePagamento(pag);
@@ -515,7 +519,7 @@
      ======================================================================= */
   V.recibos = function () {
     return C.pageHead("Recibos", "Gerador e pesquisa de recibos de pagamento",
-      '<button class="btn btn-primary" id="gerarReciboBtn">🧾 Novo Recibo</button>') +
+      '<button class="btn btn-primary" id="gerarReciboBtn">Novo Recibo</button>') +
       '<div class="card">' +
         '<div class="toolbar">' +
           '<div class="search-box"><input id="recSearch" placeholder="Pesquisar por nº recibo, nome, contacto, curso..."></div>' +
@@ -537,7 +541,7 @@
       return true;
     }).sort(U.by("data"));
     var host = document.getElementById("recTable");
-    if (!list.length) { host.innerHTML = C.empty("🧾", "Nenhum recibo encontrado."); return; }
+    if (!list.length) { host.innerHTML = C.empty("", "Nenhum recibo encontrado."); return; }
     var rows = list.map(function (p) {
       return "<tr><td><strong>" + U.esc(p.recibo) + "</strong></td>" +
         "<td>" + U.dataPT(p.data) + "</td>" +
@@ -575,9 +579,9 @@
           '<button class="btn btn-primary" id="relGerar">Gerar relatório</button></div>' +
       "</div></div>" +
       '<div class="card"><div class="card-head"><h3 id="relTitulo">Pré-visualização</h3>' +
-        '<div class="flex"><button class="btn btn-light" id="relCsv">⬇️ CSV</button>' +
-        '<button class="btn btn-gold" id="relPrint">🖨️ Imprimir / PDF</button></div></div>' +
-        '<div id="relOut">' + C.empty("📊", "Escolha o tipo de relatório e clique em “Gerar relatório”.") + "</div></div>";
+        '<div class="flex"><button class="btn btn-light" id="relCsv">CSV</button>' +
+        '<button class="btn btn-gold" id="relPrint">Imprimir / PDF</button></div></div>' +
+        '<div id="relOut">' + C.empty("", "Escolha o tipo de relatório e clique em “Gerar relatório”.") + "</div></div>";
   };
 
   // Build report data; returns {titulo, sub, headers, rows, totals, csv:{headers,rows}}
@@ -712,10 +716,13 @@
       f("telefone", "Telefone", s.telefone) +
       f("email", "Email", s.email, "email") +
       f("endereco", "Endereço", s.endereco) +
+      '<div class="fieldset-title">Assinaturas dos documentos</div>' +
+      f("secretaria", "Nome da Secretaria", s.secretaria) +
+      f("diretora", "Nome da Directora Administrativa", s.diretora) +
       '<div class="fieldset-title">Numeração</div>' +
       f("seqMatricula", "Próximo nº de matrícula", s.seqMatricula, "number") +
       f("seqRecibo", "Próximo nº de recibo", s.seqRecibo, "number") +
-      "</div><div class='form-actions'><button type='submit' class='btn btn-primary'>💾 Guardar</button></div></form>";
+      "</div><div class='form-actions'><button type='submit' class='btn btn-primary'>Guardar</button></div></form>";
   };
   V.cfgListas = function () {
     var db = D.db();
@@ -733,10 +740,10 @@
           arr.map(function (item, i) {
             return '<li class="flex spread" style="padding:7px 0;border-bottom:1px solid #eee">' +
               "<span>" + U.esc(item) + "</span>" +
-              '<button class="btn btn-danger btn-sm" data-lista-del="' + key + '" data-idx="' + i + '">🗑</button></li>';
+              '<button class="btn btn-danger btn-sm" data-lista-del="' + key + '" data-idx="' + i + '">Remover</button></li>';
           }).join("") + "</ul>" +
           '<div class="flex mt"><input class="field" style="flex:1" id="add_' + key + '" placeholder="Adicionar...">' +
-          '<button class="btn btn-light" data-lista-add="' + key + '">＋</button></div></div>';
+          '<button class="btn btn-light" data-lista-add="' + key + '">Adicionar</button></div></div>';
       }).join("") + "</div>";
   };
   V.cfgConta = function () {
@@ -755,7 +762,7 @@
         '<div class="field"><label>Nova palavra-passe</label><input type="password" name="novaPass" autocomplete="new-password" placeholder="(deixe vazio para manter)"></div>' +
         '<div class="field"><label>Confirmar nova palavra-passe</label><input type="password" name="novaPass2" autocomplete="new-password"></div>' +
       "</div>" +
-      '<div class="form-actions"><button type="submit" class="btn btn-primary">💾 Guardar conta</button></div></form>';
+      '<div class="form-actions"><button type="submit" class="btn btn-primary">Guardar conta</button></div></form>';
   };
 
   V.cfgDados = function () {
@@ -763,15 +770,15 @@
     return '<div class="card"><div class="card-head"><h3>Cópia de segurança e reposição</h3></div>' +
       "<p class='help'>Os dados são guardados no navegador deste computador. Exporte regularmente para não perder informação.</p>" +
       '<div class="grid stats mb" style="grid-template-columns:repeat(3,1fr)">' +
-        V._stat("Estudantes", db.estudantes.length, "👥") +
-        V._stat("Pagamentos", db.pagamentos.length, "🧾") +
-        V._stat("Cursos", db.cursos.length, "📚") +
+        V._stat("Estudantes", db.estudantes.length, "") +
+        V._stat("Pagamentos", db.pagamentos.length, "") +
+        V._stat("Cursos", db.cursos.length, "") +
       "</div>" +
       '<div class="flex">' +
-        '<button class="btn btn-primary" id="bkExport">⬇️ Exportar backup (JSON)</button>' +
-        '<button class="btn btn-light" id="bkImportBtn">⬆️ Importar backup</button>' +
+        '<button class="btn btn-primary" id="bkExport">Exportar backup (JSON)</button>' +
+        '<button class="btn btn-light" id="bkImportBtn">Importar backup</button>' +
         '<input type="file" id="bkImportFile" accept="application/json" style="display:none">' +
-        '<button class="btn btn-danger" id="bkReset">🗑 Repor dados de fábrica</button>' +
+        '<button class="btn btn-danger" id="bkReset">Repor dados de fábrica</button>' +
       "</div></div>";
   };
 

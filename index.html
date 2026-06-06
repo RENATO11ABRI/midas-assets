@@ -7,6 +7,8 @@
   <meta name="description" content="Sistema de gestão de matrículas, cursos, pagamentos e recibos do Grupo Midas Angola." />
   <link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
@@ -17,7 +19,7 @@
   <div id="app" hidden>
     <!-- Topbar (mobile) -->
     <header class="topbar">
-      <button class="menu-toggle" id="menuToggle" aria-label="Abrir menu">&#9776;</button>
+      <button class="menu-toggle" id="menuToggle" aria-label="Abrir menu"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round"/></svg></button>
       <div class="topbar-brand">
         <img src="assets/logo.svg" alt="Grupo Midas Angola" class="logo" />
         <div class="brand-text">
@@ -37,18 +39,18 @@
         </div>
       </div>
       <nav class="nav">
-        <a href="#dashboard" class="nav-link" data-route="dashboard"><span class="ico">▦</span> Dashboard</a>
-        <a href="#matricula" class="nav-link" data-route="matricula"><span class="ico">＋</span> Nova Matrícula</a>
-        <a href="#estudantes" class="nav-link" data-route="estudantes"><span class="ico">☰</span> Estudantes</a>
-        <a href="#cursos" class="nav-link" data-route="cursos"><span class="ico">▤</span> Cursos</a>
-        <a href="#pagamentos" class="nav-link" data-route="pagamentos"><span class="ico">₭</span> Pagamentos</a>
-        <a href="#recibos" class="nav-link" data-route="recibos"><span class="ico">🧾</span> Recibos</a>
-        <a href="#relatorios" class="nav-link" data-route="relatorios"><span class="ico">▣</span> Relatórios</a>
-        <a href="#config" class="nav-link" data-route="config"><span class="ico">⚙</span> Configurações</a>
+        <a href="#dashboard" class="nav-link" data-route="dashboard"><span class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg></span> Dashboard</a>
+        <a href="#matricula" class="nav-link" data-route="matricula"><span class="ico"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6" stroke-linecap="round"/></svg></span> Nova Matrícula</a>
+        <a href="#recibos" class="nav-link" data-route="recibos"><span class="ico"><svg viewBox="0 0 24 24"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2V3z"/><path d="M9 8h6M9 12h6" stroke-linecap="round"/></svg></span> Recibos</a>
+        <a href="#estudantes" class="nav-link" data-route="estudantes"><span class="ico"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> Estudantes</a>
+        <a href="#cursos" class="nav-link" data-route="cursos"><span class="ico"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span> Cursos</a>
+        <a href="#pagamentos" class="nav-link" data-route="pagamentos"><span class="ico"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20" stroke-linecap="round"/></svg></span> Pagamentos</a>
+        <a href="#relatorios" class="nav-link" data-route="relatorios"><span class="ico"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Relatórios</a>
+        <a href="#config" class="nav-link" data-route="config"><span class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> Configurações</a>
       </nav>
       <div class="sidebar-footer">
         <div class="user-chip" id="userChip"></div>
-        <button class="btn-logout" id="logoutBtn">⎋ Terminar sessão</button>
+        <button class="btn-logout" id="logoutBtn">Terminar sessão</button>
         <small>© 2026 Grupo Midas Angola</small>
       </div>
     </aside>

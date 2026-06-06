@@ -145,7 +145,7 @@
       ev.preventDefault();
       var fd = new FormData(ev.target);
       var s = D.db().settings;
-      ["instituicao", "sistema", "slogan", "anoLetivo", "nif", "telefone", "email", "endereco"].forEach(function (k) {
+      ["instituicao", "sistema", "slogan", "anoLetivo", "nif", "telefone", "email", "endereco", "secretaria", "diretora"].forEach(function (k) {
         s[k] = fd.get(k);
       });
       s.seqMatricula = parseInt(fd.get("seqMatricula"), 10) || s.seqMatricula;
@@ -171,7 +171,7 @@
       D.definirCredenciais(user, nome, p1 || null);
       D.save();
       var chip = document.getElementById("userChip");
-      if (chip) chip.textContent = "👤 " + (a.nome || a.user);
+      if (chip) chip.textContent = "" + (a.nome || a.user);
       C.toast("Conta atualizada." + (p1 ? " Palavra-passe alterada." : ""), "ok");
     });
   }
@@ -258,11 +258,12 @@
         });
         C.toast("Matrícula " + est.matricula + " salva. Recibo " + pag.recibo + " gerado.", "ok");
         App.navigate("estudantes");
-        C.viewReceipt(pag);
+        C.viewFichaMatricula(est);
         return;
       }
       C.toast(editing ? "Alterações guardadas." : "Matrícula " + est.matricula + " salva.", "ok");
       App.navigate("estudantes");
+      if (!editing) C.viewFichaMatricula(est);
     });
   }
 
@@ -308,7 +309,7 @@
 
   /* ---- Global delegated click handler ----------------------------------- */
   document.addEventListener("click", function (e) {
-    var t = e.target.closest("[data-go],[data-est-view],[data-est-edit],[data-est-pay],[data-est-del]," +
+    var t = e.target.closest("[data-go],[data-est-view],[data-est-ficha],[data-est-edit],[data-est-pay],[data-est-del]," +
       "[data-curso-edit],[data-curso-del],[data-pag-view],[data-pag-del],[data-lista-add],[data-lista-del]");
     if (!t) return;
 
@@ -317,6 +318,7 @@
 
     var id;
     if ((id = t.getAttribute("data-est-view"))) { V.fichaEstudante(id); return; }
+    if ((id = t.getAttribute("data-est-ficha"))) { var ef = D.estudanteById(id); if (ef) C.viewFichaMatricula(ef); return; }
     if ((id = t.getAttribute("data-est-edit"))) { App.navigate("matricula", { id: id }); return; }
     if ((id = t.getAttribute("data-est-pay"))) { V.novoPagamento(id); return; }
     if ((id = t.getAttribute("data-est-del"))) {
@@ -381,7 +383,7 @@
     // user chip + logout
     var a = D.auth();
     var chip = document.getElementById("userChip");
-    if (chip) chip.textContent = "👤 " + (a.nome || a.user);
+    if (chip) chip.textContent = "" + (a.nome || a.user);
     var logout = document.getElementById("logoutBtn");
     if (logout) logout.onclick = function () {
       C.confirm("Terminar a sessão?", function () {

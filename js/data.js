@@ -5,7 +5,7 @@
 (function (window) {
   "use strict";
 
-  var STORAGE_KEY = "midas2026_db_v1";
+  var STORAGE_KEY = "midas2026_db_v2";
 
   // ---- Defaults / seed -----------------------------------------------------
   var DEFAULT_PERIODOS = ["Manhã", "Tarde", "Noite", "Fim de Semana"];
@@ -13,9 +13,10 @@
   var DEFAULT_TIPOS = ["Intensivo", "Imersão", "Capacitação"];
   var DEFAULT_UNIDADES = ["Polo Sede — Luanda", "Polo Viana", "Polo Cacuaco"];
   var DEFAULT_EMOLUMENTOS = [
-    "Inscrição", "Matrícula", "Mensalidade", "Estágio", "Túnica",
-    "Fascículo", "Cartão de estudante", "Cadastramento", "Orientação",
-    "Aula prática", "Exame prático", "Certificado", "Declaração", "Outro"
+    "Propina", "Matrícula", "Inscrição", "Estágio Preliminar", "Estágio Curricular",
+    "Declaração", "Túnica", "Certificado de Participação", "Certificado de Fim do Curso",
+    "Mesa do Júri", "Sala da Defesa", "Emolumentos da Defesa", "Aula prática",
+    "Orientação", "Exame prático", "Cartão de estudante", "Fascículo", "Outros"
   ];
   var DEFAULT_FORMAS = ["Dinheiro", "TPA", "Transferência", "Referência bancária"];
   var DEFAULT_FUNCIONARIOS = ["Secretaria Geral"];
@@ -61,6 +62,8 @@
         endereco: "Luanda, Angola",
         telefone: "",
         email: "",
+        secretaria: "",
+        diretora: "",
         seqMatricula: 1,
         seqRecibo: 1,
         anoLetivo: "2026"
@@ -184,6 +187,22 @@
 
     // ---- Cursos ------------------------------------------------------------
     cursos: function () { return this.load().cursos; },
+    // Cursos ordenados com prioridade institucional: Enfermagem, Farmácia,
+    // Análises Clínicas no topo; depois os restantes por ordem alfabética.
+    cursosOrdenados: function () {
+      var prio = function (nome) {
+        var n = (nome || "").toLowerCase();
+        if (n.indexOf("enfermagem") >= 0) return 0;
+        if (n.indexOf("farm") >= 0) return 1;
+        if (n.indexOf("anális") >= 0 || n.indexOf("analis") >= 0) return 2;
+        return 9;
+      };
+      return this.cursos().slice().sort(function (a, b) {
+        var pa = prio(a.nome), pb = prio(b.nome);
+        if (pa !== pb) return pa - pb;
+        return a.nome < b.nome ? -1 : 1;
+      });
+    },
     cursoById: function (id) { return this.load().cursos.filter(function (c) { return c.id === id; })[0]; },
     cursoByNome: function (nome) { return this.load().cursos.filter(function (c) { return c.nome === nome; })[0]; },
     saveCurso: function (curso) {

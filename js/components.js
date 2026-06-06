@@ -69,7 +69,7 @@
   };
 
   C.empty = function (icon, msg) {
-    return '<div class="empty"><div class="big">' + (icon || "📭") + "</div><p>" + U.esc(msg) + "</p></div>";
+    return '<div class="empty"><div class="big">' + (icon || "") + "</div><p>" + U.esc(msg) + "</p></div>";
   };
 
   C.estadoBadge = function (estado) {
@@ -81,50 +81,94 @@
   };
 
   // ---- Receipt HTML --------------------------------------------------------
-  // pag = pagamento record
-  C.receiptHTML = function (pag) {
+  // ---- Document helpers ----------------------------------------------------
+  C._docHead = function (titulo, num, data) {
     var s = D.db().settings;
-    return '' +
-    '<div class="receipt" id="receiptDoc">' +
-      '<div class="receipt-head">' +
-        '<div class="r-brand"><img src="' + U.assetURL("assets/logo.svg") + '" alt="" class="logo logo-lg" /><div>' +
-          '<strong>' + U.esc(s.instituicao) + "</strong>" +
-          '<small>' + U.esc(s.slogan) + "</small></div></div>" +
-        '<div class="r-title"><h2>RECIBO DE PAGAMENTO</h2>' +
-          '<div><strong>Nº ' + U.esc(pag.recibo) + "</strong></div>" +
-          "<div>" + U.dataPT(pag.data) + "</div></div>" +
+    return '<div class="doc-head">' +
+      '<div class="d-org"><img src="' + U.assetURL("assets/logo.svg") + '" alt="" class="logo" />' +
+        "<div><strong>" + U.esc(s.instituicao) + "</strong><small>" + U.esc(s.slogan) + "</small></div></div>" +
+      '<div class="d-title"><h2>' + U.esc(titulo) + "</h2>" +
+        '<div class="d-num">Nº ' + U.esc(num) + "</div>" +
+        '<div class="d-date">' + U.dataPT(data) + "</div></div></div>";
+  };
+  C._docItem = function (k, v, full) {
+    if (v == null || v === "") v = "—";
+    return '<div class="di' + (full ? " full" : "") + '"><span class="k">' + U.esc(k) +
+      '</span><span class="v">' + U.esc(v) + "</span></div>";
+  };
+  C._docSign = function () {
+    var s = D.db().settings;
+    return '<div class="doc-sign">' +
+      '<div class="s-line"><div class="s-rule">' + U.esc(s.secretaria || "____________________") +
+        '</div><div class="s-role">A Secretaria</div></div>' +
+      '<div class="s-line"><div class="s-rule">' + U.esc(s.diretora || "____________________") +
+        '</div><div class="s-role">A Directora Administrativa</div></div></div>';
+  };
+  C._docFoot = function () {
+    var s = D.db().settings;
+    return '<div class="doc-foot">' + U.esc(s.instituicao) +
+      (s.nif ? " · NIF: " + U.esc(s.nif) : "") +
+      (s.telefone ? " · Tel: " + U.esc(s.telefone) : "") +
+      " · " + U.esc(s.endereco) + "</div>";
+  };
+
+  // ---- Receipt (2 vias, A4) -----------------------------------------------
+  // pag = pagamento record
+  C._receiptVia = function (pag, label) {
+    return '<div class="via">' +
+      '<span class="via-label">' + U.esc(label) + "</span>" +
+      C._docHead("Recibo de Pagamento", pag.recibo, pag.data) +
+      '<div class="doc-grid">' +
+        C._docItem("Estudante", pag.estudanteNome, true) +
+        C._docItem("Contacto", pag.contacto) +
+        C._docItem("Matrícula", pag.matricula) +
+        C._docItem("Curso", pag.curso) +
+        C._docItem("Período", pag.periodo) +
+        C._docItem("Unidade", pag.unidade) +
+        C._docItem("Tipo de pagamento", pag.emolumento) +
+        C._docItem("Forma de pagamento", pag.formaPagamento) +
+        C._docItem("Referência / Observação", pag.referencia || pag.observacoes, true) +
+        C._docItem("Recebido por", pag.funcionario, true) +
       "</div>" +
-      '<div class="receipt-body">' +
-        '<div class="r-meta">' +
-          '<div class="box"><div class="k">Estudante</div><div class="v">' + U.esc(pag.estudanteNome) + "</div></div>" +
-          '<div class="box"><div class="k">Contacto</div><div class="v">' + U.esc(pag.contacto || "—") + "</div></div>" +
-          '<div class="box"><div class="k">Matrícula</div><div class="v">' + U.esc(pag.matricula || "—") + "</div></div>" +
-        "</div>" +
-        "<table><thead><tr><th>Descrição</th><th>Detalhe</th></tr></thead><tbody>" +
-          C._rRow("Curso", pag.curso) +
-          C._rRow("Tipo de curso", pag.tipoCurso) +
-          C._rRow("Período", pag.periodo) +
-          C._rRow("Duração", pag.duracao) +
-          C._rRow("Regime de aulas", pag.regime) +
-          C._rRow("Emolumento pago", pag.emolumento) +
-          C._rRow("Forma de pagamento", pag.formaPagamento) +
-        "</tbody></table>" +
-        '<div class="r-total"><div class="amount">Valor pago: ' + U.moeda(pag.valorPago) + "</div></div>" +
-        (pag.observacoes ? '<p style="margin-top:14px"><strong>Observações:</strong> ' + U.esc(pag.observacoes) + "</p>" : "") +
-        '<div class="r-sign">' +
-          '<div class="line"><div class="rule">' + U.esc(pag.funcionario || "Funcionário") + "</div>Recebido por</div>" +
-          '<div class="line"><div class="rule">&nbsp;</div>Assinatura / Carimbo</div>' +
-        "</div>" +
-      "</div>" +
-      '<div class="receipt-foot">' + U.esc(s.instituicao) +
-        (s.nif ? " · NIF: " + U.esc(s.nif) : "") +
-        (s.telefone ? " · Tel: " + U.esc(s.telefone) : "") +
-        " · " + U.esc(s.endereco) + "</div>" +
+      '<div class="doc-amount"><span class="k">Valor pago</span><span class="v num">' + U.moeda(pag.valorPago) + "</span></div>" +
+      C._docSign() + C._docFoot() + "</div>";
+  };
+  C.receiptHTML = function (pag) {
+    return '<div class="doc-a4" id="receiptDoc">' +
+      C._receiptVia(pag, "Via do Estudante") +
+      '<div class="cut-line">corte aqui</div>' +
+      C._receiptVia(pag, "Via da Secretaria") +
     "</div>";
   };
-  C._rRow = function (k, v) {
-    if (!v) return "";
-    return "<tr><td><strong>" + U.esc(k) + "</strong></td><td>" + U.esc(v) + "</td></tr>";
+
+  // ---- Ficha de Matrícula (2 vias, A4) ------------------------------------
+  // est = estudante; pag (opcional) = pagamento associado para o valor pago
+  C._fichaVia = function (est, valorPago, label) {
+    return '<div class="via">' +
+      '<span class="via-label">' + U.esc(label) + "</span>" +
+      C._docHead("Ficha de Matrícula", est.matricula, est.dataMatricula) +
+      '<div class="doc-grid">' +
+        C._docItem("Nome do estudante", est.nome, true) +
+        C._docItem("Nº do BI", est.bi) +
+        C._docItem("Contacto", est.contacto) +
+        C._docItem("Curso", est.curso, true) +
+        C._docItem("Período", est.periodo) +
+        C._docItem("Unidade", est.unidade) +
+        C._docItem("Tipo de curso", est.tipoCurso) +
+        C._docItem("Duração", est.duracao) +
+        C._docItem("Regime de aulas", est.regime) +
+        C._docItem("Data da matrícula", U.dataPT(est.dataMatricula)) +
+      "</div>" +
+      '<div class="doc-amount"><span class="k">Valor pago</span><span class="v num">' + U.moeda(valorPago) + "</span></div>" +
+      C._docSign() + C._docFoot() + "</div>";
+  };
+  C.fichaMatriculaHTML = function (est) {
+    var valor = D.totalPagoEstudante(est.id) || est.valorPago || 0;
+    return '<div class="doc-a4" id="fichaMatDoc">' +
+      C._fichaVia(est, valor, "Via do Estudante") +
+      '<div class="cut-line">corte aqui</div>' +
+      C._fichaVia(est, valor, "Via da Secretaria") +
+    "</div>";
   };
 
   // ---- Report sheet --------------------------------------------------------
@@ -157,14 +201,34 @@
       body: C.receiptHTML(pag),
       footer:
         '<button class="btn btn-light" id="rcClose">Fechar</button>' +
-        '<button class="btn btn-gold" id="rcPrint">🖨️ Imprimir</button>' +
-        '<button class="btn btn-primary" id="rcPdf">📄 Guardar PDF</button>',
+        '<button class="btn btn-gold" id="rcPrint">Imprimir</button>' +
+        '<button class="btn btn-primary" id="rcPdf">Guardar PDF</button>',
       onOpen: function () {
         document.getElementById("rcClose").onclick = C.closeModal;
         document.getElementById("rcPrint").onclick = function () { U.printElement("receiptDoc", "Recibo " + pag.recibo); };
         document.getElementById("rcPdf").onclick = function () {
           C.toast("Na janela de impressão escolha “Guardar como PDF”.", "ok");
           U.printElement("receiptDoc", "Recibo " + pag.recibo);
+        };
+      }
+    });
+  };
+
+  // View ficha de matrícula (2 vias) in modal with print/pdf actions
+  C.viewFichaMatricula = function (est) {
+    C.modal({
+      title: "Ficha de Matrícula " + est.matricula,
+      body: C.fichaMatriculaHTML(est),
+      footer:
+        '<button class="btn btn-light" id="fmClose">Fechar</button>' +
+        '<button class="btn btn-gold" id="fmPrint">Imprimir</button>' +
+        '<button class="btn btn-primary" id="fmPdf">Guardar PDF</button>',
+      onOpen: function () {
+        document.getElementById("fmClose").onclick = C.closeModal;
+        var go = function () { U.printElement("fichaMatDoc", "Ficha de Matrícula " + est.matricula); };
+        document.getElementById("fmPrint").onclick = go;
+        document.getElementById("fmPdf").onclick = function () {
+          C.toast("Na janela de impressão escolha “Guardar como PDF”.", "ok"); go();
         };
       }
     });
