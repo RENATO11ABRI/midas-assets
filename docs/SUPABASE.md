@@ -36,7 +36,7 @@ semeados automaticamente na base.
 ## Entrar na aplicação
 
 - **E-mail:** `stvsonhonatv@gmail.com`
-- **Palavra-passe:** `Admin2026!` (altere em **Configurações → Conta**)
+- **Palavra-passe:** a que definir no Supabase → **Authentication → Users** (ver passo abaixo).
 
 ## Adicionar utilizadores
 
