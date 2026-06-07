@@ -355,9 +355,9 @@
           "As restantes contas são recuperadas pelo administrador em Configurações → Utilizadores.");
         return;
       }
-      sb.auth.resetPasswordForEmail(id, { redirectTo: location.href }).then(function (res) {
+      sb.auth.resetPasswordForEmail(id, { redirectTo: location.origin }).then(function (res) {
         if (res.error) window.alert("Erro: " + res.error.message);
-        else window.alert("Enviámos um link de recuperação para " + id + ". Verifique o email.");
+        else window.alert("Enviámos um link de recuperação para " + id + ". Verifique o email (e a pasta de spam).");
       });
     };
   }
