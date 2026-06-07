@@ -30,6 +30,26 @@
   var U = window.U;
   var _user = null;                 // utilizador Supabase autenticado
   var _perfil = { nome: "", perfil: "secretaria", ativo: true };
+  var DOMINIO_INTERNO = "midas.local";   // contas internas (login por nome de utilizador)
+
+  // login pode ser email real OU nome de utilizador (sem "@")
+  function loginParaEmail(login) {
+    login = (login || "").trim().toLowerCase();
+    return login.indexOf("@") >= 0 ? login : login + "@" + DOMINIO_INTERNO;
+  }
+
+  // Recuperação de senha (admin, por email): ao voltar do link de recuperação
+  sb.auth.onAuthStateChange(function (event) {
+    if (event !== "PASSWORD_RECOVERY") return;
+    var np = window.prompt("Recuperação de senha — escreva a NOVA palavra-passe (mín. 6 caracteres):");
+    if (np === null) return;
+    if (np.length < 6) { window.alert("Senha demasiado curta."); return; }
+    sb.auth.updateUser({ password: np }).then(function (res) {
+      if (res.error) { window.alert("Não foi possível alterar: " + res.error.message); return; }
+      window.alert("Senha alterada. Inicie sessão com a nova senha.");
+      sb.auth.signOut().then(function () { location.reload(); });
+    });
+  });
 
   function toast(msg, tipo) { try { window.C && window.C.toast(msg, tipo || "ok"); } catch (e) {} }
   function fail(msg, err) { if (err) console.error(msg, err); toast(msg, "err"); }
@@ -275,27 +295,28 @@
         '<div class="login-sys">' + U.esc(s.sistema) + "</div>" +
         '<span class="slogan">' + U.esc(s.slogan) + "</span>" +
         '<form id="loginForm" class="login-form">' +
-          '<div class="field"><label>E-mail</label>' +
-            '<input id="loginUser" type="email" autocomplete="username" required autofocus></div>' +
+          '<div class="field"><label>E-mail ou nome de utilizador</label>' +
+            '<input id="loginUser" type="text" autocomplete="username" required autofocus></div>' +
           '<div class="field"><label>Palavra-passe</label>' +
             '<input id="loginPass" type="password" autocomplete="current-password" required></div>' +
           '<div class="login-err" id="loginErr"' + (erro ? "" : " hidden") + ">" +
-            U.esc(erro || "E-mail ou palavra-passe incorretos.") + "</div>" +
+            U.esc(erro || "Dados de acesso incorretos.") + "</div>" +
           '<button type="submit" class="btn btn-gold login-btn">Entrar</button>' +
+          '<button type="button" class="btn-link login-forgot" id="loginForgot">Esqueci a senha</button>' +
         "</form>" +
       "</div>" +
       '<div class="login-foot">© 2026 ' + U.esc(s.instituicao) + " · " + U.esc(s.slogan) + "</div>";
 
     document.getElementById("loginForm").addEventListener("submit", function (ev) {
       ev.preventDefault();
-      var email = document.getElementById("loginUser").value.trim();
+      var email = loginParaEmail(document.getElementById("loginUser").value);
       var pass = document.getElementById("loginPass").value;
       var btn = ev.target.querySelector("button[type=submit]");
       var err = document.getElementById("loginErr");
       btn.disabled = true; btn.textContent = "A entrar…";
       sb.auth.signInWithPassword({ email: email, password: pass }).then(function (res) {
         if (res.error || !res.data.session) {
-          err.hidden = false; err.textContent = "E-mail ou palavra-passe incorretos.";
+          err.hidden = false; err.textContent = "Dados de acesso incorretos.";
           btn.disabled = false; btn.textContent = "Entrar";
           document.getElementById("loginPass").value = "";
           document.getElementById("loginPass").focus();
@@ -304,6 +325,19 @@
         afterAuth(res.data.session, onReady);
       });
     });
+
+    document.getElementById("loginForgot").onclick = function () {
+      var id = (document.getElementById("loginUser").value || "").trim();
+      if (!id || id.indexOf("@") < 0 || id.toLowerCase().indexOf("@" + DOMINIO_INTERNO) >= 0) {
+        window.alert("A recuperação automática por email só funciona para a conta de administrador (email real). " +
+          "As restantes contas são recuperadas pelo administrador em Configurações → Utilizadores.");
+        return;
+      }
+      sb.auth.resetPasswordForEmail(id, { redirectTo: location.href }).then(function (res) {
+        if (res.error) window.alert("Erro: " + res.error.message);
+        else window.alert("Enviámos um link de recuperação para " + id + ". Verifique o email.");
+      });
+    };
   }
 
   /* ---- Substitui o portão de autenticação da app -------------------- */
@@ -316,6 +350,32 @@
       if (session) afterAuth(session, onReady);
       else showSupaLogin(onReady);
     });
+  };
+
+  /* ---- Gestão de utilizadores (via Edge Function, só admin) ---------- */
+  function chamarAdmin(body) {
+    return sb.functions.invoke("admin-users", { body: body }).then(function (res) {
+      if (res.error) {
+        var ctx = res.error.context;
+        if (ctx && typeof ctx.json === "function") {
+          return ctx.json().then(function (j) { throw new Error((j && j.error) || res.error.message); });
+        }
+        throw new Error(res.error.message || "Falha ao contactar o servidor.");
+      }
+      if (res.data && res.data.error) throw new Error(res.data.error);
+      return res.data;
+    });
+  }
+  window.MidasUsers = {
+    isAdmin: function () { return _perfil.perfil === "admin"; },
+    list: function () { return chamarAdmin({ action: "list" }); },
+    create: function (nome, login, password, perfil) {
+      return chamarAdmin({ action: "create", nome: nome, login: login, password: password, perfil: perfil });
+    },
+    setRole: function (userId, perfil) { return chamarAdmin({ action: "setRole", userId: userId, perfil: perfil }); },
+    setActive: function (userId, ativo) { return chamarAdmin({ action: "setActive", userId: userId, ativo: ativo }); },
+    setPassword: function (userId, password) { return chamarAdmin({ action: "setPassword", userId: userId, password: password }); },
+    remove: function (userId) { return chamarAdmin({ action: "remove", userId: userId }); }
   };
 
 })(window);

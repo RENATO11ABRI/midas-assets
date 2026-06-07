@@ -238,6 +238,7 @@
       else if (tab === "emolumentos") { content.innerHTML = V.cfgEmolumentos(); wireEmolumentos(); }
       else if (tab === "listas") { content.innerHTML = V.cfgListas(); }
       else if (tab === "conta") { content.innerHTML = V.cfgConta(); wireConta(); }
+      else if (tab === "utilizadores") { content.innerHTML = V.cfgUtilizadores(); wireUtilizadores(); }
       else { content.innerHTML = V.cfgDados(); wireDados(); }
     }
     tabs.addEventListener("click", function (e) {
@@ -336,6 +337,70 @@
       C.toast("Conta atualizada." + (p1 ? " Palavra-passe alterada." : ""), "ok");
     });
   }
+  function wireUtilizadores() {
+    if (!window.MidasUsers) return;
+    var MU = window.MidasUsers;
+    function load() {
+      var host = document.getElementById("usersTable");
+      if (host) host.innerHTML = '<p class="help">A carregar…</p>';
+      MU.list().then(function (r) { V.renderUtilizadores((r && r.users) || []); })
+        .catch(function (e) {
+          C.toast(e.message, "err");
+          var h = document.getElementById("usersTable");
+          if (h) h.innerHTML = C.empty("", "Erro ao carregar: " + U.esc(e.message));
+        });
+    }
+    load();
+    document.getElementById("userReload").onclick = load;
+
+    document.getElementById("formNovoUser").addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var fd = new FormData(ev.target);
+      var btn = ev.target.querySelector("button[type=submit]");
+      btn.disabled = true; btn.textContent = "A criar…";
+      MU.create((fd.get("nome") || "").trim(), (fd.get("login") || "").trim(), fd.get("password"), fd.get("perfil"))
+        .then(function () { C.toast("Utilizador criado.", "ok"); ev.target.reset(); load(); })
+        .catch(function (e) { C.toast(e.message, "err"); })
+        .then(function () { btn.disabled = false; btn.textContent = "Criar utilizador"; });
+    });
+
+    var host = document.getElementById("usersTable");
+    host.addEventListener("change", function (e) {
+      if (e.target.classList && e.target.classList.contains("userRole")) {
+        var id = e.target.getAttribute("data-id");
+        MU.setRole(id, e.target.value)
+          .then(function () { C.toast("Perfil atualizado.", "ok"); })
+          .catch(function (err) { C.toast(err.message, "err"); load(); });
+      }
+    });
+    host.addEventListener("click", function (e) {
+      var t = e.target;
+      var idPass = t.getAttribute && t.getAttribute("data-user-pass");
+      if (idPass) {
+        var np = window.prompt("Nova senha para este utilizador (mín. 6 caracteres):");
+        if (np === null) return;
+        if (np.length < 6) { C.toast("Senha demasiado curta.", "err"); return; }
+        MU.setPassword(idPass, np).then(function () { C.toast("Senha redefinida.", "ok"); })
+          .catch(function (err) { C.toast(err.message, "err"); });
+        return;
+      }
+      var idTog = t.getAttribute && t.getAttribute("data-user-toggle");
+      if (idTog) {
+        var ativo = t.getAttribute("data-ativo") === "1";
+        MU.setActive(idTog, !ativo).then(function () { C.toast("Acesso atualizado.", "ok"); load(); })
+          .catch(function (err) { C.toast(err.message, "err"); });
+        return;
+      }
+      var idDel = t.getAttribute && t.getAttribute("data-user-del");
+      if (idDel) {
+        C.confirm("Eliminar este utilizador? Esta ação não pode ser anulada.", function () {
+          MU.remove(idDel).then(function () { C.toast("Utilizador eliminado.", "ok"); load(); })
+            .catch(function (err) { C.toast(err.message, "err"); });
+        }, { danger: true, yes: "Eliminar" });
+      }
+    });
+  }
+
   function wireDados() {
     document.getElementById("bkExport").onclick = function () {
       U.downloadText("backup-midas-" + U.hoje() + ".json", D.export());
