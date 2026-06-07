@@ -135,12 +135,21 @@
     var form = document.getElementById("formRecibo");
     var setVal = function (n, v) { if (form.elements[n]) form.elements[n].value = v == null ? "" : v; };
 
-    // auto-fill from selected student
-    document.getElementById("recEst").addEventListener("change", function () {
-      var est = D.estudanteById(this.value);
-      if (!est) return;
-      setVal("nome", est.nome); setVal("contacto", est.contacto); setVal("matricula", est.matricula);
-      setVal("curso", est.curso); setVal("periodo", est.periodo); setVal("unidade", est.unidade);
+    // auto-fill escrevendo o nome do estudante (com sugestões via datalist)
+    var recEstNome = document.getElementById("recEstNome");
+    var recEstId = document.getElementById("recEst");
+    if (recEstNome) recEstNome.addEventListener("input", function () {
+      var val = this.value.trim();
+      var est = D.estudantes().filter(function (e) {
+        return (e.nome + " · " + e.matricula) === val || e.nome === val;
+      })[0];
+      if (est) {
+        recEstId.value = est.id;
+        setVal("nome", est.nome); setVal("contacto", est.contacto); setVal("matricula", est.matricula);
+        setVal("curso", est.curso); setVal("periodo", est.periodo); setVal("unidade", est.unidade);
+      } else {
+        recEstId.value = "";   // permite escrever um nome livre (pagamento avulso)
+      }
     });
 
     // auto-fill value when selecting the emolumento
@@ -364,6 +373,8 @@
   function wireMatriculaForm() {
     var form = document.getElementById("formMatricula");
     if (!form) return;
+    if (form.dataset.wired) return;   // evita ligar 2x (provocava matrícula duplicada)
+    form.dataset.wired = "1";
 
     function setVal(name, v) { var el = form.elements[name]; if (el && !el.value) el.value = v == null ? "" : v; }
     function setIfEmpty(name, v) { var el = form.elements[name]; if (el && (!el.value || el.value === "0")) el.value = v == null ? "" : v; }

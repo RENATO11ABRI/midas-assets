@@ -629,10 +629,8 @@
      ======================================================================= */
   V.recibos = function () {
     var db = D.db();
-    var estOpts = '<option value="">— Selecionar estudante (opcional) —</option>' +
-      D.estudantes().slice().sort(function (a, b) { return a.nome < b.nome ? -1 : 1; }).map(function (e) {
-        return '<option value="' + e.id + '">' + U.esc(e.nome + " · " + e.matricula) + "</option>";
-      }).join("");
+    var estList = D.estudantes().slice().sort(function (a, b) { return a.nome < b.nome ? -1 : 1; })
+      .map(function (e) { return '<option value="' + U.esc(e.nome + " · " + e.matricula) + '"></option>'; }).join("");
     var cursoOpts = '<option value="">—</option>' +
       D.cursosOrdenados().map(function (c) { return '<option value="' + U.esc(c.nome) + '">' + U.esc(c.nome) + "</option>"; }).join("");
 
@@ -641,8 +639,10 @@
       '<div class="card mb"><div class="card-head"><h3>Recibo de Pagamento</h3>' +
         '<span class="help">Nº do recibo (automático): <strong id="recNum">' + U.esc(D.peekRecibo()) + "</strong></span></div>" +
         '<form id="formRecibo"><div class="form-grid">' +
-          '<div class="field full"><label>Estudante (preenche os dados automaticamente)</label>' +
-            '<select name="estudanteId" id="recEst">' + estOpts + "</select></div>" +
+          '<div class="field full"><label>Estudante (escreva o nome — preenche os dados automaticamente)</label>' +
+            '<input id="recEstNome" list="recEstList" placeholder="Escreva o nome do estudante..." autocomplete="off">' +
+            '<datalist id="recEstList">' + estList + "</datalist>" +
+            '<input type="hidden" name="estudanteId" id="recEst"></div>' +
           '<div class="fieldset-title">Dados do estudante</div>' +
           V._f("nome", "Nome completo do estudante", "text", "", true) +
           V._f("contacto", "Contacto", "tel") +
