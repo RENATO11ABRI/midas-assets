@@ -133,36 +133,46 @@
   var base = {};
   ["save", "saveEstudante", "deleteEstudante", "savePagamento", "deletePagamento",
    "saveCurso", "deleteCurso", "saveEmolumento", "deleteEmolumento", "toggleEmolumento",
-   "restaurarLixo", "reporCatalogo"].forEach(function (m) { base[m] = D[m].bind(D); });
+   "restaurarLixo", "reporCatalogo", "reset", "import"].forEach(function (m) { base[m] = D[m].bind(D); });
+
+  // Evita reenviar a configuração completa a cada gravação de entidade: as
+  // entidades têm a sua própria linha, por isso o save() interno é silenciado.
+  var _suppressConfig = false;
+  function quiet(fn, args) {
+    _suppressConfig = true;
+    try { return fn.apply(D, args); } finally { _suppressConfig = false; }
+  }
 
   // settings + listas + sequências (nextMatricula/nextRecibo chamam this.save())
-  D.save = function () { base.save(); pushConfig(); };
+  D.save = function () { base.save(); if (!_suppressConfig) pushConfig(); };
 
-  D.saveEstudante = function (est) { var r = base.saveEstudante(est); upsertRow("estudantes", r); return r; };
-  D.deleteEstudante = function (id) { base.deleteEstudante(id); deleteRow("estudantes", id); pushConfig(); };
+  D.saveEstudante = function (est) { var r = quiet(base.saveEstudante, [est]); upsertRow("estudantes", r); return r; };
+  D.deleteEstudante = function (id) { quiet(base.deleteEstudante, [id]); deleteRow("estudantes", id); pushConfig(); };
 
-  D.savePagamento = function (pag) { var r = base.savePagamento(pag); upsertRow("pagamentos", r); return r; };
-  D.deletePagamento = function (id) { base.deletePagamento(id); deleteRow("pagamentos", id); pushConfig(); };
+  D.savePagamento = function (pag) { var r = quiet(base.savePagamento, [pag]); upsertRow("pagamentos", r); return r; };
+  D.deletePagamento = function (id) { quiet(base.deletePagamento, [id]); deleteRow("pagamentos", id); pushConfig(); };
 
-  D.saveCurso = function (c) { var r = base.saveCurso(c); upsertRow("cursos", r); return r; };
-  D.deleteCurso = function (id) { base.deleteCurso(id); deleteRow("cursos", id); };
+  D.saveCurso = function (c) { var r = quiet(base.saveCurso, [c]); upsertRow("cursos", r); return r; };
+  D.deleteCurso = function (id) { quiet(base.deleteCurso, [id]); deleteRow("cursos", id); };
 
-  D.saveEmolumento = function (e) { var r = base.saveEmolumento(e); if (r && r.emolumento) upsertRow("emolumentos", r.emolumento); return r; };
-  D.deleteEmolumento = function (id) { base.deleteEmolumento(id); deleteRow("emolumentos", id); };
-  D.toggleEmolumento = function (id) { var r = base.toggleEmolumento(id); if (r) upsertRow("emolumentos", r); return r; };
+  D.saveEmolumento = function (e) { var r = quiet(base.saveEmolumento, [e]); if (r && r.emolumento) upsertRow("emolumentos", r.emolumento); return r; };
+  D.deleteEmolumento = function (id) { quiet(base.deleteEmolumento, [id]); deleteRow("emolumentos", id); };
+  D.toggleEmolumento = function (id) { var r = quiet(base.toggleEmolumento, [id]); if (r) upsertRow("emolumentos", r); return r; };
 
   D.restaurarLixo = function (id) {
     var db = D.db();
     var item = (db.lixo || []).filter(function (x) { return x.id === id; })[0];
-    var ok = base.restaurarLixo(id);
+    var ok = quiet(base.restaurarLixo, [id]);
     if (ok && item) {
       if (item.tipo === "estudante") upsertRow("estudantes", item.registo);
       else if (item.tipo === "pagamento") upsertRow("pagamentos", item.registo);
     }
+    if (ok) pushConfig(); // a reciclagem (lixo) mudou
     return ok;
   };
 
-  // Repor catálogo: substitui todos os cursos no Supabase
+  // Repor catálogo: substitui todos os cursos no Supabase (mantém estudantes/pagamentos).
+  // base.reporCatalogo() grava localmente e faz pushConfig (catalogoVersao).
   D.reporCatalogo = function () {
     var cs = base.reporCatalogo();
     sb.from("cursos").delete().neq("id", "").then(function (res) {
@@ -171,6 +181,26 @@
     });
     return cs;
   };
+
+  // Reset de fábrica / importação: ressincronizam TODAS as entidades no Supabase
+  // (base.reset/base.import já gravam a configuração via save()->pushConfig).
+  function ressincronizarEntidades(db) {
+    if (!podeEscreverConfig()) { toast("Sem permissão para sincronizar os dados online.", "err"); return; }
+    Promise.all([
+      sb.from("estudantes").delete().neq("id", ""),
+      sb.from("pagamentos").delete().neq("id", ""),
+      sb.from("cursos").delete().neq("id", ""),
+      sb.from("emolumentos").delete().neq("id", "")
+    ]).then(function () {
+      bulkUpsert("cursos", db.cursos || []);
+      bulkUpsert("emolumentos", db.emolumentos || []);
+      bulkUpsert("estudantes", db.estudantes || []);
+      bulkUpsert("pagamentos", db.pagamentos || []);
+    }).catch(function (e) { fail("Falha ao sincronizar online.", e); });
+  }
+
+  D.reset = function () { var db = base.reset(); ressincronizarEntidades(db); return db; };
+  D.import = function (json) { var db = base.import(json); ressincronizarEntidades(db); return db; };
 
   /* ---- Autenticação (Supabase Auth) ---------------------------------- */
   D.auth = function () {
