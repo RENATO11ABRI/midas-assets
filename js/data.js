@@ -469,6 +469,10 @@
     }
   };
 
+  // Expostos para a camada Supabase poder semear uma base vazia
+  MidasData._seedCursos = seedCursos;
+  MidasData._seedEmolumentos = seedEmolumentos;
+
   // Boot
   MidasData.load();
   window.MidasData = MidasData;
