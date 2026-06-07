@@ -901,6 +901,8 @@
         '<div class="tab" data-tab="emolumentos">Emolumentos e Valores</div>' +
         '<div class="tab" data-tab="listas">Listas (períodos, unidades, etc.)</div>' +
         '<div class="tab" data-tab="conta">Conta e segurança</div>' +
+        (window.MidasUsers && D.auth().perfil === "admin"
+          ? '<div class="tab" data-tab="utilizadores">Utilizadores</div>' : "") +
         '<div class="tab" data-tab="dados">Dados (backup)</div>' +
       '</div><div id="cfgContent"></div>';
   };
@@ -1095,6 +1097,50 @@
         '<div class="field"><label>Confirmar nova palavra-passe</label><input type="password" name="novaPass2" autocomplete="new-password"></div>' +
       "</div>" +
       '<div class="form-actions"><button type="submit" class="btn btn-primary">Guardar conta</button></div></form>';
+  };
+
+  // ---- Utilizadores (apenas administrador) ----
+  V.PERFIS = ["admin", "directora", "secretaria", "financeiro", "coordenador"];
+  V.cfgUtilizadores = function () {
+    return '<div class="card mb"><div class="card-head"><h3>Criar utilizador</h3></div>' +
+      '<p class="help">Crie acessos para a equipa. Pode usar um <strong>nome de utilizador</strong> ' +
+      "(ex.: <em>maria</em>) ou um <strong>email</strong>. A senha é definida por si e pode ser " +
+      "redefinida aqui a qualquer momento.</p>" +
+      '<form id="formNovoUser"><div class="form-grid">' +
+        '<div class="field"><label>Nome a mostrar <span class="req">*</span></label><input name="nome" required></div>' +
+        '<div class="field"><label>Nome de utilizador ou email <span class="req">*</span></label>' +
+          '<input name="login" required placeholder="ex.: maria  ou  maria@exemplo.com"></div>' +
+        '<div class="field"><label>Senha <span class="req">*</span></label>' +
+          '<input name="password" type="text" required minlength="6" placeholder="mín. 6 caracteres"></div>' +
+        '<div class="field"><label>Perfil</label><select name="perfil">' +
+          U.optionList(V.PERFIS, "secretaria") + "</select></div>" +
+      "</div>" +
+      '<div class="form-actions"><button type="submit" class="btn btn-primary">Criar utilizador</button></div></form></div>' +
+      '<div class="card"><div class="card-head"><h3>Utilizadores</h3>' +
+        '<button class="btn btn-light" id="userReload">Atualizar</button></div>' +
+        '<div id="usersTable">' + C.empty("", "A carregar…") + "</div></div>";
+  };
+  V.renderUtilizadores = function (users) {
+    var host = document.getElementById("usersTable");
+    if (!host) return;
+    if (!users || !users.length) { host.innerHTML = C.empty("", "Sem utilizadores."); return; }
+    var rows = users.map(function (u) {
+      var sel = '<select class="userRole" data-id="' + u.id + '">' + U.optionList(V.PERFIS, u.perfil) + "</select>";
+      return "<tr>" +
+        "<td><strong>" + U.esc(u.nome || "—") + "</strong><br><small>" + U.esc(u.utilizador || "") + "</small></td>" +
+        "<td>" + sel + "</td>" +
+        "<td>" + (u.ativo ? '<span class="badge">Ativo</span>' : '<span class="badge gold">Inativo</span>') + "</td>" +
+        '<td><div class="row-actions">' +
+          '<button class="btn btn-light btn-sm" data-user-pass="' + u.id + '">Redefinir senha</button>' +
+          '<button class="btn btn-light btn-sm" data-user-toggle="' + u.id + '" data-ativo="' + (u.ativo ? "1" : "0") + '">' +
+            (u.ativo ? "Desativar" : "Ativar") + "</button>" +
+          '<button class="btn btn-danger btn-sm" data-user-del="' + u.id + '">Eliminar</button>' +
+        "</div></td></tr>";
+    }).join("");
+    host.innerHTML = '<div class="table-wrap"><table class="data"><thead><tr>' +
+      "<th>Utilizador</th><th>Perfil</th><th>Estado</th><th>Ações</th>" +
+      "</tr></thead><tbody>" + rows + "</tbody></table></div>" +
+      '<p class="help mt">' + users.length + " utilizador(es).</p>";
   };
 
   V.cfgDados = function () {
