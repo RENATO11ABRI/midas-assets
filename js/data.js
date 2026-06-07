@@ -283,6 +283,11 @@
       return this._fmtNum(db.settings.prefixoRecibo, db.settings.seqRecibo, db.settings.digitosRecibo);
     },
 
+    // Alocação de número (assíncrona). No backend Supabase é substituída por um
+    // contador atómico (RPC) que evita números repetidos entre dispositivos.
+    alocarMatricula: function () { return Promise.resolve(this.nextMatricula()); },
+    alocarRecibo: function () { return Promise.resolve(this.nextRecibo()); },
+
     // ---- Emolumentos (cadastro com valor, categoria, curso/unidade…) -------
     categoriasEmolumento: function () { return CATEGORIAS_EMOLUMENTO.slice(); },
     emolumentos: function () { return this.load().emolumentos; },

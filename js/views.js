@@ -549,16 +549,17 @@
   // Modal: registar novo pagamento (opcional estudante pré-selecionado)
   V.novoPagamento = function (estId) {
     var db = D.db();
-    var estOpts = '<option value="">— Selecione o estudante —</option>' +
-      D.estudantes().slice().sort(function (a, b) { return a.nome < b.nome ? -1 : 1; }).map(function (e) {
-        return '<option value="' + e.id + '"' + (e.id === estId ? " selected" : "") + ">" +
-          U.esc(e.nome + " · " + e.matricula) + "</option>";
-      }).join("");
+    var sel = estId ? D.estudanteById(estId) : null;
+    var estList = D.estudantes().slice().sort(function (a, b) { return a.nome < b.nome ? -1 : 1; })
+      .map(function (e) { return '<option value="' + U.esc(e.nome + " · " + e.matricula) + '"></option>'; }).join("");
     C.modal({
       title: "Registar Pagamento",
       body: '<form id="formPag"><div class="form-grid">' +
-        '<div class="field full"><label>Estudante <span class="req">*</span></label>' +
-          "<select name='estudanteId' id='payEst' required>" + estOpts + "</select></div>" +
+        '<div class="field full"><label>Estudante (escreva o nome) <span class="req">*</span></label>' +
+          '<input id="payEstNome" list="payEstList" autocomplete="off" placeholder="Escreva o nome do estudante..." value="' +
+            (sel ? U.esc(sel.nome + " · " + sel.matricula) : "") + '">' +
+          '<datalist id="payEstList">' + estList + "</datalist>" +
+          '<input type="hidden" name="estudanteId" id="payEst" value="' + (sel ? sel.id : "") + '"></div>' +
         '<div class="field"><label>Tipo de pagamento <span class="req">*</span></label><select name="emolumentoId" id="payEmol" required>' +
           V.emolumentoOptions(D.emolumentoPadrao("Propina")) + "</select></div>" +
         '<div class="field"><label>Valor pago (Kz) <span class="req">*</span></label>' +
@@ -575,6 +576,13 @@
         '<button class="btn btn-light" onclick="App.closeModal()">Cancelar</button>' +
         '<button class="btn btn-primary" id="savePag">Registar e gerar recibo</button>',
       onOpen: function () {
+        var payEstNome = document.getElementById("payEstNome");
+        var payEstId = document.getElementById("payEst");
+        if (payEstNome) payEstNome.addEventListener("input", function () {
+          var v = this.value.trim();
+          var e = D.estudantes().filter(function (x) { return (x.nome + " · " + x.matricula) === v || x.nome === v; })[0];
+          payEstId.value = e ? e.id : "";
+        });
         var payEmol = document.getElementById("payEmol");
         if (payEmol) payEmol.addEventListener("change", function () {
           var v = D.emolumentoValor(this.value);
@@ -588,40 +596,46 @@
           if (!est) { C.toast("Selecione o estudante.", "err"); return; }
           if (!(valor > 0)) { C.toast("O valor pago deve ser maior que zero.", "err"); return; }
           var emo = D.emolumentoById(fd.get("emolumentoId"));
-          var pag = V._criarPagamento(est, {
+          var btn = document.getElementById("savePag");
+          if (btn) { btn.disabled = true; btn.textContent = "A registar…"; }
+          V._criarPagamento(est, {
             emolumentoId: emo ? emo.id : "", emolumento: emo ? emo.nome : "Outros",
             categoria: emo ? emo.categoria : "Outros", valorPago: valor,
             formaPagamento: fd.get("formaPagamento"), funcionario: fd.get("funcionario"),
             data: fd.get("data") ? fd.get("data") + "T" + new Date().toTimeString().slice(0, 8) : U.agoraISO(),
             referencia: fd.get("referencia"), observacoes: fd.get("observacoes")
+          }).then(function (pag) {
+            C.closeModal();
+            C.toast("Pagamento registado — recibo " + pag.recibo, "ok");
+            C.viewReceipt(pag);
+            App.refresh();
           });
-          C.closeModal();
-          C.toast("Pagamento registado — recibo " + pag.recibo, "ok");
-          C.viewReceipt(pag);
-          App.refresh();
         };
       }
     });
   };
-  // Cria registo de pagamento a partir de um estudante + dados
+  // Cria registo de pagamento a partir de um estudante + dados.
+  // Devolve uma Promise<pagamento> (o número do recibo é alocado de forma atómica).
   V._criarPagamento = function (est, extra) {
-    var pag = {
-      recibo: D.nextRecibo(),
-      estudanteId: est.id, estudanteNome: est.nome, matricula: est.matricula,
-      contacto: est.contacto, curso: est.curso, periodo: est.periodo,
-      unidade: est.unidade, tipoCurso: est.tipoCurso, duracao: est.duracao, regime: est.regime,
-      data: extra.data || U.agoraISO(),
-      emolumentoId: extra.emolumentoId || "",
-      emolumento: extra.emolumento || "Outros",
-      categoria: extra.categoria || "",
-      mesReferencia: extra.mesReferencia || "",
-      valorPago: extra.valorPago || 0,
-      formaPagamento: extra.formaPagamento || "",
-      funcionario: extra.funcionario || "",
-      referencia: extra.referencia || "",
-      observacoes: extra.observacoes || ""
-    };
-    return D.savePagamento(pag);
+    return D.alocarRecibo().then(function (numero) {
+      var pag = {
+        recibo: numero,
+        estudanteId: est.id, estudanteNome: est.nome, matricula: est.matricula,
+        contacto: est.contacto, curso: est.curso, periodo: est.periodo,
+        unidade: est.unidade, tipoCurso: est.tipoCurso, duracao: est.duracao, regime: est.regime,
+        data: extra.data || U.agoraISO(),
+        emolumentoId: extra.emolumentoId || "",
+        emolumento: extra.emolumento || "Outros",
+        categoria: extra.categoria || "",
+        mesReferencia: extra.mesReferencia || "",
+        valorPago: extra.valorPago || 0,
+        formaPagamento: extra.formaPagamento || "",
+        funcionario: extra.funcionario || "",
+        referencia: extra.referencia || "",
+        observacoes: extra.observacoes || ""
+      };
+      return D.savePagamento(pag);
+    });
   };
 
   /* =======================================================================
@@ -1082,21 +1096,22 @@
   };
   V.cfgConta = function () {
     var a = D.auth();
-    return '<form id="formConta" class="card"><div class="card-head"><h3>Conta da secretaria</h3></div>' +
-      '<p class="help">O acesso ao sistema é protegido por utilizador e palavra-passe. ' +
-      "Trata-se de uma proteção do lado do cliente (no navegador): impede o acesso casual, " +
-      "mas não substitui um servidor seguro. Mantenha a palavra-passe reservada.</p>" +
+    return '<form id="formConta" class="card"><div class="card-head"><h3>A minha conta</h3></div>' +
+      '<p class="help">A autenticação é gerida pelo Supabase. Aqui pode atualizar o nome a mostrar ' +
+      "e a sua palavra-passe. O e-mail/utilizador e o perfil são definidos pelo administrador.</p>" +
       '<div class="form-grid">' +
-        '<div class="field"><label>Exigir login ao abrir</label><select name="enabled">' +
-          U.optionList(["Sim", "Não"], a.enabled ? "Sim" : "Não") + "</select></div>" +
+        '<div class="field"><label>E-mail / utilizador</label><input value="' + U.esc(a.user || "—") + '" disabled></div>' +
+        '<div class="field"><label>Perfil</label><input value="' + U.esc(a.perfil || "—") + '" disabled></div>' +
         '<div class="field"><label>Nome a mostrar</label><input name="nome" value="' + U.esc(a.nome || "") + '"></div>' +
-        '<div class="field"><label>Utilizador</label><input name="user" value="' + U.esc(a.user) + '" required></div>' +
         '<div class="field"></div>' +
         '<div class="fieldset-title">Alterar palavra-passe</div>' +
         '<div class="field"><label>Nova palavra-passe</label><input type="password" name="novaPass" autocomplete="new-password" placeholder="(deixe vazio para manter)"></div>' +
         '<div class="field"><label>Confirmar nova palavra-passe</label><input type="password" name="novaPass2" autocomplete="new-password"></div>' +
       "</div>" +
-      '<div class="form-actions"><button type="submit" class="btn btn-primary">Guardar conta</button></div></form>';
+      '<div class="form-actions">' +
+        '<button type="button" class="btn btn-light" id="contaSair">Terminar sessão</button>' +
+        '<button type="submit" class="btn btn-primary">Guardar conta</button>' +
+      "</div></form>";
   };
 
   // ---- Utilizadores (apenas administrador) ----

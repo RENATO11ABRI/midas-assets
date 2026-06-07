@@ -17,7 +17,21 @@
   if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) return; // modo local
 
   if (!window.supabase || !window.supabase.createClient) {
-    console.error("Supabase JS não carregou — a app fica em modo local.");
+    // Backend configurado mas a biblioteca não carregou (ex.: sem internet).
+    // NÃO cair silenciosamente no login local — mostrar erro claro.
+    console.error("Supabase JS não carregou — verifique a ligação à internet.");
+    window.Auth.gate = function () {
+      var screen = document.getElementById("loginScreen");
+      var app = document.getElementById("app");
+      if (app) app.hidden = true;
+      if (screen) {
+        screen.hidden = false;
+        screen.innerHTML = '<div class="login-card"><h1>Sem ligação ao servidor</h1>' +
+          '<p class="login-hint">Não foi possível carregar a biblioteca do Supabase. ' +
+          'Verifique a ligação à internet e recarregue a página.</p>' +
+          '<button class="btn btn-gold login-btn" onclick="location.reload()">Recarregar</button></div>';
+      }
+    };
     return;
   }
 
@@ -244,6 +258,32 @@
   D.reset = function () { var db = base.reset(); ressincronizarEntidades(db); return db; };
   D.import = function (json) { var db = base.import(json); ressincronizarEntidades(db); return db; };
 
+  // Numeração atómica via RPC (evita números repetidos entre dispositivos).
+  base.nextMatricula = D.nextMatricula.bind(D);
+  base.nextRecibo = D.nextRecibo.bind(D);
+  function alocarAtomico(tipo, prefixo, digitos, fallbackSync) {
+    return sb.rpc("proximo_contador", { p_tipo: tipo }).then(function (res) {
+      if (res.error || res.data == null) {
+        console.error("proximo_contador", res.error);
+        return fallbackSync(); // recorre ao contador local se a RPC falhar
+      }
+      var n = Number(res.data);
+      var db = D.db();
+      // mantém o "peek" local coerente com o servidor
+      if (tipo === "matricula" && n >= (db.settings.seqMatricula || 0)) db.settings.seqMatricula = n + 1;
+      if (tipo === "recibo" && n >= (db.settings.seqRecibo || 0)) db.settings.seqRecibo = n + 1;
+      return D._fmtNum(prefixo, n, digitos);
+    });
+  }
+  D.alocarMatricula = function () {
+    var s = D.db().settings;
+    return alocarAtomico("matricula", s.prefixoMatricula, s.digitosMatricula, base.nextMatricula);
+  };
+  D.alocarRecibo = function () {
+    var s = D.db().settings;
+    return alocarAtomico("recibo", s.prefixoRecibo, s.digitosRecibo, base.nextRecibo);
+  };
+
   /* ---- Autenticação (Supabase Auth) ---------------------------------- */
   D.auth = function () {
     return {
@@ -364,7 +404,7 @@
 
   /* ---- Substitui o portão de autenticação da app -------------------- */
   window.Auth.isLoggedIn = function () { return !!_user; };
-  window.Auth.logout = function () { try { sb.auth.signOut(); } catch (e) {} };
+  window.Auth.logout = function () { return sb.auth.signOut({ scope: "local" }); };
   window.Auth.showLogin = function (onReady) { showSupaLogin(onReady); };
   window.Auth.gate = function (onReady) {
     sb.auth.getSession().then(function (res) {

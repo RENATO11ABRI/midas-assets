@@ -174,26 +174,32 @@
       if (!(valor > 0)) { C.toast("O valor pago deve ser maior que zero.", "err"); return; }
       var dataVal = g("data");
       var emo = D.emolumentoById(g("emolumentoId"));
-      var pag = {
-        recibo: D.nextRecibo(),
-        estudanteId: g("estudanteId") || "",
-        estudanteNome: nome, matricula: g("matricula"), contacto: g("contacto"),
-        curso: g("curso"), periodo: g("periodo"), unidade: g("unidade"),
-        tipoCurso: "", duracao: "", regime: "",
-        emolumentoId: emo ? emo.id : "", emolumento: emo ? emo.nome : "Outros",
-        categoria: emo ? emo.categoria : "Outros", mesReferencia: g("mesReferencia"),
-        valorPago: valor, formaPagamento: g("formaPagamento"),
-        funcionario: g("funcionario"), referencia: "", observacoes: g("observacoes"),
-        data: dataVal ? dataVal + "T" + new Date().toTimeString().slice(0, 8) : U.agoraISO()
-      };
-      D.savePagamento(pag);
-      App._lastRecibo = pag;
-      document.getElementById("recPreview").innerHTML = C.receiptHTML(pag);
-      document.getElementById("recPreviewCard").hidden = false;
-      document.getElementById("recNum").textContent = D.peekRecibo();
-      C.toast("Recibo " + pag.recibo + " gerado.", "ok");
-      V.renderRecibos();
-      document.getElementById("recPreviewCard").scrollIntoView({ behavior: "smooth", block: "start" });
+      var btnRec = document.getElementById("recGerar");
+      if (btnRec) { btnRec.disabled = true; btnRec.textContent = "A gerar…"; }
+      // Nº do recibo alocado de forma atómica (sem duplicação multi-dispositivo)
+      D.alocarRecibo().then(function (numero) {
+        var pag = {
+          recibo: numero,
+          estudanteId: g("estudanteId") || "",
+          estudanteNome: nome, matricula: g("matricula"), contacto: g("contacto"),
+          curso: g("curso"), periodo: g("periodo"), unidade: g("unidade"),
+          tipoCurso: "", duracao: "", regime: "",
+          emolumentoId: emo ? emo.id : "", emolumento: emo ? emo.nome : "Outros",
+          categoria: emo ? emo.categoria : "Outros", mesReferencia: g("mesReferencia"),
+          valorPago: valor, formaPagamento: g("formaPagamento"),
+          funcionario: g("funcionario"), referencia: "", observacoes: g("observacoes"),
+          data: dataVal ? dataVal + "T" + new Date().toTimeString().slice(0, 8) : U.agoraISO()
+        };
+        D.savePagamento(pag);
+        App._lastRecibo = pag;
+        document.getElementById("recPreview").innerHTML = C.receiptHTML(pag);
+        document.getElementById("recPreviewCard").hidden = false;
+        document.getElementById("recNum").textContent = D.peekRecibo();
+        C.toast("Recibo " + pag.recibo + " gerado.", "ok");
+        V.renderRecibos();
+        document.getElementById("recPreviewCard").scrollIntoView({ behavior: "smooth", block: "start" });
+        if (btnRec) { btnRec.disabled = false; btnRec.textContent = "Gerar recibo"; }
+      });
     };
 
     var printRec = function () {
@@ -317,22 +323,25 @@
     });
   }
   function wireConta() {
+    var sair = document.getElementById("contaSair");
+    if (sair) sair.onclick = function () {
+      C.confirm("Terminar a sessão?", function () {
+        Promise.resolve(window.Auth.logout()).then(function () { location.reload(); });
+      }, { yes: "Terminar sessão" });
+    };
     document.getElementById("formConta").addEventListener("submit", function (ev) {
       ev.preventDefault();
       var fd = new FormData(ev.target);
-      var user = (fd.get("user") || "").trim();
       var nome = (fd.get("nome") || "").trim();
       var p1 = fd.get("novaPass"), p2 = fd.get("novaPass2");
-      if (!user) { C.toast("Indique o utilizador.", "err"); return; }
       if (p1 || p2) {
         if (p1 !== p2) { C.toast("As palavras-passe não coincidem.", "err"); return; }
-        if (p1.length < 4) { C.toast("A palavra-passe deve ter pelo menos 4 caracteres.", "err"); return; }
+        if (p1.length < 6) { C.toast("A palavra-passe deve ter pelo menos 6 caracteres.", "err"); return; }
       }
-      var a = D.auth();
-      a.enabled = fd.get("enabled") !== "Não";
-      D.definirCredenciais(user, nome, p1 || null);
+      D.definirCredenciais(null, nome, p1 || null);
       D.save();
       var chip = document.getElementById("userChip");
+      var a = D.auth();
       if (chip) chip.textContent = "" + (a.nome || a.user);
       C.toast("Conta atualizada." + (p1 ? " Palavra-passe alterada." : ""), "ok");
     });
@@ -411,8 +420,10 @@
       var file = e.target.files[0]; if (!file) return;
       var reader = new FileReader();
       reader.onload = function () {
-        try { D.import(reader.result); C.toast("Backup importado.", "ok"); App.refresh(); }
-        catch (err) { C.toast("Ficheiro inválido.", "err"); }
+        C.confirm("Importar este backup? Os dados atuais (incluindo no servidor) serão SUBSTITUÍDOS pelos do ficheiro.", function () {
+          try { D.import(reader.result); C.toast("Backup importado.", "ok"); App.refresh(); }
+          catch (err) { C.toast("Ficheiro inválido.", "err"); }
+        }, { danger: true, yes: "Importar e substituir" });
       };
       reader.readAsText(file);
     };
@@ -474,46 +485,57 @@
         C.toast("Nome, contacto e curso são obrigatórios.", "err"); return;
       }
       var editing = !!fd.get("id");
-      var est = {
-        id: fd.get("id") || undefined,
-        matricula: editing ? fd.get("matricula") : D.nextMatricula(),
-        nome: nome, bi: fd.get("bi"), dataNascimento: fd.get("dataNascimento"),
-        contacto: contacto, whatsapp: fd.get("whatsapp"), morada: fd.get("morada"),
-        encarregado: fd.get("encarregado"), encarregadoContacto: fd.get("encarregadoContacto"),
-        curso: curso, unidade: fd.get("unidade"), periodo: fd.get("periodo"),
-        tipoCurso: fd.get("tipoCurso"), duracao: fd.get("duracao"), regime: fd.get("regime"),
-        dataMatricula: fd.get("dataMatricula") || U.hoje(),
-        valorInscricao: U.parseMoeda(fd.get("valorInscricao")),
-        valorMatricula: U.parseMoeda(fd.get("valorMatricula")),
-        valorPago: U.parseMoeda(fd.get("valorPago")),
-        formaPagamento: fd.get("formaPagamento"),
-        emolumentoId: fd.get("emolumentoId"),
-        funcionario: fd.get("funcionario"),
-        estado: fd.get("estado") || "ativo",
-        observacoes: fd.get("observacoes")
+      var btn = document.getElementById("matGerar");
+      if (btn) { btn.disabled = true; btn.textContent = editing ? "A guardar…" : "A gerar…"; }
+      var restoreBtn = function () {
+        if (btn) { btn.disabled = false; btn.textContent = editing ? "Guardar alterações" : "Gerar matrícula"; }
       };
-      D.saveEstudante(est);
+      // Nº de matrícula: edição mantém; nova matrícula aloca de forma atómica.
+      var numeroP = editing ? Promise.resolve(fd.get("matricula")) : D.alocarMatricula();
+      numeroP.then(function (numeroMat) {
+        var est = {
+          id: fd.get("id") || undefined,
+          matricula: numeroMat,
+          nome: nome, bi: fd.get("bi"), dataNascimento: fd.get("dataNascimento"),
+          contacto: contacto, whatsapp: fd.get("whatsapp"), morada: fd.get("morada"),
+          encarregado: fd.get("encarregado"), encarregadoContacto: fd.get("encarregadoContacto"),
+          curso: curso, unidade: fd.get("unidade"), periodo: fd.get("periodo"),
+          tipoCurso: fd.get("tipoCurso"), duracao: fd.get("duracao"), regime: fd.get("regime"),
+          dataMatricula: fd.get("dataMatricula") || U.hoje(),
+          valorInscricao: U.parseMoeda(fd.get("valorInscricao")),
+          valorMatricula: U.parseMoeda(fd.get("valorMatricula")),
+          valorPago: U.parseMoeda(fd.get("valorPago")),
+          formaPagamento: fd.get("formaPagamento"),
+          emolumentoId: fd.get("emolumentoId"),
+          funcionario: fd.get("funcionario"),
+          estado: fd.get("estado") || "ativo",
+          observacoes: fd.get("observacoes")
+        };
+        D.saveEstudante(est);
 
-      var valorPago = est.valorPago;
-      var gerar = document.getElementById("gerarRecibo") && document.getElementById("gerarRecibo").checked;
-      var msg = editing ? "Alterações guardadas." : "Matrícula " + est.matricula + " gerada.";
-      if (!editing && gerar && valorPago > 0) {
-        var emo = D.emolumentoById(fd.get("emolumentoId"));
-        var pag = V._criarPagamento(est, {
-          emolumentoId: emo ? emo.id : "", emolumento: emo ? emo.nome : "Matrícula",
-          categoria: emo ? emo.categoria : "Matrícula",
-          valorPago: valorPago, formaPagamento: fd.get("formaPagamento"),
-          funcionario: fd.get("funcionario"), data: U.agoraISO(), observacoes: fd.get("observacoes")
-        });
-        msg += " Recibo " + pag.recibo + " gerado.";
-      }
-      App._lastFicha = est;
-      document.getElementById("matPreview").innerHTML = C.fichaMatriculaHTML(est);
-      document.getElementById("matPreviewCard").hidden = false;
-      document.getElementById("matNum").textContent = D.peekMatricula();
-      C.toast(msg, "ok");
-      V.renderMatriculaSearch();
-      document.getElementById("matPreviewCard").scrollIntoView({ behavior: "smooth", block: "start" });
+        var valorPago = est.valorPago;
+        var gerar = document.getElementById("gerarRecibo") && document.getElementById("gerarRecibo").checked;
+        var msg = editing ? "Alterações guardadas." : "Matrícula " + est.matricula + " gerada.";
+        var finish = function () {
+          App._lastFicha = est;
+          document.getElementById("matPreview").innerHTML = C.fichaMatriculaHTML(est);
+          document.getElementById("matPreviewCard").hidden = false;
+          document.getElementById("matNum").textContent = D.peekMatricula();
+          C.toast(msg, "ok");
+          V.renderMatriculaSearch();
+          document.getElementById("matPreviewCard").scrollIntoView({ behavior: "smooth", block: "start" });
+          restoreBtn();
+        };
+        if (!editing && gerar && valorPago > 0) {
+          var emo = D.emolumentoById(fd.get("emolumentoId"));
+          V._criarPagamento(est, {
+            emolumentoId: emo ? emo.id : "", emolumento: emo ? emo.nome : "Matrícula",
+            categoria: emo ? emo.categoria : "Matrícula",
+            valorPago: valorPago, formaPagamento: fd.get("formaPagamento"),
+            funcionario: fd.get("funcionario"), data: U.agoraISO(), observacoes: fd.get("observacoes")
+          }).then(function (pag) { msg += " Recibo " + pag.recibo + " gerado."; finish(); });
+        } else { finish(); }
+      });
     }
 
     form.addEventListener("submit", function (ev) { ev.preventDefault(); gerarMatricula(); });
@@ -577,7 +599,11 @@
     setTimeout(function () { host.remove(); }, 1500);
   }
   function stripHtmlRow(row) {
-    return row.map(function (c) { return String(c == null ? "" : c).replace(/<[^>]*>/g, ""); });
+    return row.map(function (c) {
+      return String(c == null ? "" : c).replace(/<[^>]*>/g, "")
+        .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'").replace(/&amp;/g, "&");
+    });
   }
   function slug(s) { return String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""); }
 
@@ -683,8 +709,7 @@
     var logout = document.getElementById("logoutBtn");
     if (logout) logout.onclick = function () {
       C.confirm("Terminar a sessão?", function () {
-        window.Auth.logout();
-        location.reload();
+        Promise.resolve(window.Auth.logout()).then(function () { location.reload(); });
       }, { yes: "Terminar sessão" });
     };
 
