@@ -474,8 +474,8 @@
      5. PAGAMENTOS
      ======================================================================= */
   V.pagamentos = function () {
-    return C.pageHead("Pagamentos", "Gestão e controlo de todos os pagamentos",
-      '<button class="btn btn-primary" id="novoPag">Registar Pagamento</button>' +
+    return C.pageHead("Pagamentos", "Registe pagamentos e gere recibos. Ao registar um pagamento, o estudante é criado automaticamente se ainda não existir.",
+      '<button class="btn btn-gold" id="novoPag">Registar Pagamento</button>' +
       '<button class="btn btn-light" id="expPagCsv">Exportar CSV</button>' +
       '<button class="btn btn-light" id="expPagPdf">Relatório PDF</button>') +
       '<div class="grid stats mb" id="pagStats"></div>' +
@@ -568,20 +568,31 @@
     return null;
   };
 
-  // Modal: registar novo pagamento (opcional estudante pré-selecionado)
+  // Modal: registar pagamento. Se o estudante não existir, é CRIADO a partir
+  // deste pagamento (a folha de pagamento é o ponto de entrada do estudante).
   V.novoPagamento = function (estId) {
     var db = D.db();
     var sel = estId ? D.estudanteById(estId) : null;
     var estList = D.estudantes().slice().sort(function (a, b) { return a.nome < b.nome ? -1 : 1; })
       .map(function (e) { return '<option value="' + U.esc(e.nome + " · " + e.matricula) + '"></option>'; }).join("");
+    var cursoOpts = '<option value="">— Curso (opcional) —</option>' +
+      D.cursosOrdenados().map(function (c) {
+        return '<option value="' + U.esc(c.nome) + '"' + (sel && sel.curso === c.nome ? " selected" : "") + ">" + U.esc(c.nome) + "</option>";
+      }).join("");
     C.modal({
       title: "Registar Pagamento",
-      body: '<form id="formPag"><div class="form-grid">' +
-        '<div class="field full"><label>Estudante (escreva o nome) <span class="req">*</span></label>' +
-          '<input id="payEstNome" list="payEstList" autocomplete="off" placeholder="Escreva o nome do estudante..." value="' +
-            (sel ? U.esc(sel.nome + " · " + sel.matricula) : "") + '">' +
+      body: '<form id="formPag">' +
+        '<p class="help" style="margin-top:0">Escreva o nome do estudante. Se ainda não existir no sistema, ' +
+        "<strong>é criado automaticamente</strong> a partir deste pagamento.</p>" +
+        '<div class="form-grid">' +
+        '<div class="field full"><label>Nome do estudante <span class="req">*</span></label>' +
+          '<input id="payEstNome" list="payEstList" autocomplete="off" placeholder="Escreva o nome..." value="' +
+            (sel ? U.esc(sel.nome) : "") + '">' +
           '<datalist id="payEstList">' + estList + "</datalist>" +
           '<input type="hidden" name="estudanteId" id="payEst" value="' + (sel ? sel.id : "") + '"></div>' +
+        '<div class="field"><label>Contacto</label><input name="contacto" id="payContacto" type="tel" value="' +
+          (sel ? U.esc(sel.contacto || "") : "") + '"></div>' +
+        '<div class="field"><label>Curso</label><select name="curso" id="payCurso">' + cursoOpts + "</select></div>" +
         '<div class="field"><label>Tipo de pagamento <span class="req">*</span></label><select name="emolumentoId" id="payEmol" required>' +
           V.emolumentoOptions(D.emolumentoPadrao("Propina")) + "</select></div>" +
         '<div class="field"><label>Valor pago (Kz) <span class="req">*</span></label>' +
@@ -603,6 +614,12 @@
         if (payEstNome) payEstNome.addEventListener("input", function () {
           var e = V.resolverEstudante(this.value);
           payEstId.value = e ? e.id : "";
+          if (e) { // preenche dados do estudante existente (sem apagar o que já esteja)
+            var ct = document.getElementById("payContacto");
+            var cu = document.getElementById("payCurso");
+            if (ct && !ct.value) ct.value = e.contacto || "";
+            if (cu && e.curso) cu.value = e.curso;
+          }
         });
         var payEmol = document.getElementById("payEmol");
         if (payEmol) payEmol.addEventListener("change", function () {
@@ -612,25 +629,47 @@
         });
         document.getElementById("savePag").onclick = function () {
           var fd = new FormData(document.getElementById("formPag"));
-          var est = D.estudanteById(fd.get("estudanteId")) ||
-                    V.resolverEstudante(document.getElementById("payEstNome").value);
+          var nomeRaw = (document.getElementById("payEstNome").value || "").trim();
           var valor = U.parseMoeda(fd.get("valorPago"));
-          if (!est) { C.toast("Escreva o nome e escolha um estudante da lista de sugestões.", "err"); return; }
+          if (!nomeRaw) { C.toast("Escreva o nome do estudante.", "err"); return; }
           if (!(valor > 0)) { C.toast("O valor pago deve ser maior que zero.", "err"); return; }
           var emo = D.emolumentoById(fd.get("emolumentoId"));
           var btn = document.getElementById("savePag");
           if (btn) { btn.disabled = true; btn.textContent = "A registar…"; }
-          V._criarPagamento(est, {
-            emolumentoId: emo ? emo.id : "", emolumento: emo ? emo.nome : "Outros",
-            categoria: emo ? emo.categoria : "Outros", valorPago: valor,
-            formaPagamento: fd.get("formaPagamento"), funcionario: fd.get("funcionario"),
-            data: fd.get("data") ? fd.get("data") + "T" + new Date().toTimeString().slice(0, 8) : U.agoraISO(),
-            referencia: fd.get("referencia"), observacoes: fd.get("observacoes")
-          }).then(function (pag) {
-            C.closeModal();
-            C.toast("Pagamento registado — recibo " + pag.recibo, "ok");
-            C.viewReceipt(pag);
-            App.refresh();
+          var restore = function () { if (btn) { btn.disabled = false; btn.textContent = "Registar e gerar recibo"; } };
+
+          // Estudante existente (resolvido) ou criação automática a partir do pagamento
+          var existente = D.estudanteById(payEstId.value) || V.resolverEstudante(nomeRaw);
+          var obterEst = existente
+            ? Promise.resolve({ est: existente, novo: false })
+            : D.alocarMatricula().then(function (numero) {
+                var novo = D.saveEstudante({
+                  matricula: numero,
+                  nome: nomeRaw.split(" · ")[0].trim(),
+                  contacto: fd.get("contacto") || "",
+                  curso: fd.get("curso") || "",
+                  estado: "ativo",
+                  dataMatricula: U.hoje()
+                });
+                return { est: novo, novo: true };
+              });
+
+          obterEst.then(function (r) {
+            return V._criarPagamento(r.est, {
+              emolumentoId: emo ? emo.id : "", emolumento: emo ? emo.nome : "Outros",
+              categoria: emo ? emo.categoria : "Outros", valorPago: valor,
+              formaPagamento: fd.get("formaPagamento"), funcionario: fd.get("funcionario"),
+              data: fd.get("data") ? fd.get("data") + "T" + new Date().toTimeString().slice(0, 8) : U.agoraISO(),
+              referencia: fd.get("referencia"), observacoes: fd.get("observacoes")
+            }).then(function (pag) {
+              C.closeModal();
+              C.toast((r.novo ? "Estudante criado e pagamento registado" : "Pagamento registado") + " — recibo " + pag.recibo, "ok");
+              C.viewReceipt(pag);
+              App.refresh();
+            });
+          }).catch(function (e) {
+            C.toast("Erro ao registar: " + (e && e.message ? e.message : e), "err");
+            restore();
           });
         };
       }
