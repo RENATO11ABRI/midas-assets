@@ -208,6 +208,36 @@ from auth.users
 where email = 'stvsonhonatv@gmail.com'
 on conflict (id) do update set perfil = 'admin', ativo = true;
 
+-- ----------------------------------------------------------------------------
+-- 7) CONTADORES ATÓMICOS (numeração segura de matrículas/recibos multi-utilizador)
+-- ----------------------------------------------------------------------------
+create table if not exists public.contadores (
+  tipo  text primary key,           -- 'matricula' | 'recibo'
+  valor bigint not null default 0
+);
+alter table public.contadores enable row level security;
+drop policy if exists p_cont_sel on public.contadores;
+create policy p_cont_sel on public.contadores for select using (auth.uid() is not null);
+-- (sem política de escrita direta: só a função abaixo, security definer, escreve)
+
+create or replace function public.proximo_contador(p_tipo text)
+returns bigint language plpgsql security definer set search_path = public as $$
+declare v bigint;
+begin
+  insert into public.contadores(tipo, valor) values (p_tipo, 1)
+  on conflict (tipo) do update set valor = public.contadores.valor + 1
+  returning valor into v;
+  return v;
+end; $$;
+grant execute on function public.proximo_contador(text) to authenticated;
+
+-- Inicializa os contadores acima do maior número já existente (evita colisões
+-- com matrículas/recibos criados antes desta migração).
+insert into public.contadores(tipo, valor) values
+  ('matricula', coalesce((select max(substring(dados->>'matricula' from '(\d+)$')::bigint) from public.estudantes), 0)),
+  ('recibo',    coalesce((select max(substring(dados->>'recibo'    from '(\d+)$')::bigint) from public.pagamentos), 0))
+on conflict (tipo) do nothing;
+
 -- ============================================================================
 -- FIM. A aplicação preenche configurações/cursos/emolumentos no primeiro arranque.
 -- ============================================================================
