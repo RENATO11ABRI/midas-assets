@@ -52,7 +52,21 @@
   });
 
   function toast(msg, tipo) { try { window.C && window.C.toast(msg, tipo || "ok"); } catch (e) {} }
-  function fail(msg, err) { if (err) console.error(msg, err); toast(msg, "err"); }
+  function fail(msg, err) {
+    var detail = err && (err.message || err.error_description || err.hint || err.details);
+    if (err) console.error(msg, err);
+    toast(detail ? (msg + " (" + detail + ")") : msg, "err");
+  }
+
+  // Que perfis podem ESCREVER em cada tabela (espelha as políticas RLS)
+  function podeEscrever(table) {
+    var p = _perfil.perfil;
+    if (table === "cursos") return ["admin", "directora", "coordenador"].indexOf(p) >= 0;
+    if (table === "emolumentos" || table === "configuracoes") return ["admin", "directora"].indexOf(p) >= 0;
+    if (table === "estudantes") return ["admin", "directora", "secretaria"].indexOf(p) >= 0;
+    if (table === "pagamentos") return ["admin", "directora", "secretaria", "financeiro"].indexOf(p) >= 0;
+    return false;
+  }
 
   /* ---- Helpers de leitura/escrita ------------------------------------ */
   function fetchAll(table) {
@@ -124,8 +138,16 @@
         db.cursos = r[0]; db.emolumentos = r[1];
         db.estudantes = r[2]; db.pagamentos = r[3];
         var seeds = [];
-        if (!db.cursos.length && D._seedCursos) { db.cursos = D._seedCursos(); seeds.push(bulkUpsert("cursos", db.cursos)); }
-        if (!db.emolumentos.length && D._seedEmolumentos) { db.emolumentos = D._seedEmolumentos(); seeds.push(bulkUpsert("emolumentos", db.emolumentos)); }
+        // Só semeia se o perfil tiver permissão de escrita (evita erros de RLS
+        // para quem não é admin/directora). Os dados ficam na cache de qualquer forma.
+        if (!db.cursos.length && D._seedCursos) {
+          db.cursos = D._seedCursos();
+          if (podeEscrever("cursos")) seeds.push(bulkUpsert("cursos", db.cursos));
+        }
+        if (!db.emolumentos.length && D._seedEmolumentos) {
+          db.emolumentos = D._seedEmolumentos();
+          if (podeEscrever("emolumentos")) seeds.push(bulkUpsert("emolumentos", db.emolumentos));
+        }
         reconcileSeqs(db);
         return Promise.all(seeds);
       });
