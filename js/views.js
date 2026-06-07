@@ -546,6 +546,28 @@
       "</tbody></table></div>";
   };
 
+  // Resolve um texto escrito (nome, "nome · matrícula" ou parcial) para um estudante.
+  // Tolerante a maiúsculas, acentos e espaços; só devolve quando há 1 correspondência clara.
+  V.resolverEstudante = function (valor) {
+    var norm = function (s) {
+      return String(s == null ? "" : s).trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+    };
+    var v = norm(valor);
+    if (!v) return null;
+    var ests = D.estudantes();
+    var exato = ests.filter(function (x) {
+      return norm(x.nome + " · " + x.matricula) === v || norm(x.nome) === v;
+    });
+    if (exato.length) return exato[0];
+    var porMat = ests.filter(function (x) { return x.matricula && v.indexOf(norm(x.matricula)) >= 0; });
+    if (porMat.length === 1) return porMat[0];
+    var parc = ests.filter(function (x) {
+      return norm(x.nome + " · " + x.matricula).indexOf(v) >= 0 || norm(x.nome).indexOf(v) >= 0;
+    });
+    if (parc.length === 1) return parc[0];
+    return null;
+  };
+
   // Modal: registar novo pagamento (opcional estudante pré-selecionado)
   V.novoPagamento = function (estId) {
     var db = D.db();
@@ -579,8 +601,7 @@
         var payEstNome = document.getElementById("payEstNome");
         var payEstId = document.getElementById("payEst");
         if (payEstNome) payEstNome.addEventListener("input", function () {
-          var v = this.value.trim();
-          var e = D.estudantes().filter(function (x) { return (x.nome + " · " + x.matricula) === v || x.nome === v; })[0];
+          var e = V.resolverEstudante(this.value);
           payEstId.value = e ? e.id : "";
         });
         var payEmol = document.getElementById("payEmol");
@@ -591,9 +612,10 @@
         });
         document.getElementById("savePag").onclick = function () {
           var fd = new FormData(document.getElementById("formPag"));
-          var est = D.estudanteById(fd.get("estudanteId"));
+          var est = D.estudanteById(fd.get("estudanteId")) ||
+                    V.resolverEstudante(document.getElementById("payEstNome").value);
           var valor = U.parseMoeda(fd.get("valorPago"));
-          if (!est) { C.toast("Selecione o estudante.", "err"); return; }
+          if (!est) { C.toast("Escreva o nome e escolha um estudante da lista de sugestões.", "err"); return; }
           if (!(valor > 0)) { C.toast("O valor pago deve ser maior que zero.", "err"); return; }
           var emo = D.emolumentoById(fd.get("emolumentoId"));
           var btn = document.getElementById("savePag");

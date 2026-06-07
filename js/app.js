@@ -139,10 +139,7 @@
     var recEstNome = document.getElementById("recEstNome");
     var recEstId = document.getElementById("recEst");
     if (recEstNome) recEstNome.addEventListener("input", function () {
-      var val = this.value.trim();
-      var est = D.estudantes().filter(function (e) {
-        return (e.nome + " · " + e.matricula) === val || e.nome === val;
-      })[0];
+      var est = V.resolverEstudante(this.value);
       if (est) {
         recEstId.value = est.id;
         setVal("nome", est.nome); setVal("contacto", est.contacto); setVal("matricula", est.matricula);
