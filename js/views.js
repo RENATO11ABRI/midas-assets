@@ -52,26 +52,13 @@
       .filter(function (x) { return x.value > 0; }).sort(function (a, b) { return b.value - a.value; }).slice(0, 8);
 
     var html =
-      '<div class="hero hero-premium">' +
-        '<div class="hero-main">' +
-          '<span class="hero-eyebrow">' + U.esc(s.instituicao) + "</span>" +
-          "<h1>" + U.esc(s.sistema) + '</h1><span class="slogan">' + U.esc(s.slogan) + "</span>" +
-          "<p>Plataforma centralizada de gestão académica e financeira do " + U.esc(s.instituicao) +
-          ". Uma matrícula alimenta automaticamente estudantes, pagamentos, recibos, relatórios e este painel.</p>" +
-          '<div class="hero-actions">' +
-            '<button class="btn btn-gold" data-go="matricula">Nova Matrícula</button>' +
-            '<button class="btn btn-ghost" data-go="recibos">Emitir Recibo</button>' +
-            '<button class="btn btn-ghost" data-go="relatorios">Relatórios</button>' +
-          "</div>" +
-        "</div>" +
-        '<div class="hero-kpi">' +
-          '<div class="hk-label">Recebido no mês</div>' +
-          '<div class="hk-value num">' + U.moeda(recMes) + "</div>" +
-          '<div class="hk-row"><span>Hoje</span><strong class="num">' + U.moeda(recHoje) + "</strong></div>" +
-          '<div class="hk-row"><span>No ano</span><strong class="num">' + U.moeda(recAno) + "</strong></div>" +
-          '<div class="hk-row"><span>Total</span><strong class="num">' + U.moeda(totalRec) + "</strong></div>" +
-        "</div>" +
-      "</div>" +
+      '<div class="page-head"><div>' +
+        "<h1>" + U.esc(s.sistema) + '</h1><p class="sub">' + U.esc(s.slogan) + " · " + U.esc(s.instituicao) + "</p></div>" +
+        '<div class="page-actions">' +
+          '<button class="btn btn-primary" data-go="matricula">Nova Matrícula</button>' +
+          '<button class="btn" data-go="recibos">Emitir Recibo</button>' +
+          '<button class="btn" data-go="relatorios">Relatórios</button>' +
+        "</div></div>" +
 
       '<div class="grid stats">' +
         V._stat("Estudantes matriculados", estudantes.length, { icon: "users", accent: "green" }) +
@@ -151,14 +138,14 @@
     var p = V._ICONES[name];
     return p ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + p + "</svg>" : "";
   };
+  // KPI no estilo do design premium (.kpi). Mantém a assinatura antiga
+  // (label, value, {icon, accent, sub}) usada em todo o app.
   V._stat = function (label, value, opts) {
     opts = (opts && typeof opts === "object") ? opts : {};
-    var ico = opts.icon ? '<span class="stat-ico ' + (opts.accent || "") + '">' + V._ico(opts.icon) + "</span>" : "";
-    return '<div class="stat-card' + (opts.accent ? " ac-" + opts.accent : "") + '">' + ico +
-      '<div class="stat-body"><div class="label">' + U.esc(label) + "</div>" +
-      '<div class="value num">' + (typeof value === "number" ? value : U.esc(value)) + "</div>" +
-      (opts.sub ? '<div class="stat-sub">' + U.esc(opts.sub) + "</div>" : "") +
-      "</div></div>";
+    var ico = opts.icon ? '<span class="k-ico">' + V._ico(opts.icon) + "</span>" : "";
+    return '<div class="kpi"><div class="k-top"><span class="k-label">' + U.esc(label) + "</span>" + ico + "</div>" +
+      '<div class="k-val num">' + (typeof value === "number" ? value : U.esc(value)) + "</div>" +
+      (opts.sub ? '<div class="k-foot">' + U.esc(opts.sub) + "</div>" : "") + "</div>";
   };
   V._dashStudents = function (list) {
     var rows = list.map(function (e) {
