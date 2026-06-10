@@ -499,3 +499,8 @@ body.dark .chart-track { background: rgba(255,255,255,.08); }
 .paginacao { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 14px; flex-wrap: wrap; }
 .paginacao .pag-info { font-size: 13px; color: var(--muted); font-weight: 600; }
 .paginacao button[disabled] { opacity: .45; cursor: default; }
+
+/* ===== Lista de critérios (checkboxes) ===== */
+.check-list { display: flex; flex-direction: column; gap: 8px; }
+.check-row { display: flex; align-items: center; gap: 9px; font-size: 14px; color: var(--ink); cursor: pointer; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; }
+.check-row input { width: 16px; height: 16px; }

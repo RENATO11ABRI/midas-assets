@@ -319,6 +319,8 @@
 
   function wireAptidao() {
     V.renderAptidao();
+    var cfg = document.getElementById("aptConfig");
+    if (cfg) cfg.onclick = function () { V.configurarAptidao(); };
     ["aptSearch", "aptCurso", "aptEstado"].forEach(function (id) {
       var el = document.getElementById(id);
       el.addEventListener(el.tagName === "INPUT" ? "input" : "change", U.debounce(V.renderAptidao, 150));
