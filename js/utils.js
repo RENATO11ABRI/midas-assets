@@ -98,8 +98,21 @@
       );
       win.document.close();
       win.focus();
-      // Give styles a moment to load
-      setTimeout(function () { win.print(); }, 350);
+      var imprimir = function () { try { win.focus(); win.print(); } catch (e) {} };
+      // Aguarda o carregamento das imagens (logo, QR) antes de imprimir, com um
+      // teto de segurança de 3s para nunca bloquear.
+      var imgs = win.document.images || [];
+      var pendentes = [];
+      for (var j = 0; j < imgs.length; j++) {
+        var im = imgs[j];
+        if (im && !im.complete) {
+          pendentes.push(new Promise(function (res) {
+            im.addEventListener("load", res); im.addEventListener("error", res);
+          }));
+        }
+      }
+      var teto = new Promise(function (res) { setTimeout(res, 3000); });
+      Promise.race([Promise.all(pendentes), teto]).then(function () { setTimeout(imprimir, 150); });
     },
 
     // CSV export (Excel friendly, ; separator)

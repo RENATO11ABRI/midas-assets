@@ -399,6 +399,8 @@
     },
     cursoById: function (id) { return this.load().cursos.filter(function (c) { return c.id === id; })[0]; },
     cursoByNome: function (nome) { return this.load().cursos.filter(function (c) { return c.nome === nome; })[0]; },
+    // true quando o estudante referencia um curso que já não existe (eliminado/renomeado)
+    cursoEmFalta: function (est) { return !!(est && est.curso && !this.cursoByNome(est.curso)); },
     saveCurso: function (curso) {
       var db = this.load();
       if (curso.id) {

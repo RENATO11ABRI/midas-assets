@@ -166,11 +166,7 @@
         recibos: resumo.recibos.map(function (p) { return { recibo: p.recibo, estudante: p.estudanteNome, valor: p.valorPago, forma: p.formaPagamento }; }),
         observacoes: document.getElementById("fcObs").value || ""
       });
-      var host = document.createElement("div");
-      host.style.position = "fixed"; host.style.left = "-9999px"; host.innerHTML = html;
-      document.body.appendChild(host);
-      U.printElement("fechoDoc", "Fecho de Caixa " + data);
-      setTimeout(function () { host.remove(); }, 1500);
+      C.imprimirHTML(html, "fechoDoc", "Fecho de Caixa " + data);
     };
   }
 
@@ -809,13 +805,7 @@
   }
 
   function openReportPrint(r) {
-    // render in a hidden host then print
-    var host = document.createElement("div");
-    host.style.position = "fixed"; host.style.left = "-9999px"; host.style.top = "0";
-    host.innerHTML = C.reportSheet(r.titulo, r.sub, r.headers, r.rows, r.totals);
-    document.body.appendChild(host);
-    U.printElement("reportDoc", r.titulo);
-    setTimeout(function () { host.remove(); }, 1500);
+    C.imprimirHTML(C.reportSheet(r.titulo, r.sub, r.headers, r.rows, r.totals), "reportDoc", r.titulo);
   }
   function stripHtmlRow(row) {
     return row.map(function (c) {
@@ -880,13 +870,7 @@
     }
     if ((id = t.getAttribute("data-fecho-print"))) {
       var fc = D.fechoById(id);
-      if (fc) {
-        var host = document.createElement("div");
-        host.style.position = "fixed"; host.style.left = "-9999px"; host.innerHTML = C.fechoHTML(fc);
-        document.body.appendChild(host);
-        U.printElement("fechoDoc", "Fecho de Caixa " + fc.data);
-        setTimeout(function () { host.remove(); }, 1500);
-      }
+      if (fc) C.imprimirHTML(C.fechoHTML(fc), "fechoDoc", "Fecho de Caixa " + fc.data);
       return;
     }
     if ((id = t.getAttribute("data-fecho-del"))) {
