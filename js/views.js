@@ -52,37 +52,46 @@
       .filter(function (x) { return x.value > 0; }).sort(function (a, b) { return b.value - a.value; }).slice(0, 8);
 
     var html =
-      '<div class="hero">' +
-        "<h1>" + U.esc(s.sistema) + '</h1><span class="slogan">' + U.esc(s.slogan) + "</span>" +
-        "<p>Plataforma centralizada de gestão académica e financeira do " + U.esc(s.instituicao) +
-        ". Uma matrícula alimenta automaticamente estudantes, pagamentos, recibos, relatórios e este painel.</p>" +
-        '<div class="hero-actions">' +
-          '<button class="btn btn-gold" data-go="matricula">Nova Matrícula</button>' +
-          '<button class="btn btn-ghost" data-go="recibos">Emitir Recibo</button>' +
-          '<button class="btn btn-ghost" data-go="cursos">Ver Cursos</button>' +
-          '<button class="btn btn-ghost" data-go="relatorios">Relatórios</button>' +
+      '<div class="hero hero-premium">' +
+        '<div class="hero-main">' +
+          '<span class="hero-eyebrow">' + U.esc(s.instituicao) + "</span>" +
+          "<h1>" + U.esc(s.sistema) + '</h1><span class="slogan">' + U.esc(s.slogan) + "</span>" +
+          "<p>Plataforma centralizada de gestão académica e financeira do " + U.esc(s.instituicao) +
+          ". Uma matrícula alimenta automaticamente estudantes, pagamentos, recibos, relatórios e este painel.</p>" +
+          '<div class="hero-actions">' +
+            '<button class="btn btn-gold" data-go="matricula">Nova Matrícula</button>' +
+            '<button class="btn btn-ghost" data-go="recibos">Emitir Recibo</button>' +
+            '<button class="btn btn-ghost" data-go="relatorios">Relatórios</button>' +
+          "</div>" +
+        "</div>" +
+        '<div class="hero-kpi">' +
+          '<div class="hk-label">Recebido no mês</div>' +
+          '<div class="hk-value num">' + U.moeda(recMes) + "</div>" +
+          '<div class="hk-row"><span>Hoje</span><strong class="num">' + U.moeda(recHoje) + "</strong></div>" +
+          '<div class="hk-row"><span>No ano</span><strong class="num">' + U.moeda(recAno) + "</strong></div>" +
+          '<div class="hk-row"><span>Total</span><strong class="num">' + U.moeda(totalRec) + "</strong></div>" +
         "</div>" +
       "</div>" +
 
       '<div class="grid stats">' +
-        V._stat("Estudantes matriculados", estudantes.length) +
-        V._stat("Estudantes ativos", ativos) +
-        V._stat("Estudantes concluídos", concluidos) +
-        V._stat("Estudantes com dívida", comDivida) +
+        V._stat("Estudantes matriculados", estudantes.length, { icon: "users", accent: "green" }) +
+        V._stat("Estudantes ativos", ativos, { icon: "userCheck", accent: "green" }) +
+        V._stat("Estudantes concluídos", concluidos, { icon: "cap", accent: "info" }) +
+        V._stat("Estudantes com dívida", comDivida, { icon: "alert", accent: "danger" }) +
       "</div>" +
 
       '<div class="grid stats mt">' +
-        V._stat("Recebido hoje", U.moeda(recHoje)) +
-        V._stat("Recebido no mês", U.moeda(recMes)) +
-        V._stat("Recebido no ano", U.moeda(recAno)) +
-        V._stat("Total recebido", U.moeda(totalRec)) +
+        V._stat("Recebido hoje", U.moeda(recHoje), { icon: "wallet", accent: "gold" }) +
+        V._stat("Recebido no mês", U.moeda(recMes), { icon: "trend", accent: "green" }) +
+        V._stat("Recebido no ano", U.moeda(recAno), { icon: "calendar", accent: "green" }) +
+        V._stat("Total recebido", U.moeda(totalRec), { icon: "wallet", accent: "gold" }) +
       "</div>" +
 
       '<div class="grid stats mt">' +
-        V._stat("Cursos ativos", cursosAtivos) +
-        V._stat("Turmas abertas", turmasAbertas) +
-        V._stat("Pagamentos de hoje", pagsHoje.length) +
-        V._stat("Pagamentos registados", db.pagamentos.length) +
+        V._stat("Cursos ativos", cursosAtivos, { icon: "book" }) +
+        V._stat("Turmas abertas", turmasAbertas, { icon: "layers" }) +
+        V._stat("Pagamentos de hoje", pagsHoje.length, { icon: "receipt" }) +
+        V._stat("Pagamentos registados", db.pagamentos.length, { icon: "receipt" }) +
       "</div>" +
 
       '<div class="grid two-col mt">' +
@@ -125,9 +134,31 @@
       (campo === "curso" ? "Curso" : "Unidade") + '</th><th class="text-right">Recebido</th></tr></thead><tbody>' +
       rows + "</tbody></table></div>";
   };
-  V._stat = function (label, value) {
-    return '<div class="stat-card"><div class="label">' + U.esc(label) + "</div>" +
-      '<div class="value num">' + (typeof value === "number" ? value : U.esc(value)) + "</div></div>";
+  // Ícones inline para os cartões (sem dependências).
+  V._ICONES = {
+    users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+    userCheck: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M16 11l2 2 4-4"/>',
+    cap: '<path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1 2.7 2.5 6 2.5s6-1.5 6-2.5v-5"/>',
+    alert: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+    wallet: '<path d="M3 7h18v12H3z"/><path d="M16 12h3"/><path d="M3 7l3-4h12l3 4"/>',
+    trend: '<path d="M3 17l6-6 4 4 7-7"/><path d="M17 8h4v4"/>',
+    calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+    receipt: '<path d="M5 3v18l2-1 2 1 2-1 2 1 2-1 2 1V3l-2 1-2-1-2 1-2-1-2 1-2-1z"/><path d="M9 8h6M9 12h6"/>',
+    book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+    layers: '<path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>'
+  };
+  V._ico = function (name) {
+    var p = V._ICONES[name];
+    return p ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + p + "</svg>" : "";
+  };
+  V._stat = function (label, value, opts) {
+    opts = (opts && typeof opts === "object") ? opts : {};
+    var ico = opts.icon ? '<span class="stat-ico ' + (opts.accent || "") + '">' + V._ico(opts.icon) + "</span>" : "";
+    return '<div class="stat-card' + (opts.accent ? " ac-" + opts.accent : "") + '">' + ico +
+      '<div class="stat-body"><div class="label">' + U.esc(label) + "</div>" +
+      '<div class="value num">' + (typeof value === "number" ? value : U.esc(value)) + "</div>" +
+      (opts.sub ? '<div class="stat-sub">' + U.esc(opts.sub) + "</div>" : "") +
+      "</div></div>";
   };
   V._dashStudents = function (list) {
     var rows = list.map(function (e) {
