@@ -114,3 +114,27 @@ test("parseMoeda interpreta formato pt e símbolos", function () {
 test("esc escapa HTML", function () {
   assert.strictEqual(U.esc('<a>&"\''), "&lt;a&gt;&amp;&quot;&#39;");
 });
+
+test("queryEstudantes filtra, ordena e pagina (versão local)", async function () {
+  const db = D.db();
+  db.cursos = [];
+  db.estudantes = [];
+  for (let i = 1; i <= 120; i++) {
+    db.estudantes.push({
+      id: "e" + i, nome: "Estudante " + i, matricula: "M" + i,
+      curso: i % 2 ? "A" : "B", estado: "ativo",
+      dataMatricula: "2026-01-" + String((i % 28) + 1).padStart(2, "0")
+    });
+  }
+  db.pagamentos = [];
+  const p1 = await D.queryEstudantes({ porPagina: 50, pagina: 1 });
+  assert.strictEqual(p1.total, 120);
+  assert.strictEqual(p1.rows.length, 50);
+  assert.strictEqual(p1.nPaginas, 3);
+  const p3 = await D.queryEstudantes({ porPagina: 50, pagina: 3 });
+  assert.strictEqual(p3.rows.length, 20);          // última página: 120 - 100
+  const fa = await D.queryEstudantes({ curso: "A", porPagina: 1000 });
+  assert.strictEqual(fa.total, 60);
+  const bus = await D.queryEstudantes({ busca: "M7", porPagina: 1000 });
+  assert.ok(bus.total >= 1);
+});

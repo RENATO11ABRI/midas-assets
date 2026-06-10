@@ -419,6 +419,33 @@
     // ---- Estudantes --------------------------------------------------------
     estudantes: function () { return this.load().estudantes; },
     estudanteById: function (id) { return this.load().estudantes.filter(function (e) { return e.id === id; })[0]; },
+
+    // Consulta paginada de estudantes (versão local — também serve de fallback
+    // offline da versão Supabase). Devolve sempre uma Promise para uma API única
+    // entre modo local e modo servidor.
+    // opts: { busca, curso, estado, ordenar:'recente'|'nome', pagina, porPagina }
+    queryEstudantes: function (opts) {
+      opts = opts || {};
+      var q = String(opts.busca || "").toLowerCase().trim();
+      var fc = opts.curso || "", fe = opts.estado || "";
+      var lista = this.estudantes().filter(function (e) {
+        if (fc && e.curso !== fc) return false;
+        if (fe && e.estado !== fe) return false;
+        if (q) {
+          var hay = (e.nome + " " + (e.contacto || "") + " " + (e.matricula || "") + " " + (e.curso || "") + " " + (e.bi || "")).toLowerCase();
+          if (hay.indexOf(q) < 0) return false;
+        }
+        return true;
+      });
+      if (opts.ordenar === "nome") lista.sort(function (a, b) { return (a.nome || "") < (b.nome || "") ? -1 : 1; });
+      else lista.sort(function (a, b) { return (a.dataMatricula || "") < (b.dataMatricula || "") ? 1 : -1; }); // recente primeiro
+      var total = lista.length;
+      var pp = Math.max(1, opts.porPagina || 50);
+      var nPaginas = Math.max(1, Math.ceil(total / pp));
+      var pag = Math.min(nPaginas, Math.max(1, opts.pagina || 1));
+      var ini = (pag - 1) * pp;
+      return Promise.resolve({ rows: lista.slice(ini, ini + pp), total: total, pagina: pag, porPagina: pp, nPaginas: nPaginas, servidor: false });
+    },
     saveEstudante: function (est) {
       var db = this.load();
       if (est.id) {

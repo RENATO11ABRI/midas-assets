@@ -290,47 +290,52 @@
         '<div id="estTable"></div>' +
       "</div>";
   };
+  V._estState = { pagina: 1 };
   V.renderEstudantesTable = function () {
-    var q = (document.getElementById("estSearch").value || "").toLowerCase();
-    var fc = document.getElementById("estFiltroCurso").value;
-    var fe = document.getElementById("estFiltroEstado").value;
-    var list = D.estudantes().filter(function (e) {
-      if (fc && e.curso !== fc) return false;
-      if (fe && e.estado !== fe) return false;
-      if (q) {
-        var hay = (e.nome + " " + e.contacto + " " + e.matricula + " " + e.curso + " " + (e.bi || "")).toLowerCase();
-        if (hay.indexOf(q) < 0) return false;
-      }
-      return true;
-    }).sort(U.by("dataMatricula"));
-
     var host = document.getElementById("estTable");
-    if (!list.length) { host.innerHTML = C.empty("", "Nenhum estudante encontrado."); return; }
-
-    var rows = list.map(function (e) {
-      var pago = D.totalPagoEstudante(e.id);
-      return "<tr>" +
-        "<td><strong>" + U.esc(e.matricula) + "</strong></td>" +
-        "<td>" + U.esc(e.nome) + "<br><small>" + U.esc(e.contacto || "") + "</small></td>" +
-        "<td>" + U.esc(e.curso) + "<br><small>" + U.esc(e.periodo || "") + " · " + U.esc(e.tipoCurso || "") + "</small></td>" +
-        "<td>" + U.esc(e.regime || "—") + "</td>" +
-        "<td class='text-right num'>" + U.moeda(pago) + "</td>" +
-        "<td>" + C.estadoBadge(e.estado) + "</td>" +
-        "<td>" + U.dataPT(e.dataMatricula) + "</td>" +
-        '<td><div class="row-actions">' +
-          '<button class="btn btn-light btn-sm" data-est-view="' + e.id + '">Ver</button>' +
-          '<button class="btn btn-light btn-sm" data-est-ficha="' + e.id + '">Ficha</button>' +
-          '<button class="btn btn-light btn-sm" data-est-edit="' + e.id + '">Editar</button>' +
-          '<button class="btn btn-light btn-sm" data-est-pay="' + e.id + '">Pagamento</button>' +
-          '<button class="btn btn-danger btn-sm" data-est-del="' + e.id + '">Eliminar</button>' +
-        "</div></td></tr>";
-    }).join("");
-
-    host.innerHTML = '<div class="table-wrap"><table class="data"><thead><tr>' +
-      "<th>Matrícula</th><th>Nome / Contacto</th><th>Curso</th><th>Regime</th>" +
-      '<th class="text-right">Total pago</th><th>Estado</th><th>Data</th><th>Ações</th>' +
-      "</tr></thead><tbody>" + rows + "</tbody></table></div>" +
-      '<p class="help mt">' + list.length + " estudante(s) listado(s).</p>";
+    if (!host) return;
+    var opts = {
+      busca: document.getElementById("estSearch").value || "",
+      curso: document.getElementById("estFiltroCurso").value,
+      estado: document.getElementById("estFiltroEstado").value,
+      pagina: V._estState.pagina, porPagina: 50
+    };
+    D.queryEstudantes(opts).then(function (res) {
+      V._estState.pagina = res.pagina;
+      if (!res.total) { host.innerHTML = C.empty("", "Nenhum estudante encontrado."); return; }
+      var rows = res.rows.map(function (e) {
+        var pago = D.totalPagoEstudante(e.id);
+        return "<tr>" +
+          "<td><strong>" + U.esc(e.matricula) + "</strong></td>" +
+          "<td>" + U.esc(e.nome) + "<br><small>" + U.esc(e.contacto || "") + "</small></td>" +
+          "<td>" + U.esc(e.curso) + "<br><small>" + U.esc(e.periodo || "") + " · " + U.esc(e.tipoCurso || "") + "</small></td>" +
+          "<td>" + U.esc(e.regime || "—") + "</td>" +
+          "<td class='text-right num'>" + U.moeda(pago) + "</td>" +
+          "<td>" + C.estadoBadge(e.estado) + "</td>" +
+          "<td>" + U.dataPT(e.dataMatricula) + "</td>" +
+          '<td><div class="row-actions">' +
+            '<button class="btn btn-light btn-sm" data-est-view="' + e.id + '">Ver</button>' +
+            '<button class="btn btn-light btn-sm" data-est-ficha="' + e.id + '">Ficha</button>' +
+            '<button class="btn btn-light btn-sm" data-est-edit="' + e.id + '">Editar</button>' +
+            '<button class="btn btn-light btn-sm" data-est-pay="' + e.id + '">Pagamento</button>' +
+            '<button class="btn btn-danger btn-sm" data-est-del="' + e.id + '">Eliminar</button>' +
+          "</div></td></tr>";
+      }).join("");
+      host.innerHTML = '<div class="table-wrap"><table class="data"><thead><tr>' +
+        "<th>Matrícula</th><th>Nome / Contacto</th><th>Curso</th><th>Regime</th>" +
+        '<th class="text-right">Total pago</th><th>Estado</th><th>Data</th><th>Ações</th>' +
+        "</tr></thead><tbody>" + rows + "</tbody></table></div>" + V._paginacao(res);
+    });
+  };
+  V._paginacao = function (res) {
+    var ini = (res.pagina - 1) * res.porPagina + 1;
+    var fim = Math.min(res.total, res.pagina * res.porPagina);
+    if (res.nPaginas <= 1) return '<p class="help mt">' + res.total + " estudante(s).</p>";
+    return '<div class="paginacao">' +
+      '<button class="btn btn-light btn-sm" data-est-pag="ant"' + (res.pagina <= 1 ? " disabled" : "") + ">‹ Anterior</button>" +
+      '<span class="pag-info">' + ini + "–" + fim + " de " + res.total + " · página " + res.pagina + "/" + res.nPaginas + "</span>" +
+      '<button class="btn btn-light btn-sm" data-est-pag="seg"' + (res.pagina >= res.nPaginas ? " disabled" : "") + ">Seguinte ›</button>" +
+      "</div>";
   };
 
   V.fichaEstudante = function (id) {

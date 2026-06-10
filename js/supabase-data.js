@@ -221,7 +221,27 @@
    "saveCurso", "deleteCurso", "saveEmolumento", "deleteEmolumento", "toggleEmolumento",
    "restaurarLixo", "reporCatalogo", "reset", "import",
    "saveFecho", "deleteFecho", "saveEstagio", "deleteEstagio",
-   "saveLead", "deleteLead"].forEach(function (m) { base[m] = D[m].bind(D); });
+   "saveLead", "deleteLead", "queryEstudantes"].forEach(function (m) { base[m] = D[m].bind(D); });
+
+  /* ---- Escala: consultas paginadas no servidor (opt-in) -------------- */
+  // Ativa-se com MIDAS_CONFIG.escala = true E ligação online. Quando inativa,
+  // ou em falha, recorre à versão local (base.queryEstudantes) — offline continua a funcionar.
+  D.escalaAtiva = function () { return !!cfg.escala && navigator.onLine; };
+  D.queryEstudantes = function (opts) {
+    opts = opts || {};
+    if (!D.escalaAtiva()) return base.queryEstudantes(opts);
+    var pp = Math.max(1, opts.porPagina || 50);
+    var pag = Math.max(1, opts.pagina || 1);
+    return sb.rpc("midas_estudantes_pagina", {
+      p_busca: opts.busca || "", p_curso: opts.curso || "", p_estado: opts.estado || "",
+      p_ordenar: opts.ordenar || "recente", p_limite: pp, p_offset: (pag - 1) * pp
+    }).then(function (res) {
+      if (res.error || !res.data) { return base.queryEstudantes(opts); } // fallback
+      var total = (res.data[0] && res.data[0].total) ? Number(res.data[0].total) : res.data.length;
+      var nPaginas = Math.max(1, Math.ceil(total / pp));
+      return { rows: res.data.map(function (r) { return r.dados; }), total: total, pagina: pag, porPagina: pp, nPaginas: nPaginas, servidor: true };
+    }).catch(function () { return base.queryEstudantes(opts); });
+  };
 
   // Evita reenviar a configuração completa a cada gravação de entidade: as
   // entidades têm a sua própria linha, por isso o save() interno é silenciado.
