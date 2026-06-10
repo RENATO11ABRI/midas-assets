@@ -238,6 +238,71 @@ insert into public.contadores(tipo, valor) values
   ('recibo',    coalesce((select max(substring(dados->>'recibo'    from '(\d+)$')::bigint) from public.pagamentos), 0))
 on conflict (tipo) do nothing;
 
+-- ----------------------------------------------------------------------------
+-- 8) FECHO DE CAIXA (registo diário por funcionário)
+-- ----------------------------------------------------------------------------
+create table if not exists public.fechos (
+  id            text primary key,
+  dados         jsonb not null,
+  criado_por    uuid default auth.uid(),
+  criado_em     timestamptz not null default now(),
+  atualizado_em timestamptz not null default now()
+);
+alter table public.fechos enable row level security;
+drop policy if exists p_fechos_read on public.fechos;
+drop policy if exists p_fechos_write on public.fechos;
+create policy p_fechos_read  on public.fechos for select using (auth.uid() is not null);
+create policy p_fechos_write on public.fechos for all
+  using (public.meu_perfil() in ('admin','directora','secretaria','financeiro'))
+  with check (public.meu_perfil() in ('admin','directora','secretaria','financeiro'));
+drop trigger if exists aud_fechos on public.fechos;
+create trigger aud_fechos after insert or update or delete on public.fechos
+  for each row execute function public.fn_auditoria();
+
+-- ----------------------------------------------------------------------------
+-- 9) ESTÁGIOS
+-- ----------------------------------------------------------------------------
+create table if not exists public.estagios (
+  id            text primary key,
+  dados         jsonb not null,
+  criado_por    uuid default auth.uid(),
+  criado_em     timestamptz not null default now(),
+  atualizado_em timestamptz not null default now()
+);
+alter table public.estagios enable row level security;
+drop policy if exists p_estagios_read on public.estagios;
+drop policy if exists p_estagios_write on public.estagios;
+create policy p_estagios_read  on public.estagios for select using (auth.uid() is not null);
+create policy p_estagios_write on public.estagios for all
+  using (public.meu_perfil() in ('admin','directora','secretaria','coordenador'))
+  with check (public.meu_perfil() in ('admin','directora','secretaria','coordenador'));
+drop trigger if exists aud_estagios on public.estagios;
+create trigger aud_estagios after insert or update or delete on public.estagios
+  for each row execute function public.fn_auditoria();
+
+-- ----------------------------------------------------------------------------
+-- 10) LEADS (pré-matrícula online / funil de captação)
+--     Inserções vêm da Edge Function "lead-submit" (service role); o staff
+--     autenticado lê e gere. Não há acesso anónimo direto à tabela.
+-- ----------------------------------------------------------------------------
+create table if not exists public.leads (
+  id            text primary key,
+  dados         jsonb not null,
+  criado_por    uuid default auth.uid(),
+  criado_em     timestamptz not null default now(),
+  atualizado_em timestamptz not null default now()
+);
+alter table public.leads enable row level security;
+drop policy if exists p_leads_read on public.leads;
+drop policy if exists p_leads_write on public.leads;
+create policy p_leads_read  on public.leads for select using (auth.uid() is not null);
+create policy p_leads_write on public.leads for all
+  using (public.meu_perfil() in ('admin','directora','secretaria','coordenador'))
+  with check (public.meu_perfil() in ('admin','directora','secretaria','coordenador'));
+drop trigger if exists aud_leads on public.leads;
+create trigger aud_leads after insert or update or delete on public.leads
+  for each row execute function public.fn_auditoria();
+
 -- ============================================================================
 -- FIM. A aplicação preenche configurações/cursos/emolumentos no primeiro arranque.
 -- ============================================================================

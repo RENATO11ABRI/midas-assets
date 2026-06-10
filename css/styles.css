@@ -470,3 +470,27 @@ body.dark .login-card { background: #fff; }
   .print-only { display: block !important; }
 }
 .print-only { display: none; }
+
+/* ===== QR de verificação nos documentos ===== */
+.qr-block { display: flex; align-items: center; gap: 10px; margin: 12px 0 4px; }
+.qr-block img { width: 96px; height: 96px; }
+.qr-block small { color: #5b6675; font-size: 11px; line-height: 1.35; }
+
+/* ===== Indicador de sincronização (PWA/offline) ===== */
+.sync-pill { display: inline-block; font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 999px; cursor: pointer; margin-bottom: 8px; user-select: none; border: 1px solid transparent; }
+.sync-pill.ok { color: #0f5132; background: rgba(16,128,80,.12); }
+.sync-pill.pend { color: #8a5a00; background: rgba(214,158,46,.16); }
+.sync-pill.off { color: #842029; background: rgba(176,42,55,.14); }
+body.dark .sync-pill.ok { color: #7ee2b8; }
+body.dark .sync-pill.pend { color: #f0c674; }
+body.dark .sync-pill.off { color: #f1a7ad; }
+
+/* ===== Gráficos de barras (sem bibliotecas) ===== */
+.chart-bars { display: flex; flex-direction: column; gap: 9px; padding: 4px 2px; }
+.chart-row { display: grid; grid-template-columns: 140px 1fr auto; align-items: center; gap: 10px; }
+.chart-label { font-size: 12.5px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chart-track { background: var(--green-050, #eef3f0); border-radius: 6px; height: 16px; overflow: hidden; }
+body.dark .chart-track { background: rgba(255,255,255,.08); }
+.chart-fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--green-700), var(--gold-500)); }
+.chart-val { font-size: 12.5px; font-weight: 700; color: var(--text); white-space: nowrap; }
+@media (max-width: 600px) { .chart-row { grid-template-columns: 96px 1fr auto; } }

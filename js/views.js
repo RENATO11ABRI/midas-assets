@@ -34,6 +34,23 @@
     var recentes = estudantes.slice().sort(U.by("dataMatricula")).slice(0, 6);
     var ultPag = db.pagamentos.slice().sort(U.by("data")).slice(0, 6);
 
+    // ---- Dados para gráficos ----
+    var agg = function (arr, keyFn, valFn) {
+      var m = {};
+      arr.forEach(function (x) { var k = keyFn(x) || "—"; m[k] = (m[k] || 0) + (valFn ? (Number(valFn(x)) || 0) : 1); });
+      return m;
+    };
+    var mPorMes = agg(db.pagamentos, function (p) { return U.ym(p.data); }, function (p) { return p.valorPago; });
+    var chartMes = Object.keys(mPorMes).sort().slice(-12).map(function (k) { return { label: U.mesAno(k + "-01"), value: mPorMes[k] }; });
+    var mCurso = agg(db.pagamentos, function (p) { return p.curso; }, function (p) { return p.valorPago; });
+    var chartCurso = Object.keys(mCurso).map(function (k) { return { label: k, value: mCurso[k] }; }).sort(function (a, b) { return b.value - a.value; }).slice(0, 8);
+    var mForma = agg(db.pagamentos, function (p) { return p.formaPagamento; }, function (p) { return p.valorPago; });
+    var chartForma = Object.keys(mForma).map(function (k) { return { label: k, value: mForma[k] }; }).sort(function (a, b) { return b.value - a.value; });
+    var mMatMes = agg(estudantes, function (e) { return U.ym(e.dataMatricula); }, null);
+    var chartMatMes = Object.keys(mMatMes).sort().slice(-12).map(function (k) { return { label: U.mesAno(k + "-01"), value: mMatMes[k] }; });
+    var chartDevedores = estudantes.map(function (e) { return { label: e.nome, value: D.saldoDevedor(e) }; })
+      .filter(function (x) { return x.value > 0; }).sort(function (a, b) { return b.value - a.value; }).slice(0, 8);
+
     var html =
       '<div class="hero">' +
         "<h1>" + U.esc(s.sistema) + '</h1><span class="slogan">' + U.esc(s.slogan) + "</span>" +
@@ -69,7 +86,15 @@
       "</div>" +
 
       '<div class="grid two-col mt">' +
-        '<div class="card"><div class="card-head"><h3>Recebido por curso</h3></div>' + V._dashAgg("curso") + "</div>" +
+        '<div class="card"><div class="card-head"><h3>Receita por mês</h3></div>' + C.chartBars(chartMes, { moeda: true }) + "</div>" +
+        '<div class="card"><div class="card-head"><h3>Receita por curso</h3></div>' + C.chartBars(chartCurso, { moeda: true }) + "</div>" +
+      "</div>" +
+      '<div class="grid two-col mt">' +
+        '<div class="card"><div class="card-head"><h3>Formas de pagamento</h3></div>' + C.chartBars(chartForma, { moeda: true }) + "</div>" +
+        '<div class="card"><div class="card-head"><h3>Matrículas por mês</h3></div>' + C.chartBars(chartMatMes) + "</div>" +
+      "</div>" +
+      '<div class="grid two-col mt">' +
+        '<div class="card"><div class="card-head"><h3>Top devedores</h3></div>' + C.chartBars(chartDevedores, { moeda: true, vazio: "Sem dívidas registadas." }) + "</div>" +
         '<div class="card"><div class="card-head"><h3>Recebido por unidade</h3></div>' + V._dashAgg("unidade") + "</div>" +
       "</div>" +
 
@@ -354,13 +379,27 @@
         '<button class="btn btn-light" onclick="App.closeModal()">Fechar</button>' +
         '<button class="btn btn-light" id="fichaEdit">Editar</button>' +
         '<button class="btn btn-gold" id="fichaPay">Novo pagamento</button>' +
-        '<button class="btn btn-light" id="fichaMat">Ficha de Matrícula</button>' +
+        (saldo > 0 ? '<button class="btn btn-light" id="fichaWhats">Lembrar no WhatsApp</button>' : "") +
+        '<button class="btn btn-light" id="fichaCarne">Mapa de Propinas</button>' +
+        '<button class="btn btn-light" id="fichaExtrato">Gerar Extrato</button>' +
         '<button class="btn btn-primary" id="fichaPrint">Imprimir histórico</button>',
       onOpen: function () {
         document.getElementById("fichaEdit").onclick = function () { C.closeModal(); App.navigate("matricula", { id: id }); };
         document.getElementById("fichaPay").onclick = function () { C.closeModal(); V.novoPagamento(id); };
-        document.getElementById("fichaMat").onclick = function () { C.closeModal(); C.viewFichaMatricula(e); };
+        document.getElementById("fichaExtrato").onclick = function () { C.closeModal(); C.verExtrato(e); };
+        document.getElementById("fichaCarne").onclick = function () { C.closeModal(); C.verMapaPropinas(e); };
         document.getElementById("fichaPrint").onclick = function () { U.printElement("fichaDoc", "Ficha " + e.nome); };
+        var fw = document.getElementById("fichaWhats");
+        if (fw) fw.onclick = function () {
+          var num = e.whatsapp || e.contacto;
+          if (!num) { C.toast("Sem contacto de WhatsApp para este estudante.", "err"); return; }
+          var msg = "Olá, " + e.nome + ". Aqui é a Secretaria do " + U.esc(D.db().settings.instituicao).replace(/&amp;/g, "&") +
+            ".\n\nConsta no sistema uma pendência no valor de " + U.moeda(saldo) +
+            ".\n\nPedimos que regularize o pagamento para manter a sua situação académica em dia.\n\n" +
+            D.db().settings.instituicao + " — " + D.db().settings.sistema + ".";
+          var url = U.whatsappURL(num, msg);
+          if (url) window.open(url, "_blank"); else C.toast("Contacto inválido.", "err");
+        };
       }
     });
   };
@@ -568,6 +607,31 @@
     return null;
   };
 
+  // Modal de aviso de possível duplicado. onUsar(estudante) | onCriarNovo()
+  V.confirmaDuplicado = function (candidatos, onUsar, onCriarNovo) {
+    var lista = candidatos.slice(0, 6).map(function (e) {
+      var info = [e.matricula, e.contacto, e.curso].filter(Boolean).map(U.esc).join(" · ");
+      return '<li class="flex spread" style="padding:8px 0;border-bottom:1px solid var(--line)">' +
+        "<span><strong>" + U.esc(e.nome) + "</strong><br><small>" + info + "</small></span>" +
+        '<button class="btn btn-primary btn-sm" data-usar="' + e.id + '">É este</button></li>';
+    }).join("");
+    C.modal({
+      title: "Estudante parecido encontrado",
+      body: '<p class="help" style="margin-top:0">Para evitar fichas duplicadas, verifique se o estudante já existe:</p>' +
+        '<ul style="list-style:none;padding:0;margin:0" id="dupList">' + lista + "</ul>",
+      footer:
+        '<button class="btn btn-light" onclick="App.closeModal()">Cancelar</button>' +
+        '<button class="btn btn-gold" id="dupCriar">Criar novo mesmo assim</button>',
+      onOpen: function () {
+        document.getElementById("dupList").addEventListener("click", function (ev) {
+          var id = ev.target && ev.target.getAttribute && ev.target.getAttribute("data-usar");
+          if (id) { C.closeModal(); onUsar(D.estudanteById(id)); }
+        });
+        document.getElementById("dupCriar").onclick = function () { C.closeModal(); onCriarNovo(); };
+      }
+    });
+  };
+
   // Modal: registar pagamento. Se o estudante não existir, é CRIADO a partir
   // deste pagamento (a folha de pagamento é o ponto de entrada do estudante).
   V.novoPagamento = function (estId) {
@@ -635,27 +699,13 @@
           if (!(valor > 0)) { C.toast("O valor pago deve ser maior que zero.", "err"); return; }
           var emo = D.emolumentoById(fd.get("emolumentoId"));
           var btn = document.getElementById("savePag");
-          if (btn) { btn.disabled = true; btn.textContent = "A registar…"; }
           var restore = function () { if (btn) { btn.disabled = false; btn.textContent = "Registar e gerar recibo"; } };
+          var contacto = fd.get("contacto") || "", curso = fd.get("curso") || "";
 
-          // Estudante existente (resolvido) ou criação automática a partir do pagamento
-          var existente = D.estudanteById(payEstId.value) || V.resolverEstudante(nomeRaw);
-          var obterEst = existente
-            ? Promise.resolve({ est: existente, novo: false })
-            : D.alocarMatricula().then(function (numero) {
-                var novo = D.saveEstudante({
-                  matricula: numero,
-                  nome: nomeRaw.split(" · ")[0].trim(),
-                  contacto: fd.get("contacto") || "",
-                  curso: fd.get("curso") || "",
-                  estado: "ativo",
-                  dataMatricula: U.hoje()
-                });
-                return { est: novo, novo: true };
-              });
-
-          obterEst.then(function (r) {
-            return V._criarPagamento(r.est, {
+          // Regista o pagamento para um estudante (existente ou novo)
+          var registar = function (est, novo) {
+            if (btn) { btn.disabled = true; btn.textContent = "A registar…"; }
+            V._criarPagamento(est, {
               emolumentoId: emo ? emo.id : "", emolumento: emo ? emo.nome : "Outros",
               categoria: emo ? emo.categoria : "Outros", valorPago: valor,
               formaPagamento: fd.get("formaPagamento"), funcionario: fd.get("funcionario"),
@@ -663,14 +713,33 @@
               referencia: fd.get("referencia"), observacoes: fd.get("observacoes")
             }).then(function (pag) {
               C.closeModal();
-              C.toast((r.novo ? "Estudante criado e pagamento registado" : "Pagamento registado") + " — recibo " + pag.recibo, "ok");
+              C.toast((novo ? "Estudante criado e pagamento registado" : "Pagamento registado") + " — recibo " + pag.recibo, "ok");
               C.viewReceipt(pag);
               App.refresh();
+            }).catch(function (e) {
+              C.toast("Erro ao registar: " + (e && e.message ? e.message : e), "err");
+              restore();
             });
-          }).catch(function (e) {
-            C.toast("Erro ao registar: " + (e && e.message ? e.message : e), "err");
-            restore();
-          });
+          };
+          var criarNovo = function () {
+            D.alocarMatricula().then(function (numero) {
+              var nv = D.saveEstudante({
+                matricula: numero, nome: nomeRaw.split(" · ")[0].trim(),
+                contacto: contacto, curso: curso, estado: "ativo", dataMatricula: U.hoje()
+              });
+              registar(nv, true);
+            }).catch(function (e) { C.toast("Erro ao criar estudante: " + (e && e.message ? e.message : e), "err"); restore(); });
+          };
+
+          // Existente (resolvido) → usa-o. Senão, verifica duplicados antes de criar.
+          var existente = D.estudanteById(payEstId.value) || V.resolverEstudante(nomeRaw);
+          if (existente) { registar(existente, false); return; }
+          var semelhantes = D.estudantesSemelhantes(nomeRaw, contacto, null);
+          if (semelhantes.length) {
+            V.confirmaDuplicado(semelhantes, function (esc) { registar(esc, false); }, criarNovo);
+          } else {
+            criarNovo();
+          }
         };
       }
     });
@@ -697,6 +766,77 @@
       };
       return D.savePagamento(pag);
     });
+  };
+
+  /* =======================================================================
+     5b. FECHO DE CAIXA
+     ======================================================================= */
+  V._FORMAS_FECHO = ["Dinheiro", "TPA", "Transferência", "Multicaixa Express"];
+  V._resumoCaixa = function (ymd, funcionario) {
+    var pags = D.pagamentosDoDia(ymd, funcionario);
+    var totais = {};
+    V._FORMAS_FECHO.forEach(function (f) { totais[f] = 0; });
+    totais["Outras"] = 0;
+    var totalGeral = 0;
+    pags.forEach(function (p) {
+      var v = Number(p.valorPago) || 0; totalGeral += v;
+      var f = p.formaPagamento;
+      if (V._FORMAS_FECHO.indexOf(f) >= 0) totais[f] += v; else totais["Outras"] += v;
+    });
+    return { recibos: pags.slice().sort(U.by("data")), totais: totais, totalGeral: totalGeral };
+  };
+  V.fecho = function () {
+    var db = D.db();
+    return C.pageHead("Fecho de Caixa", "Resumo diário dos valores recebidos, por funcionário.") +
+      '<div class="card mb"><div class="form-grid">' +
+        '<div class="field"><label>Data</label><input type="date" id="fcData"></div>' +
+        '<div class="field"><label>Funcionário</label><select id="fcFunc"><option value="">Todos</option>' +
+          U.optionList(db.funcionarios) + "</select></div>" +
+        "</div>" +
+        '<div class="grid stats" id="fcStats"></div>' +
+        '<div id="fcRecibos" class="mt"></div>' +
+        '<div class="field full mt"><label>Observações</label><textarea id="fcObs"></textarea></div>' +
+        '<div class="form-actions">' +
+          '<button class="btn btn-light" id="fcImprimir">Imprimir / PDF</button>' +
+          '<button class="btn btn-primary" id="fcGuardar">Guardar fecho</button>' +
+        "</div></div>" +
+      '<div class="card"><div class="card-head"><h3>Fechos guardados</h3></div><div id="fcGuardados"></div></div>';
+  };
+  V.renderFechoResumo = function (ymd, funcionario) {
+    var r = V._resumoCaixa(ymd, funcionario);
+    var stats = document.getElementById("fcStats");
+    if (stats) stats.innerHTML =
+      V._stat("Dinheiro", U.moeda(r.totais["Dinheiro"])) +
+      V._stat("TPA", U.moeda(r.totais["TPA"])) +
+      V._stat("Transferência", U.moeda(r.totais["Transferência"])) +
+      V._stat("Multicaixa Express", U.moeda(r.totais["Multicaixa Express"])) +
+      V._stat("Outras formas", U.moeda(r.totais["Outras"])) +
+      V._stat("Total geral", U.moeda(r.totalGeral)) +
+      V._stat("Nº de recibos", r.recibos.length);
+    var host = document.getElementById("fcRecibos");
+    if (!host) return;
+    if (!r.recibos.length) { host.innerHTML = C.empty("", "Sem recibos para esta data/funcionário."); return; }
+    var rows = r.recibos.map(function (p) {
+      return "<tr><td>" + U.esc(p.recibo) + "</td><td>" + U.esc(p.estudanteNome) + "</td><td>" + U.esc(p.emolumento) +
+        "</td><td>" + U.esc(p.formaPagamento || "") + "</td><td class='text-right num'>" + U.moeda(p.valorPago) + "</td></tr>";
+    }).join("");
+    host.innerHTML = '<div class="table-wrap"><table class="data"><thead><tr><th>Recibo</th><th>Estudante</th><th>Emolumento</th><th>Forma</th><th class="text-right">Valor</th></tr></thead><tbody>' + rows + "</tbody></table></div>";
+  };
+  V.renderFechosGuardados = function () {
+    var host = document.getElementById("fcGuardados");
+    if (!host) return;
+    var list = D.fechos().slice().sort(function (a, b) { return (a.fechadoEm || "") < (b.fechadoEm || "") ? 1 : -1; });
+    if (!list.length) { host.innerHTML = C.empty("", "Ainda não há fechos guardados."); return; }
+    var admin = !window.MidasUsers || D.auth().perfil === "admin";
+    var rows = list.map(function (f) {
+      return "<tr><td>" + U.dataPT(f.data) + "</td><td>" + U.esc(f.funcionario) + "</td>" +
+        "<td class='text-right num'>" + U.moeda(f.totalGeral) + "</td><td>" + (f.numRecibos || 0) + "</td>" +
+        "<td><small>" + U.esc(f.fechadoPor || "") + "</small></td>" +
+        '<td><div class="row-actions"><button class="btn btn-light btn-sm" data-fecho-print="' + f.id + '">Imprimir</button>' +
+        (admin ? '<button class="btn btn-danger btn-sm" data-fecho-del="' + f.id + '">Eliminar</button>' : "") +
+        "</div></td></tr>";
+    }).join("");
+    host.innerHTML = '<div class="table-wrap"><table class="data"><thead><tr><th>Data</th><th>Funcionário</th><th class="text-right">Total</th><th>Recibos</th><th>Fechado por</th><th></th></tr></thead><tbody>' + rows + "</tbody></table></div>";
   };
 
   /* =======================================================================
@@ -795,6 +935,8 @@
           '<option value="estudantes">Estudantes (lista completa)</option>' +
           '<option value="receitasMes">Receitas mensais</option>' +
           '<option value="porCurso">Por curso</option>' +
+          '<option value="porCategoria">Receitas por categoria (contabilidade)</option>' +
+          '<option value="porFormaPagamento">Receitas por forma de pagamento</option>' +
           '<option value="porFuncionario">Por funcionário</option>' +
           '<option value="porPeriodo">Estudantes por período</option>' +
           '<option value="porUnidade">Estudantes por unidade</option>' +
@@ -882,6 +1024,24 @@
         headers: ["Curso", "Estudantes", "Total recebido (Kz)"],
         rows: ck.map(function (k) { return [U.esc(k || "—"), byC[k].mat, U.num(byC[k].pago)]; }),
         totals: ["TOTAL", gMat, U.moeda(gPago)]
+      };
+    }
+    if (tipo === "porCategoria" || tipo === "porFormaPagamento") {
+      var campo = tipo === "porCategoria" ? "categoria" : "formaPagamento";
+      var by = {};
+      D.pagamentos().filter(function (p) { return inRange(p.data); }).forEach(function (p) {
+        var k = (campo === "categoria" ? (p.categoria || p.emolumento) : p.formaPagamento) || "—";
+        by[k] = by[k] || { count: 0, total: 0 };
+        by[k].count++; by[k].total += Number(p.valorPago) || 0;
+      });
+      var ks = Object.keys(by).sort(function (a, b) { return by[b].total - by[a].total; });
+      var gt = ks.reduce(function (s, k) { return s + by[k].total; }, 0);
+      return {
+        titulo: tipo === "porCategoria" ? "Receitas por Categoria" : "Receitas por Forma de Pagamento",
+        sub: rangeTxt,
+        headers: [tipo === "porCategoria" ? "Categoria" : "Forma de pagamento", "Nº", "Total (Kz)"],
+        rows: ks.map(function (k) { return [U.esc(k), by[k].count, U.num(by[k].total)]; }),
+        totals: ["TOTAL", "", U.moeda(gt)]
       };
     }
     if (tipo === "porFuncionario") {
@@ -978,6 +1138,10 @@
         '<div class="tab" data-tab="conta">Conta e segurança</div>' +
         (window.MidasUsers && D.auth().perfil === "admin"
           ? '<div class="tab" data-tab="utilizadores">Utilizadores</div>' : "") +
+        (!window.MidasUsers || ["admin", "directora"].indexOf(D.auth().perfil) >= 0
+          ? '<div class="tab" data-tab="importar">Importar</div>' : "") +
+        (window.MidasAudit && ["admin", "directora"].indexOf(D.auth().perfil) >= 0
+          ? '<div class="tab" data-tab="auditoria">Auditoria</div>' : "") +
         '<div class="tab" data-tab="dados">Dados (backup)</div>' +
       '</div><div id="cfgContent"></div>';
   };
@@ -1219,6 +1383,46 @@
       '<p class="help mt">' + users.length + " utilizador(es).</p>";
   };
 
+  V.cfgImportar = function () {
+    return '<div class="card"><div class="card-head"><h3>Importação em massa</h3></div>' +
+      '<p class="help">Cole dados CSV (ou carregue um ficheiro <code>.csv</code>). A 1ª linha são os cabeçalhos.<br>' +
+      "<strong>Estudantes:</strong> <code>nome;contacto;curso;bi;whatsapp;periodo;unidade;dataMatricula;estado</code><br>" +
+      "<strong>Pagamentos:</strong> <code>estudante;valor;categoria;forma;data</code> (estudante = nome ou nº de matrícula)</p>" +
+      '<div class="form-grid">' +
+        '<div class="field"><label>Tipo de dados</label><select id="impTipo">' + U.optionList(["Estudantes", "Pagamentos"]) + "</select></div>" +
+        '<div class="field"><label>Ficheiro CSV</label><input type="file" accept=".csv,text/csv" id="impFile"></div>' +
+      "</div>" +
+      '<div class="field full"><label>Ou colar CSV aqui</label><textarea id="impText" rows="6" placeholder="nome;contacto;curso&#10;Maria Silva;923000000;Curso Médio de Enfermagem"></textarea></div>' +
+      '<div class="form-actions">' +
+        '<button class="btn btn-light" id="impPrever">Pré-visualizar</button>' +
+        '<button class="btn btn-primary" id="impImportar" disabled>Importar</button>' +
+      '</div><div id="impPreview"></div></div>';
+  };
+
+  V.cfgAuditoria = function () {
+    var tabelas = ["estudantes", "pagamentos", "cursos", "emolumentos", "fechos", "estagios"];
+    return '<div class="card"><div class="card-head"><h3>Auditoria</h3>' +
+      '<button class="btn btn-light" id="audReload">Atualizar</button></div>' +
+      '<p class="help">Registo de quem criou, editou ou eliminou dados, e quando.</p>' +
+      '<div class="toolbar">' +
+        '<div class="field"><label>Tabela</label><select id="audTabela"><option value="">Todas</option>' + U.optionList(tabelas) + "</select></div>" +
+        '<div class="field"><label>Ação</label><select id="audAccao"><option value="">Todas</option>' + U.optionList(["INSERT", "UPDATE", "DELETE"]) + "</select></div>" +
+      '</div><div id="audTable">' + C.empty("", "A carregar…") + "</div></div>";
+  };
+  V.renderAuditoria = function (rows) {
+    var host = document.getElementById("audTable");
+    if (!host) return;
+    if (!rows || !rows.length) { host.innerHTML = C.empty("", "Sem registos de auditoria."); return; }
+    var accaoPT = { INSERT: "Criou", UPDATE: "Editou", DELETE: "Eliminou" };
+    var trs = rows.map(function (r) {
+      return "<tr><td>" + U.dataHoraPT(r.quando) + "</td><td>" + U.esc(r.utilizador_nome || "—") + "</td>" +
+        "<td>" + U.esc(accaoPT[r.accao] || r.accao) + "</td><td>" + U.esc(r.tabela) + "</td>" +
+        "<td><small>" + U.esc(r.registo_id || "") + "</small></td></tr>";
+    }).join("");
+    host.innerHTML = '<div class="table-wrap"><table class="data"><thead><tr><th>Data/Hora</th><th>Utilizador</th><th>Ação</th><th>Módulo</th><th>Registo</th></tr></thead><tbody>' +
+      trs + "</tbody></table></div><p class='help mt'>" + rows.length + " registo(s) (máx. 300).</p>";
+  };
+
   V.cfgDados = function () {
     var db = D.db();
     return '<div class="card"><div class="card-head"><h3>Cópia de segurança e reposição</h3></div>' +
@@ -1256,6 +1460,201 @@
     }).join("");
     host.innerHTML = '<div class="table-wrap"><table class="data"><thead><tr><th>Tipo</th><th>Registo</th><th>Eliminado em</th><th></th></tr></thead><tbody>' +
       rows + "</tbody></table></div>";
+  };
+
+  /* =======================================================================
+     9. MIDAS 2026 — Estágios e Aptidão para a Defesa
+     ======================================================================= */
+  V.midas = function () {
+    return C.pageHead("MIDAS 2026", "Gestão avançada — estágios e aptidão para a defesa") +
+      '<div class="tabs" id="midasTabs">' +
+        '<div class="tab active" data-tab="estagios">Estágios</div>' +
+        '<div class="tab" data-tab="aptidao">Aptidão para Defesa</div>' +
+        '<div class="tab" data-tab="leads">Leads</div>' +
+      '</div><div id="midasContent"></div>';
+  };
+  V.ESTAGIO_TIPOS = ["Preliminar", "Curricular"];
+  V.ESTAGIO_ESTADOS = ["Por iniciar", "A decorrer", "Concluído", "Reprovado"];
+  V.estagiosTab = function () {
+    return '<div class="card"><div class="card-head"><h3>Estágios</h3>' +
+      '<button class="btn btn-primary" id="estagioNovo">Novo estágio</button></div>' +
+      '<div class="toolbar">' +
+        '<div class="search-box"><input id="estagioSearch" placeholder="Pesquisar por estudante, local, supervisor..."></div>' +
+        '<div class="field"><label>Tipo</label><select id="estagioFiltroTipo"><option value="">Todos</option>' + U.optionList(V.ESTAGIO_TIPOS) + "</select></div>" +
+        '<div class="field"><label>Estado</label><select id="estagioFiltroEstado"><option value="">Todos</option>' + U.optionList(V.ESTAGIO_ESTADOS) + "</select></div>" +
+      '</div><div id="estagioTable"></div></div>';
+  };
+  V.renderEstagios = function () {
+    var q = (document.getElementById("estagioSearch").value || "").toLowerCase();
+    var ft = document.getElementById("estagioFiltroTipo").value;
+    var fe = document.getElementById("estagioFiltroEstado").value;
+    var list = D.estagios().filter(function (e) {
+      if (ft && e.tipo !== ft) return false;
+      if (fe && e.estado !== fe) return false;
+      if (q && (e.estudanteNome + " " + (e.local || "") + " " + (e.supervisor || "") + " " + (e.curso || "")).toLowerCase().indexOf(q) < 0) return false;
+      return true;
+    }).sort(function (a, b) { return (a.dataInicio || "") < (b.dataInicio || "") ? 1 : -1; });
+    var host = document.getElementById("estagioTable");
+    if (!list.length) { host.innerHTML = C.empty("", "Nenhum estágio encontrado."); return; }
+    var rows = list.map(function (e) {
+      return "<tr><td><strong>" + U.esc(e.estudanteNome) + "</strong><br><small>" + U.esc(e.curso || "") + "</small></td>" +
+        '<td><span class="badge gold">' + U.esc(e.tipo) + "</span></td>" +
+        "<td>" + U.esc(e.local || "—") + "<br><small>" + U.esc(e.supervisor || "") + "</small></td>" +
+        "<td>" + U.dataPT(e.dataInicio) + "<br><small>até " + U.dataPT(e.dataFim) + "</small></td>" +
+        '<td><span class="badge ' + ((e.estado || "").toLowerCase().indexOf("conclu") >= 0 ? "ok" : (e.estado === "Reprovado" ? "danger" : (e.estado === "A decorrer" ? "info" : "off"))) + '">' + U.esc(e.estado || "—") + "</span></td>" +
+        '<td><div class="row-actions"><button class="btn btn-light btn-sm" data-estagio-edit="' + e.id + '">Editar</button>' +
+        '<button class="btn btn-danger btn-sm" data-estagio-del="' + e.id + '">Eliminar</button></div></td></tr>';
+    }).join("");
+    host.innerHTML = '<div class="table-wrap"><table class="data"><thead><tr>' +
+      "<th>Estudante</th><th>Tipo</th><th>Local / Supervisor</th><th>Período</th><th>Estado</th><th>Ações</th>" +
+      "</tr></thead><tbody>" + rows + "</tbody></table></div><p class='help mt'>" + list.length + " estágio(s).</p>";
+  };
+  V.editarEstagio = function (id) {
+    var e = id ? D.estagioById(id) : {};
+    var estList = D.estudantes().slice().sort(function (a, b) { return a.nome < b.nome ? -1 : 1; })
+      .map(function (x) { return '<option value="' + U.esc(x.nome + " · " + x.matricula) + '"></option>'; }).join("");
+    var f = function (n, l, t, v) {
+      return '<div class="field"><label>' + l + "</label><input type='" + (t || "text") + "' name='" + n + "' value='" + (v == null ? "" : U.esc(v)) + "'></div>";
+    };
+    C.modal({
+      title: id ? "Editar Estágio" : "Novo Estágio",
+      body: '<form id="formEstagio"><div class="form-grid">' +
+        '<div class="field full"><label>Estudante <span class="req">*</span></label>' +
+          '<input id="esgNome" list="esgList" autocomplete="off" placeholder="Escreva o nome..." value="' + (e.estudanteNome ? U.esc(e.estudanteNome) : "") + '">' +
+          '<datalist id="esgList">' + estList + "</datalist>" +
+          '<input type="hidden" name="estudanteId" id="esgId" value="' + (e.estudanteId || "") + '"></div>' +
+        '<div class="field"><label>Tipo</label><select name="tipo">' + U.optionList(V.ESTAGIO_TIPOS, e.tipo || "Curricular") + "</select></div>" +
+        '<div class="field"><label>Estado</label><select name="estado">' + U.optionList(V.ESTAGIO_ESTADOS, e.estado || "Por iniciar") + "</select></div>" +
+        f("local", "Local de estágio", "text", e.local) +
+        f("supervisor", "Supervisor", "text", e.supervisor) +
+        f("dataInicio", "Data de início", "date", e.dataInicio) +
+        f("dataFim", "Data de término", "date", e.dataFim) +
+        f("cargaHoraria", "Carga horária", "text", e.cargaHoraria) +
+        '<div class="field full"><label>Observações</label><textarea name="observacoes">' + U.esc(e.observacoes || "") + "</textarea></div>" +
+        "</div>" + (id ? "<input type='hidden' name='id' value='" + id + "'>" : "") + "</form>",
+      footer:
+        '<button class="btn btn-light" onclick="App.closeModal()">Cancelar</button>' +
+        '<button class="btn btn-primary" id="esgSave">Guardar</button>',
+      onOpen: function () {
+        var nome = document.getElementById("esgNome"), hid = document.getElementById("esgId");
+        nome.addEventListener("input", function () { var s = V.resolverEstudante(this.value); hid.value = s ? s.id : ""; });
+        document.getElementById("esgSave").onclick = function () {
+          var fd = new FormData(document.getElementById("formEstagio"));
+          var est = D.estudanteById(hid.value) || V.resolverEstudante(nome.value);
+          if (!est) { C.toast("Escolha um estudante válido.", "err"); return; }
+          D.saveEstagio({
+            id: fd.get("id") || undefined, estudanteId: est.id, estudanteNome: est.nome, curso: est.curso,
+            tipo: fd.get("tipo"), estado: fd.get("estado"), local: fd.get("local"), supervisor: fd.get("supervisor"),
+            dataInicio: fd.get("dataInicio"), dataFim: fd.get("dataFim"), cargaHoraria: fd.get("cargaHoraria"),
+            observacoes: fd.get("observacoes")
+          });
+          C.closeModal(); C.toast("Estágio guardado.", "ok"); V.renderEstagios();
+        };
+      }
+    });
+  };
+  V.aptidaoTab = function () {
+    return '<div class="card"><div class="card-head"><h3>Aptidão para a Defesa</h3></div>' +
+      '<p class="help">Critérios: propinas regularizadas, emolumentos da defesa, estágio curricular pago, declaração, exame prático e estágio concluído.</p>' +
+      '<div class="toolbar"><div class="search-box"><input id="aptSearch" placeholder="Pesquisar estudante..."></div>' +
+        '<div class="field"><label>Curso</label><select id="aptCurso"><option value="">Todos</option>' + U.optionList(D.cursos().map(function (c) { return c.nome; })) + "</select></div>" +
+        '<div class="field"><label>Situação</label><select id="aptEstado"><option value="">Todos</option>' + U.optionList(["Apto", "Não apto"]) + "</select></div>" +
+      '</div><div id="aptStats" class="grid stats mb"></div><div id="aptTable"></div></div>';
+  };
+  V.renderAptidao = function () {
+    var q = (document.getElementById("aptSearch").value || "").toLowerCase();
+    var fc = document.getElementById("aptCurso").value;
+    var fe = document.getElementById("aptEstado").value;
+    var avals = D.estudantes().filter(function (e) {
+      if (fc && e.curso !== fc) return false;
+      if (q && (e.nome + " " + e.matricula).toLowerCase().indexOf(q) < 0) return false;
+      return true;
+    }).map(function (e) { return { e: e, r: D.aptidaoDefesa(e) }; });
+    if (fe) avals = avals.filter(function (a) { return fe === "Apto" ? a.r.apto : !a.r.apto; });
+    var aptos = avals.filter(function (a) { return a.r.apto; }).length;
+    var stats = document.getElementById("aptStats");
+    if (stats) stats.innerHTML = V._stat("Total avaliados", avals.length) + V._stat("Aptos", aptos) + V._stat("Não aptos", avals.length - aptos);
+    var host = document.getElementById("aptTable");
+    if (!avals.length) { host.innerHTML = C.empty("", "Sem estudantes para mostrar."); return; }
+    var rows = avals.sort(function (a, b) { return a.r.apto === b.r.apto ? 0 : (a.r.apto ? 1 : -1); }).map(function (a) {
+      return "<tr><td><strong>" + U.esc(a.e.nome) + "</strong><br><small>" + U.esc(a.e.matricula) + "</small></td>" +
+        "<td>" + U.esc(a.e.curso || "—") + "</td>" +
+        "<td>" + (a.r.apto ? '<span class="badge ok">Apto</span>' : '<span class="badge danger">Não apto</span>') + "</td>" +
+        "<td><small>" + (a.r.apto ? "—" : U.esc(a.r.motivos.join("; "))) + "</small></td></tr>";
+    }).join("");
+    host.innerHTML = '<div class="table-wrap"><table class="data"><thead><tr><th>Estudante</th><th>Curso</th><th>Situação</th><th>Em falta</th></tr></thead><tbody>' + rows + "</tbody></table></div>";
+  };
+
+  /* ---- Leads (funil de pré-matrícula) ---- */
+  V.LEAD_ESTADOS = ["Novo", "Contactado", "Interessado", "Matriculado", "Perdido"];
+  V.leadsTab = function () {
+    return '<div class="card"><div class="card-head"><h3>Funil de Leads</h3>' +
+      '<button class="btn btn-light" id="leadNovo">Adicionar manualmente</button></div>' +
+      '<p class="help">Pré-inscrições recebidas pelo site (página <code>inscricao.html</code>) e contactos adicionados manualmente.</p>' +
+      '<div class="grid stats mb" id="leadStats"></div>' +
+      '<div class="toolbar"><div class="search-box"><input id="leadSearch" placeholder="Pesquisar nome, contacto, curso..."></div>' +
+        '<div class="field"><label>Estado</label><select id="leadFiltro"><option value="">Todos</option>' + U.optionList(V.LEAD_ESTADOS) + "</select></div></div>" +
+      '<div id="leadTable"></div></div>';
+  };
+  V.renderLeads = function () {
+    var all = D.leads();
+    var stats = document.getElementById("leadStats");
+    if (stats) stats.innerHTML = V.LEAD_ESTADOS.map(function (s) {
+      return V._stat(s, all.filter(function (l) { return (l.estado || "Novo") === s; }).length);
+    }).join("");
+    var q = (document.getElementById("leadSearch").value || "").toLowerCase();
+    var fe = document.getElementById("leadFiltro").value;
+    var list = all.filter(function (l) {
+      if (fe && (l.estado || "Novo") !== fe) return false;
+      if (q && (l.nome + " " + (l.contacto || "") + " " + (l.cursoInteresse || "")).toLowerCase().indexOf(q) < 0) return false;
+      return true;
+    }).sort(function (a, b) { return (a.criadoEm || "") < (b.criadoEm || "") ? 1 : -1; });
+    var host = document.getElementById("leadTable");
+    if (!host) return;
+    if (!list.length) { host.innerHTML = C.empty("", "Sem leads para mostrar."); return; }
+    var rows = list.map(function (l) {
+      var est = l.estado || "Novo";
+      var wa = l.whatsapp || l.contacto;
+      return "<tr><td><strong>" + U.esc(l.nome) + "</strong><br><small>" + U.esc(l.contacto || "") + "</small></td>" +
+        "<td>" + U.esc(l.cursoInteresse || "—") + "<br><small>" + U.esc(l.periodo || "") + "</small></td>" +
+        "<td><small>" + U.esc(l.origem || "site") + "</small><br><small>" + U.dataPT(l.criadoEm) + "</small></td>" +
+        '<td><select class="leadEstado" data-lead-id="' + l.id + '">' + U.optionList(V.LEAD_ESTADOS, est) + "</select></td>" +
+        '<td><div class="row-actions">' +
+          (wa ? '<button class="btn btn-light btn-sm" data-lead-wa="' + l.id + '">WhatsApp</button>' : "") +
+          (est !== "Matriculado" ? '<button class="btn btn-primary btn-sm" data-lead-convert="' + l.id + '">Converter</button>' : "") +
+          '<button class="btn btn-danger btn-sm" data-lead-del="' + l.id + '">Eliminar</button>' +
+        "</div></td></tr>";
+    }).join("");
+    host.innerHTML = '<div class="table-wrap"><table class="data"><thead><tr><th>Lead</th><th>Interesse</th><th>Origem</th><th>Estado</th><th>Ações</th></tr></thead><tbody>' +
+      rows + "</tbody></table></div><p class='help mt'>" + list.length + " lead(s).</p>";
+  };
+  V.editarLead = function (id) {
+    var l = id ? D.leadById(id) : {};
+    var f = function (n, lab, v) { return '<div class="field"><label>' + lab + "</label><input name='" + n + "' value='" + U.esc(v || "") + "'></div>"; };
+    C.modal({
+      title: id ? "Editar lead" : "Novo lead",
+      body: '<form id="formLead"><div class="form-grid">' +
+        '<div class="field full"><label>Nome <span class="req">*</span></label><input name="nome" value="' + U.esc(l.nome || "") + '"></div>' +
+        f("contacto", "Contacto", l.contacto) + f("whatsapp", "WhatsApp", l.whatsapp) +
+        f("cursoInteresse", "Curso de interesse", l.cursoInteresse) + f("periodo", "Período", l.periodo) +
+        '<div class="field"><label>Estado</label><select name="estado">' + U.optionList(V.LEAD_ESTADOS, l.estado || "Novo") + "</select></div>" +
+        '<div class="field full"><label>Mensagem</label><textarea name="mensagem">' + U.esc(l.mensagem || "") + "</textarea></div>" +
+        "</div>" + (id ? "<input type='hidden' name='id' value='" + id + "'>" : "") + "</form>",
+      footer: '<button class="btn btn-light" onclick="App.closeModal()">Cancelar</button><button class="btn btn-primary" id="leadSave">Guardar</button>',
+      onOpen: function () {
+        document.getElementById("leadSave").onclick = function () {
+          var fd = new FormData(document.getElementById("formLead"));
+          var nome = (fd.get("nome") || "").trim();
+          if (nome.length < 3) { C.toast("Indique o nome.", "err"); return; }
+          D.saveLead({
+            id: fd.get("id") || undefined, nome: nome, contacto: fd.get("contacto"), whatsapp: fd.get("whatsapp"),
+            cursoInteresse: fd.get("cursoInteresse"), periodo: fd.get("periodo"), estado: fd.get("estado"),
+            mensagem: fd.get("mensagem"), origem: l.origem || "manual", criadoEm: l.criadoEm || U.agoraISO()
+          });
+          C.closeModal(); C.toast("Lead guardado.", "ok"); V.renderLeads();
+        };
+      }
+    });
   };
 
   window.V = V;
