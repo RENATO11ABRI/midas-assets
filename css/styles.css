@@ -541,3 +541,10 @@ body.dark .stat-ico { background: rgba(255,255,255,.07); }
 .hero-kpi .hk-row { display: flex; justify-content: space-between; align-items: center; color: rgba(255,255,255,.85); font-size: 13px; padding: 6px 0; border-top: 1px solid rgba(255,255,255,.12); }
 .hero-kpi .hk-row strong { color: #fff; }
 @media (max-width: 860px) { .hero-premium { grid-template-columns: 1fr; } }
+
+/* ===== Aptidão — vista detalhada ===== */
+.crit-list { list-style: none; padding: 0; margin: 6px 0 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; }
+.crit-list li { font-size: 13.5px; }
+.crit-ok { color: var(--ok); }
+.crit-no { color: var(--danger); }
+@media (max-width: 600px) { .crit-list { grid-template-columns: 1fr; } }
