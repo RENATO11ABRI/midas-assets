@@ -37,16 +37,26 @@ Deno.serve(async (req) => {
 
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
+  // Os números de recibo/matrícula são sequenciais e, por isso, "adivinháveis".
+  // Para reduzir a recolha de dados por enumeração, devolvemos o MÍNIMO: nome
+  // mascarado (primeiro nome + inicial) e SEM valores monetários.
+  function mascararNome(n: string): string {
+    const partes = (n || "").trim().split(/\s+/).filter(Boolean);
+    if (!partes.length) return "—";
+    if (partes.length === 1) return partes[0];
+    return partes[0] + " " + partes[partes.length - 1][0].toUpperCase() + ".";
+  }
+
   if (tipo === "matricula") {
     const { data } = await sb.from("estudantes").select("dados").eq("dados->>matricula", id).maybeSingle();
     if (!data) return json({ valido: false });
     const e = data.dados as Record<string, unknown>;
-    return json({ valido: true, tipo: "matricula", numero: e.matricula, nome: e.nome, curso: e.curso, data: e.dataMatricula, estado: e.estado });
+    return json({ valido: true, tipo: "matricula", numero: e.matricula, nome: mascararNome(String(e.nome || "")), curso: e.curso, data: e.dataMatricula });
   }
 
   // por omissão: recibo
   const { data } = await sb.from("pagamentos").select("dados").eq("dados->>recibo", id).maybeSingle();
   if (!data) return json({ valido: false });
   const p = data.dados as Record<string, unknown>;
-  return json({ valido: true, tipo: "recibo", numero: p.recibo, nome: p.estudanteNome, curso: p.curso, emolumento: p.emolumento, valor: p.valorPago, data: p.data });
+  return json({ valido: true, tipo: "recibo", numero: p.recibo, nome: mascararNome(String(p.estudanteNome || "")), curso: p.curso, emolumento: p.emolumento, data: p.data });
 });

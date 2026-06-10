@@ -83,12 +83,22 @@
   }
 
   /* ---- Helpers de leitura/escrita ------------------------------------ */
+  // Lê TODAS as linhas em páginas de 1000 (o PostgREST limita cada pedido a
+  // 1000 linhas; sem paginação, tabelas grandes ficavam silenciosamente cortadas).
   function fetchAll(table) {
-    return sb.from(table).select("dados").order("criado_em", { ascending: true })
-      .then(function (res) {
-        if (res.error) { fail("Falha ao carregar " + table + ".", res.error); return []; }
-        return (res.data || []).map(function (r) { return r.dados; });
-      });
+    var PAG = 1000;
+    var acc = [];
+    function pagina(de) {
+      return sb.from(table).select("dados").order("criado_em", { ascending: true }).range(de, de + PAG - 1)
+        .then(function (res) {
+          if (res.error) { fail("Falha ao carregar " + table + ".", res.error); return acc.map(function (r) { return r.dados; }); }
+          var lote = res.data || [];
+          acc = acc.concat(lote);
+          if (lote.length === PAG) return pagina(de + PAG); // pode haver mais
+          return acc.map(function (r) { return r.dados; });
+        });
+    }
+    return pagina(0);
   }
 
   /* ---- Fila de sincronização offline (outbox) ----------------------- */
@@ -113,19 +123,38 @@
       .catch(function () { enfileirar({ kind: "delete", table: table, id: id }); });
   }
 
+  var FALHAS_KEY = "midas_outbox_falhas_v1";
+  function registarFalha(op, motivo) {
+    try {
+      var f = JSON.parse(localStorage.getItem(FALHAS_KEY) || "[]");
+      op.erro = motivo; op.quando = new Date().toISOString();
+      f.push(op); localStorage.setItem(FALHAS_KEY, JSON.stringify(f));
+    } catch (e) {}
+  }
   function flushOutbox() {
     if (!navigator.onLine) return Promise.resolve(false);
     var q = outboxLer();
     if (!q.length) { notificarSync(); return Promise.resolve(true); }
-    var i = 0;
+    var i = 0, houveFalha = false;
     function passo() {
-      if (i >= q.length) { outboxGravar([]); return Promise.resolve(true); }
+      if (i >= q.length) {
+        outboxGravar([]);
+        if (houveFalha) fail("Algumas alterações offline foram rejeitadas pelo servidor (ver consola). Não foram perdidas — ficaram guardadas para revisão.");
+        return Promise.resolve(true);
+      }
       var op = q[i++];
       var p = op.kind === "delete"
         ? sb.from(op.table).delete().eq("id", op.id)
         : sb.from(op.table).upsert({ id: op.obj.id, dados: op.obj, atualizado_em: new Date().toISOString() });
-      return p.then(function () { return passo(); })   // erro de servidor (ex.: RLS): descarta para não ciclar
-        .catch(function () { outboxGravar(q.slice(i - 1)); return false; }); // rede falhou: mantém o resto
+      return p.then(function (res) {
+        // Erro de servidor (RLS, violação de unicidade…): NÃO se perde — guarda-se
+        // em "falhas" para revisão manual e prossegue, evitando bloquear a fila.
+        if (res && res.error) { houveFalha = true; registarFalha(op, res.error.message || "erro de servidor"); }
+        return passo();
+      }).catch(function () {
+        // Falha de rede: mantém esta e as seguintes na fila para nova tentativa.
+        outboxGravar(q.slice(i - 1)); return false;
+      });
     }
     return passo();
   }

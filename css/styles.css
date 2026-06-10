@@ -488,11 +488,11 @@ body.dark .sync-pill.off { color: #f1a7ad; }
 /* ===== Gráficos de barras (sem bibliotecas) ===== */
 .chart-bars { display: flex; flex-direction: column; gap: 9px; padding: 4px 2px; }
 .chart-row { display: grid; grid-template-columns: 140px 1fr auto; align-items: center; gap: 10px; }
-.chart-label { font-size: 12.5px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chart-label { font-size: 12.5px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .chart-track { background: var(--green-050, #eef3f0); border-radius: 6px; height: 16px; overflow: hidden; }
 body.dark .chart-track { background: rgba(255,255,255,.08); }
 .chart-fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--green-700), var(--gold-500)); }
-.chart-val { font-size: 12.5px; font-weight: 700; color: var(--text); white-space: nowrap; }
+.chart-val { font-size: 12.5px; font-weight: 700; color: var(--ink); white-space: nowrap; }
 @media (max-width: 600px) { .chart-row { grid-template-columns: 96px 1fr auto; } }
 
 /* ===== Paginação de listas (escala) ===== */

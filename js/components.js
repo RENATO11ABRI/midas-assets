@@ -136,6 +136,17 @@
       " · " + U.esc(s.endereco) + "</div>";
   };
 
+  // ---- Imprimir um documento a partir de HTML (host temporário) -----------
+  // Centraliza o padrão: criar host escondido -> imprimir por id -> remover.
+  C.imprimirHTML = function (html, id, titulo) {
+    var host = document.createElement("div");
+    host.style.position = "fixed"; host.style.left = "-9999px"; host.style.top = "0";
+    host.innerHTML = html;
+    document.body.appendChild(host);
+    U.printElement(id, titulo);
+    setTimeout(function () { host.remove(); }, 2000);
+  };
+
   // ---- QR de verificação (gerado pela Edge Function "qr") -----------------
   // Aparece nos documentos quando o backend Supabase está configurado.
   C._qrBlock = function (tipo, id) {

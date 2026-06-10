@@ -346,6 +346,7 @@
     var curso = D.cursoByNome(e.curso);
     var totalCurso = curso ? curso.valorTotal : 0;
     var saldo = totalCurso ? Math.max(0, totalCurso - pago) : 0;
+    var cursoEmFalta = D.cursoEmFalta(e);
 
     var dl = function (k, v) { return '<div class="dl-item"><div class="k">' + U.esc(k) + '</div><div class="v">' + U.esc(v || "—") + "</div></div>"; };
 
@@ -362,6 +363,7 @@
         '<div class="print-only" style="text-align:center;margin-bottom:14px"><h2 style="color:#103d2d;margin:0">' +
           U.esc(D.db().settings.instituicao) + "</h2><div>Ficha do Estudante — " + U.esc(D.db().settings.anoLetivo) + "</div></div>" +
         '<h3 style="color:#103d2d">' + U.esc(e.nome) + " · " + U.esc(e.matricula) + " " + C.estadoBadge(e.estado) + "</h3>" +
+        (cursoEmFalta ? '<div style="margin:0 0 12px;padding:10px 12px;border-radius:8px;background:#fdecee;color:#842029;font-weight:600">⚠️ Curso removido ou não encontrado — não é possível calcular o saldo em falta.</div>' : "") +
         '<div class="dl mb">' +
           dl("BI", e.bi) + dl("Nascimento", U.dataPT(e.dataNascimento)) +
           dl("Contacto", e.contacto) + dl("WhatsApp", e.whatsapp) +
@@ -372,8 +374,8 @@
         "</div>" +
         '<div class="grid stats mb" style="grid-template-columns:repeat(3,1fr)">' +
           V._stat("Total pago", U.moeda(pago), "") +
-          V._stat("Valor do curso", totalCurso ? U.moeda(totalCurso) : "—", "") +
-          V._stat("Saldo em falta", totalCurso ? U.moeda(saldo) : "—", "") +
+          V._stat("Valor do curso", cursoEmFalta ? "⚠ Curso removido" : (totalCurso ? U.moeda(totalCurso) : "—"), "") +
+          V._stat("Saldo em falta", cursoEmFalta ? "⚠ Não calculável" : (totalCurso ? U.moeda(saldo) : "—"), "") +
         "</div>" +
         "<h4>Histórico de pagamentos</h4>" +
         '<div class="table-wrap"><table class="data"><thead><tr><th>Data</th><th>Recibo</th><th>Emolumento</th><th>Forma</th><th class="text-right">Valor</th><th></th></tr></thead><tbody>' +
