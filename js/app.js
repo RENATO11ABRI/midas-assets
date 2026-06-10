@@ -151,8 +151,9 @@
       var a = D.auth();
       var fecho = {
         data: data, funcionario: func || "Todos",
-        totais: resumo.totais, totalGeral: resumo.totalGeral, numRecibos: resumo.recibos.length,
-        recibos: resumo.recibos.map(function (p) { return { recibo: p.recibo, estudante: p.estudanteNome, valor: p.valorPago, forma: p.formaPagamento }; }),
+        totais: resumo.totais, porEmol: resumo.porEmol, porFunc: resumo.porFunc,
+        totalGeral: resumo.totalGeral, numRecibos: resumo.recibos.length,
+        recibos: resumo.recibos.map(function (p) { return { recibo: p.recibo, estudante: p.estudanteNome, valor: p.valorPago, forma: p.formaPagamento, funcionario: p.funcionario }; }),
         observacoes: document.getElementById("fcObs").value || "",
         estado: "fechado", fechadoPor: a.nome || a.user, fechadoEm: U.agoraISO()
       };
@@ -166,8 +167,9 @@
       var resumo = V._resumoCaixa(data, func);
       var html = C.fechoHTML({
         data: data, funcionario: func || "Todos", totais: resumo.totais,
+        porEmol: resumo.porEmol, porFunc: resumo.porFunc,
         totalGeral: resumo.totalGeral, numRecibos: resumo.recibos.length,
-        recibos: resumo.recibos.map(function (p) { return { recibo: p.recibo, estudante: p.estudanteNome, valor: p.valorPago, forma: p.formaPagamento }; }),
+        recibos: resumo.recibos.map(function (p) { return { recibo: p.recibo, estudante: p.estudanteNome, valor: p.valorPago, forma: p.formaPagamento, funcionario: p.funcionario }; }),
         observacoes: document.getElementById("fcObs").value || ""
       });
       C.imprimirHTML(html, "fechoDoc", "Fecho de Caixa " + data);
