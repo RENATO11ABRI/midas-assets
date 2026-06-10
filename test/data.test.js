@@ -157,3 +157,34 @@ test("queryEstudantes filtra, ordena e pagina (versão local)", async function (
   const bus = await D.queryEstudantes({ busca: "M7", porPagina: 1000 });
   assert.ok(bus.total >= 1);
 });
+
+test("caixaBloqueado deteta dia anterior com movimentos por fechar", function () {
+  const db = D.db();
+  db.fechos = [];
+  const hoje = new Date().toISOString().slice(0, 10);
+  const ontem = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  db.pagamentos = [{ id: "p1", valorPago: 1000, data: ontem + "T10:00:00" }];
+  assert.strictEqual(D.caixaBloqueado(), ontem);           // ontem por fechar -> bloqueado
+  db.fechos = [{ id: "f1", data: ontem, funcionario: "Todos" }];
+  assert.strictEqual(D.caixaBloqueado(), null);            // ontem fechado -> ok
+  // movimentos só de hoje nunca bloqueiam
+  db.fechos = []; db.pagamentos = [{ id: "p2", valorPago: 500, data: hoje + "T09:00:00" }];
+  assert.strictEqual(D.caixaBloqueado(), null);
+});
+
+test("aptidaoDefesa respeita os critérios configurados", function () {
+  const db = D.db();
+  db.cursos = [{ id: "c1", nome: "C", valorTotal: 0 }]; // sem total -> saldo 0
+  db.estudantes = [{ id: "e1", nome: "Z", curso: "C" }];
+  db.pagamentos = []; db.estagios = [];
+  db.settings.criteriosAptidao = ["propinas"];          // só propinas
+  let r = D.aptidaoDefesa(db.estudantes[0]);
+  assert.strictEqual(r.criterios.length, 1);
+  assert.strictEqual(r.apto, true);                     // saldo 0 -> apto
+  db.settings.criteriosAptidao = ["exame"];             // exige exame (não pago)
+  r = D.aptidaoDefesa(db.estudantes[0]);
+  assert.strictEqual(r.apto, false);
+  delete db.settings.criteriosAptidao;                  // sem config -> todos
+  r = D.aptidaoDefesa(db.estudantes[0]);
+  assert.ok(r.criterios.length >= 10);
+});

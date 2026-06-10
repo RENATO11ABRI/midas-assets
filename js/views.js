@@ -700,6 +700,7 @@
           if (v > 0 && vi) vi.value = v;
         });
         document.getElementById("savePag").onclick = function () {
+          if (V.caixaBloqueadoModal()) return;   // exige fecho do caixa do dia anterior
           var fd = new FormData(document.getElementById("formPag"));
           var nomeRaw = (document.getElementById("payEstNome").value || "").trim();
           var valor = U.parseMoeda(fd.get("valorPago"));
@@ -755,6 +756,31 @@
   };
   // Cria registo de pagamento a partir de um estudante + dados.
   // Devolve uma Promise<pagamento> (o número do recibo é alocado de forma atómica).
+  // Bloqueio do caixa: se houver um dia anterior por fechar, impede novos
+  // movimentos financeiros e mostra como desbloquear. Devolve true se bloqueado.
+  V.caixaBloqueadoModal = function () {
+    var dia = D.caixaBloqueado();
+    if (!dia) return false;
+    var perfil = D.auth().perfil;
+    var podeFechar = !window.MidasUsers || perfil === "admin" || perfil === "directora";
+    C.modal({
+      title: "Caixa por fechar",
+      body: "<p>Há um dia com movimentos por fechar: <strong>" + U.dataPT(dia) + "</strong>.</p>" +
+        "<p>Não é possível registar novos <strong>pagamentos</strong> nem <strong>matrículas</strong> " +
+        "enquanto o caixa desse dia não for fechado.</p>" +
+        (podeFechar
+          ? "<p>Vá a <strong>Fecho de Caixa</strong>, escolha essa data e <strong>Guardar fecho</strong> para desbloquear.</p>"
+          : "<p>Peça ao <strong>Administrador/Diretora</strong> para fechar o caixa desse dia.</p>"),
+      footer: '<button class="btn btn-light" onclick="App.closeModal()">Fechar</button>' +
+        (podeFechar ? '<button class="btn btn-primary" id="irFecho">Ir para Fecho de Caixa</button>' : ""),
+      onOpen: function () {
+        var b = document.getElementById("irFecho");
+        if (b) b.onclick = function () { C.closeModal(); App.navigate("fecho"); };
+      }
+    });
+    return true;
+  };
+
   V._criarPagamento = function (est, extra) {
     return D.alocarRecibo().then(function (numero) {
       var pag = {
@@ -1460,29 +1486,52 @@
         '<div class="field"><label>Estado</label><select id="estagioFiltroEstado"><option value="">Todos</option>' + U.optionList(V.ESTAGIO_ESTADOS) + "</select></div>" +
       '</div><div id="estagioTable"></div></div>';
   };
+  V._duracaoEstagio = function (e) {
+    if (e.dataInicio && e.dataFim) {
+      var d1 = new Date(e.dataInicio.slice(0, 10) + "T00:00:00");
+      var d2 = new Date(e.dataFim.slice(0, 10) + "T00:00:00");
+      if (!isNaN(d1) && !isNaN(d2) && d2 >= d1) {
+        var dias = Math.round((d2 - d1) / 86400000) + 1;
+        if (dias < 31) return dias + (dias > 1 ? " dias" : " dia");
+        var meses = Math.round(dias / 30);
+        return meses + (meses > 1 ? " meses" : " mês");
+      }
+    }
+    return e.cargaHoraria ? U.esc(String(e.cargaHoraria)) : "—";
+  };
   V.renderEstagios = function () {
     var q = (document.getElementById("estagioSearch").value || "").toLowerCase();
     var ft = document.getElementById("estagioFiltroTipo").value;
     var fe = document.getElementById("estagioFiltroEstado").value;
-    var list = D.estagios().filter(function (e) {
+    var todos = D.estagios();
+    var list = todos.filter(function (e) {
       if (ft && e.tipo !== ft) return false;
       if (fe && e.estado !== fe) return false;
       if (q && (e.estudanteNome + " " + (e.local || "") + " " + (e.supervisor || "") + " " + (e.curso || "")).toLowerCase().indexOf(q) < 0) return false;
       return true;
     }).sort(function (a, b) { return (a.dataInicio || "") < (b.dataInicio || "") ? 1 : -1; });
     var host = document.getElementById("estagioTable");
-    if (!list.length) { host.innerHTML = C.empty("", "Nenhum estágio encontrado."); return; }
+    var cont = function (f) { return todos.filter(f).length; };
+    var stats =
+      V._stat("Total", todos.length) +
+      V._stat("Em curso", cont(function (e) { return e.estado === "A decorrer"; })) +
+      V._stat("Concluídos", cont(function (e) { return (e.estado || "").toLowerCase().indexOf("conclu") >= 0; })) +
+      V._stat("Curriculares", cont(function (e) { return e.tipo === "Curricular"; })) +
+      V._stat("Preliminares", cont(function (e) { return e.tipo === "Preliminar"; }));
+    var statsHtml = '<div class="grid stats mb">' + stats + "</div>";
+    if (!list.length) { host.innerHTML = statsHtml + C.empty("", "Nenhum estágio encontrado."); return; }
     var rows = list.map(function (e) {
       return "<tr><td><strong>" + U.esc(e.estudanteNome) + "</strong><br><small>" + U.esc(e.curso || "") + "</small></td>" +
         '<td><span class="badge gold">' + U.esc(e.tipo) + "</span></td>" +
         "<td>" + U.esc(e.local || "—") + "<br><small>" + U.esc(e.supervisor || "") + "</small></td>" +
         "<td>" + U.dataPT(e.dataInicio) + "<br><small>até " + U.dataPT(e.dataFim) + "</small></td>" +
+        "<td>" + V._duracaoEstagio(e) + "</td>" +
         '<td><span class="badge ' + ((e.estado || "").toLowerCase().indexOf("conclu") >= 0 ? "ok" : (e.estado === "Reprovado" ? "danger" : (e.estado === "A decorrer" ? "info" : "off"))) + '">' + U.esc(e.estado || "—") + "</span></td>" +
         '<td><div class="row-actions"><button class="btn btn-light btn-sm" data-estagio-edit="' + e.id + '">Editar</button>' +
         '<button class="btn btn-danger btn-sm" data-estagio-del="' + e.id + '">Eliminar</button></div></td></tr>';
     }).join("");
-    host.innerHTML = '<div class="table-wrap"><table class="data"><thead><tr>' +
-      "<th>Estudante</th><th>Tipo</th><th>Local / Supervisor</th><th>Período</th><th>Estado</th><th>Ações</th>" +
+    host.innerHTML = statsHtml + '<div class="table-wrap"><table class="data"><thead><tr>' +
+      "<th>Estudante</th><th>Tipo</th><th>Local / Supervisor</th><th>Período</th><th>Duração</th><th>Estado</th><th>Ações</th>" +
       "</tr></thead><tbody>" + rows + "</tbody></table></div><p class='help mt'>" + list.length + " estágio(s).</p>";
   };
   V.editarEstagio = function (id) {
@@ -1530,12 +1579,39 @@
     });
   };
   V.aptidaoTab = function () {
-    return '<div class="card"><div class="card-head"><h3>Aptidão para a Defesa</h3></div>' +
-      '<p class="help">Critérios: propinas regularizadas, emolumentos da defesa, estágio curricular pago, declaração, exame prático e estágio concluído.</p>' +
+    var ativos = D.criteriosAptidaoAtivos().map(function (c) { return c.nome; }).join(", ");
+    var podeConfig = !window.MidasUsers || ["admin", "directora"].indexOf(D.auth().perfil) >= 0;
+    return '<div class="card"><div class="card-head"><h3>Aptidão para a Defesa</h3>' +
+      (podeConfig ? '<button class="btn btn-light" id="aptConfig">Configurar critérios</button>' : "") + "</div>" +
+      '<p class="help"><strong>Critérios exigidos:</strong> ' + U.esc(ativos || "—") + ".</p>" +
       '<div class="toolbar"><div class="search-box"><input id="aptSearch" placeholder="Pesquisar estudante..."></div>' +
         '<div class="field"><label>Curso</label><select id="aptCurso"><option value="">Todos</option>' + U.optionList(D.cursos().map(function (c) { return c.nome; })) + "</select></div>" +
         '<div class="field"><label>Situação</label><select id="aptEstado"><option value="">Todos</option>' + U.optionList(["Apto", "Não apto"]) + "</select></div>" +
       '</div><div id="aptStats" class="grid stats mb"></div><div id="aptTable"></div></div>';
+  };
+  V.configurarAptidao = function () {
+    var ativos = D.criteriosAptidaoAtivos().map(function (c) { return c.id; });
+    var linhas = D._CRITERIOS_APTIDAO.map(function (c) {
+      var on = ativos.indexOf(c.id) >= 0;
+      return '<label class="check-row"><input type="checkbox" class="aptCrit" value="' + c.id + '"' +
+        (on ? " checked" : "") + "> " + U.esc(c.nome) + "</label>";
+    }).join("");
+    C.modal({
+      title: "Critérios de Aptidão à Defesa",
+      body: '<p class="help" style="margin-top:0">Marque as condições exigidas para um estudante poder defender. ' +
+        "Aplica-se imediatamente a todos os estudantes.</p>" + '<div class="check-list">' + linhas + "</div>",
+      footer: '<button class="btn btn-light" onclick="App.closeModal()">Cancelar</button>' +
+        '<button class="btn btn-primary" id="aptCritSave">Guardar critérios</button>',
+      onOpen: function () {
+        document.getElementById("aptCritSave").onclick = function () {
+          var ids = [].slice.call(document.querySelectorAll(".aptCrit:checked")).map(function (el) { return el.value; });
+          D.db().settings.criteriosAptidao = ids;
+          D.save();
+          C.closeModal(); C.toast("Critérios atualizados.", "ok");
+          if (App.current === "midas") App.refresh();
+        };
+      }
+    });
   };
   V.renderAptidao = function () {
     var q = (document.getElementById("aptSearch").value || "").toLowerCase();

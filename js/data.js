@@ -524,6 +524,27 @@
       db.fechos = (db.fechos || []).filter(function (f) { return f.id !== id; });
       this.save();
     },
+    // Um dia (YYYY-MM-DD) considera-se fechado se houver um fecho "Todos" (ou
+    // sem funcionário) gravado para essa data.
+    caixaDiaFechado: function (ymd) {
+      return (this.load().fechos || []).some(function (f) {
+        return (f.data || "").slice(0, 10) === ymd && (!f.funcionario || f.funcionario === "Todos");
+      });
+    },
+    // Devolve o dia MAIS ANTIGO (anterior a hoje) que teve movimentos mas ainda
+    // não foi fechado — ou null se estiver tudo em ordem. Usado para bloquear
+    // novos movimentos enquanto o caixa do(s) dia(s) anterior(es) não fechar.
+    caixaBloqueado: function () {
+      var hoje = new Date().toISOString().slice(0, 10);
+      var dias = {};
+      this.load().pagamentos.forEach(function (p) {
+        var d = (p.data || "").slice(0, 10);
+        if (d && d < hoje) dias[d] = true;
+      });
+      var self = this;
+      var abertos = Object.keys(dias).filter(function (d) { return !self.caixaDiaFechado(d); }).sort();
+      return abertos.length ? abertos[0] : null;
+    },
 
     // ---- Estágios ----------------------------------------------------------
     estagios: function () { return this.load().estagios || []; },
@@ -547,6 +568,31 @@
     },
 
     // ---- Aptidão para a defesa --------------------------------------------
+    // Catálogo de critérios possíveis para a Aptidão à Defesa (configuráveis).
+    // tipo: "propinas" (saldo<=0), "estagio" (curricular concluído) ou "emol"
+    // (existe pagamento cuja categoria/emolumento contém "frag", já normalizado).
+    _CRITERIOS_APTIDAO: [
+      { id: "propinas", nome: "Propinas regularizadas", tipo: "propinas" },
+      { id: "estagio_concl", nome: "Estágio curricular concluído", tipo: "estagio" },
+      { id: "estagio_pago", nome: "Estágio pago", tipo: "emol", frag: "estagio" },
+      { id: "exame", nome: "Exame prático pago", tipo: "emol", frag: "exame" },
+      { id: "tunica", nome: "Túnica paga", tipo: "emol", frag: "tunica" },
+      { id: "defesa", nome: "Emolumentos da defesa pagos", tipo: "emol", frag: "defesa" },
+      { id: "juri", nome: "Mesa do júri paga", tipo: "emol", frag: "juri" },
+      { id: "orientacao", nome: "Orientação paga", tipo: "emol", frag: "orientacao" },
+      { id: "declaracao", nome: "Declaração paga", tipo: "emol", frag: "declara" },
+      { id: "termo", nome: "Termo de frequência pago", tipo: "emol", frag: "termo" },
+      { id: "cert_fim", nome: "Certificado de fim do curso pago", tipo: "emol", frag: "certificado de fim" },
+      { id: "cert_part", nome: "Certificado de participação pago", tipo: "emol", frag: "participa" }
+    ],
+    // Critérios ativos (settings.criteriosAptidao = lista de ids). Sem definição
+    // => todos ativos (predefinição).
+    criteriosAptidaoAtivos: function () {
+      var ids = this.load().settings.criteriosAptidao;
+      var cat = this._CRITERIOS_APTIDAO;
+      if (!Array.isArray(ids)) return cat.slice();
+      return cat.filter(function (c) { return ids.indexOf(c.id) >= 0; });
+    },
     aptidaoDefesa: function (est) {
       var self = this;
       if (!est) return { apto: false, criterios: [], motivos: ["Estudante inválido"] };
@@ -557,14 +603,13 @@
       var estagioConcluido = this.estagiosDeEstudante(est.id).some(function (e) {
         return self._normNome(e.tipo).indexOf("curricular") >= 0 && self._normNome(e.estado).indexOf("conclu") >= 0;
       });
-      var crit = [
-        { nome: "Propinas regularizadas", ok: this.saldoDevedor(est) <= 0 },
-        { nome: "Emolumentos da Defesa pagos", ok: tem("defesa") || tem("juri") },
-        { nome: "Estágio Curricular pago", ok: tem("estagio") },
-        { nome: "Declaração paga", ok: tem("declara") },
-        { nome: "Exame Prático pago", ok: tem("exame") },
-        { nome: "Estágio concluído", ok: estagioConcluido }
-      ];
+      var crit = this.criteriosAptidaoAtivos().map(function (c) {
+        var ok;
+        if (c.tipo === "propinas") ok = self.saldoDevedor(est) <= 0;
+        else if (c.tipo === "estagio") ok = estagioConcluido;
+        else ok = tem(c.frag);
+        return { nome: c.nome, ok: ok };
+      });
       var motivos = crit.filter(function (c) { return !c.ok; }).map(function (c) { return c.nome; });
       return { apto: motivos.length === 0, criterios: crit, motivos: motivos };
     },
