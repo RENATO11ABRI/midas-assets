@@ -26,14 +26,15 @@
     };
   }
   function marcarAparencia(a) {
-    var mark = function (sel, attr, val) {
+    // O CSS do design system usa .sel (paletas) e .on (segmentos), não .active.
+    var mark = function (sel, attr, val, cls) {
       var els = document.querySelectorAll(sel);
-      for (var i = 0; i < els.length; i++) els[i].classList.toggle("active", els[i].getAttribute(attr) === val);
+      for (var i = 0; i < els.length; i++) els[i].classList.toggle(cls, els[i].getAttribute(attr) === val);
     };
-    mark(".pal-opt", "data-pal", a.palette);
-    mark("#themeSeg [data-theme-set]", "data-theme-set", a.theme);
-    mark("#sideSeg [data-side-set]", "data-side-set", a.sidebar);
-    mark("#densSeg [data-dens-set]", "data-dens-set", a.density);
+    mark(".pal-opt", "data-pal", a.palette, "sel");
+    mark("#themeSeg [data-theme-set]", "data-theme-set", a.theme, "on");
+    mark("#sideSeg [data-side-set]", "data-side-set", a.sidebar, "on");
+    mark("#densSeg [data-dens-set]", "data-dens-set", a.density, "on");
   }
   function applyAparencia() {
     var a = lerAparencia();
@@ -892,10 +893,15 @@
     var btn = document.getElementById("appeBtn");
     var pop = document.getElementById("appePop");
     if (btn && pop) {
-      btn.onclick = function (e) { e.stopPropagation(); pop.hidden = !pop.hidden; };
+      // O popover mostra-se com a classe .open (CSS: .appe-pop.open{display:block}).
+      btn.onclick = function (e) {
+        e.stopPropagation();
+        pop.classList.toggle("open");
+        if (pop.classList.contains("open")) marcarAparencia(lerAparencia());
+      };
       document.addEventListener("click", function (e) {
-        if (pop.hidden) return;
-        if (!pop.contains(e.target) && e.target !== btn && !btn.contains(e.target)) pop.hidden = true;
+        if (!pop.classList.contains("open")) return;
+        if (!pop.contains(e.target) && e.target !== btn && !btn.contains(e.target)) pop.classList.remove("open");
       });
       pop.addEventListener("click", function (e) {
         var el = e.target.closest && e.target.closest("[data-pal],[data-theme-set],[data-side-set],[data-dens-set]");
