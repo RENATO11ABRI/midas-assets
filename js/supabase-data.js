@@ -25,11 +25,11 @@
       var app = document.getElementById("app");
       if (app) app.hidden = true;
       if (screen) {
-        screen.hidden = false;
+        screen.hidden = false; screen.classList.add("open");
         screen.innerHTML = '<div class="login-card"><h1>Sem ligação ao servidor</h1>' +
           '<p class="login-hint">Não foi possível carregar a biblioteca do Supabase. ' +
           'Verifique a ligação à internet e recarregue a página.</p>' +
-          '<button class="btn btn-gold login-btn" onclick="location.reload()">Recarregar</button></div>';
+          '<button class="btn btn-primary login-btn" onclick="location.reload()">Recarregar</button></div>';
       }
     };
     return;
@@ -453,7 +453,7 @@
         return hydrate();
       })
       .then(function () {
-        screen.hidden = true; screen.innerHTML = "";
+        screen.hidden = true; screen.classList.remove("open"); screen.innerHTML = "";
         app.hidden = false;
         onReady();
       })
@@ -468,13 +468,15 @@
     var s = D.db().settings;
     var screen = document.getElementById("loginScreen");
     var app = document.getElementById("app");
-    app.hidden = true; screen.hidden = false;
+    app.hidden = true; screen.hidden = false; screen.classList.add("open");
     screen.innerHTML =
       '<div class="login-card">' +
-        '<img src="' + U.logoURL(false) + '" alt="Grupo Midas Angola" class="login-logo" />' +
-        "<h1>" + U.esc(s.instituicao) + "</h1>" +
-        '<div class="login-sys">' + U.esc(s.sistema) + "</div>" +
-        '<span class="slogan">' + U.esc(s.slogan) + "</span>" +
+        '<div class="login-brand">' +
+          '<img src="' + U.logoURL(false) + '" alt="Grupo Midas Angola" class="logo" />' +
+          "<h1>" + U.esc(s.instituicao) + "</h1>" +
+          '<div class="sys">' + U.esc(s.sistema) + "</div>" +
+          '<div class="slogan">' + U.esc(s.slogan) + "</div>" +
+        "</div>" +
         '<form id="loginForm" class="login-form">' +
           '<div class="field"><label>E-mail ou nome de utilizador</label>' +
             '<input id="loginUser" type="text" autocomplete="username" required autofocus></div>' +
@@ -482,11 +484,11 @@
             '<input id="loginPass" type="password" autocomplete="current-password" required></div>' +
           '<div class="login-err" id="loginErr"' + (erro ? "" : " hidden") + ">" +
             U.esc(erro || "Dados de acesso incorretos.") + "</div>" +
-          '<button type="submit" class="btn btn-gold login-btn">Entrar</button>' +
+          '<button type="submit" class="btn btn-primary login-btn">Entrar</button>' +
           '<button type="button" class="btn-link login-forgot" id="loginForgot">Esqueci a senha</button>' +
         "</form>" +
-      "</div>" +
-      '<div class="login-foot">© 2026 ' + U.esc(s.instituicao) + " · " + U.esc(s.slogan) + "</div>";
+        '<div class="login-foot">© 2026 ' + U.esc(s.instituicao) + " · " + U.esc(s.slogan) + "</div>" +
+      "</div>";
 
     document.getElementById("loginForm").addEventListener("submit", function (ev) {
       ev.preventDefault();
