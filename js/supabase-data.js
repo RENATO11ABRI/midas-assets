@@ -108,18 +108,47 @@
   function enfileirar(op) { var q = outboxLer(); q.push(op); outboxGravar(q); }
   function notificarSync() { var s = window.MidasSync; if (s && typeof s._onChange === "function") s._onChange(); }
 
+  // Deteta erros de autenticação/sessão expirada (JWT) vindos do PostgREST.
+  function ehErroAuth(err) {
+    if (!err) return false;
+    var m = ((err.message || "") + " " + (err.hint || "") + " " + (err.code || "")).toLowerCase();
+    return m.indexOf("jwt") >= 0 || m.indexOf("expired") >= 0 || m.indexOf("token") >= 0 ||
+           err.code === "PGRST301" || err.status === 401;
+  }
+  // Renova a sessão e, em caso de sucesso, re-sincroniza a fila (evita perder
+  // gravações feitas enquanto o token estava expirado).
+  var _aRenovar = false;
+  function renovarSessao() {
+    if (_aRenovar) return;
+    _aRenovar = true;
+    toast("A sua sessão expirou — a renovar…", "ok");
+    sb.auth.refreshSession().then(function (res) {
+      _aRenovar = false;
+      if (res && !res.error) { toast("Sessão renovada. A sincronizar…", "ok"); flushOutbox().then(notificarSync); }
+      else { fail("A sessão expirou. Inicie sessão novamente para sincronizar."); }
+    }).catch(function () { _aRenovar = false; fail("A sessão expirou. Inicie sessão novamente para sincronizar."); });
+  }
+
   function upsertRow(table, obj) {
     var row = { id: obj.id, dados: obj, atualizado_em: new Date().toISOString() };
     if (!navigator.onLine) { enfileirar({ kind: "upsert", table: table, obj: obj }); return; }
     sb.from(table).upsert(row)
-      .then(function (res) { if (res.error) fail("Não foi possível guardar online. Verifique a ligação.", res.error); })
+      .then(function (res) {
+        if (!res.error) return;
+        if (ehErroAuth(res.error)) { enfileirar({ kind: "upsert", table: table, obj: obj }); renovarSessao(); } // não perde + renova
+        else fail("Não foi possível guardar online. Verifique a ligação.", res.error);
+      })
       .catch(function () { enfileirar({ kind: "upsert", table: table, obj: obj }); }); // falha de rede -> fila
   }
 
   function deleteRow(table, id) {
     if (!navigator.onLine) { enfileirar({ kind: "delete", table: table, id: id }); return; }
     sb.from(table).delete().eq("id", id)
-      .then(function (res) { if (res.error) fail("Não foi possível eliminar online.", res.error); })
+      .then(function (res) {
+        if (!res.error) return;
+        if (ehErroAuth(res.error)) { enfileirar({ kind: "delete", table: table, id: id }); renovarSessao(); }
+        else fail("Não foi possível eliminar online.", res.error);
+      })
       .catch(function () { enfileirar({ kind: "delete", table: table, id: id }); });
   }
 
