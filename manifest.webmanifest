@@ -1,0 +1,20 @@
+{
+  "name": "MIDAS 2026 — Gestão Académica",
+  "short_name": "MIDAS 2026",
+  "description": "Gestão de matrículas, cursos, pagamentos, recibos e propinas — Grupo Midas Angola.",
+  "lang": "pt",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0b1220",
+  "theme_color": "#0f5132",
+  "icons": [
+    {
+      "src": "assets/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

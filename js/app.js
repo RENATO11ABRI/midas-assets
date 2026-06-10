@@ -43,7 +43,9 @@
     estudantes: { title: "Estudantes", render: V.estudantes, after: afterEstudantes },
     cursos: { title: "Cursos", render: V.cursos, after: afterCursos },
     pagamentos: { title: "Pagamentos", render: V.pagamentos, after: afterPagamentos },
+    fecho: { title: "Fecho de Caixa", render: V.fecho, after: afterFecho },
     recibos: { title: "Recibos", render: V.recibos, after: afterRecibos },
+    midas: { title: "MIDAS 2026", render: V.midas, after: afterMidas },
     relatorios: { title: "Relatórios", render: V.relatorios, after: afterRelatorios },
     config: { title: "Configurações", render: V.config, after: afterConfig }
   };
@@ -121,6 +123,54 @@
     document.getElementById("expPagPdf").onclick = function () {
       var r = V.buildReport("pagamentos", document.getElementById("pagDe").value, document.getElementById("pagAte").value);
       openReportPrint(r);
+    };
+  }
+
+  function afterFecho() {
+    var hoje = U.hoje();
+    var calc = function () {
+      var data = document.getElementById("fcData").value || hoje;
+      var func = document.getElementById("fcFunc").value || "";
+      V.renderFechoResumo(data, func);
+    };
+    document.getElementById("fcData").value = hoje;
+    document.getElementById("fcData").addEventListener("change", calc);
+    document.getElementById("fcFunc").addEventListener("change", calc);
+    calc();
+    V.renderFechosGuardados();
+
+    document.getElementById("fcGuardar").onclick = function () {
+      var data = document.getElementById("fcData").value || hoje;
+      var func = document.getElementById("fcFunc").value || "";
+      var resumo = V._resumoCaixa(data, func);
+      if (!resumo.recibos.length) { C.toast("Não há recibos para esta data/funcionário.", "err"); return; }
+      var a = D.auth();
+      var fecho = {
+        data: data, funcionario: func || "Todos",
+        totais: resumo.totais, totalGeral: resumo.totalGeral, numRecibos: resumo.recibos.length,
+        recibos: resumo.recibos.map(function (p) { return { recibo: p.recibo, estudante: p.estudanteNome, valor: p.valorPago, forma: p.formaPagamento }; }),
+        observacoes: document.getElementById("fcObs").value || "",
+        estado: "fechado", fechadoPor: a.nome || a.user, fechadoEm: U.agoraISO()
+      };
+      D.saveFecho(fecho);
+      C.toast("Fecho de caixa guardado.", "ok");
+      V.renderFechosGuardados();
+    };
+    document.getElementById("fcImprimir").onclick = function () {
+      var data = document.getElementById("fcData").value || hoje;
+      var func = document.getElementById("fcFunc").value || "";
+      var resumo = V._resumoCaixa(data, func);
+      var html = C.fechoHTML({
+        data: data, funcionario: func || "Todos", totais: resumo.totais,
+        totalGeral: resumo.totalGeral, numRecibos: resumo.recibos.length,
+        recibos: resumo.recibos.map(function (p) { return { recibo: p.recibo, estudante: p.estudanteNome, valor: p.valorPago, forma: p.formaPagamento }; }),
+        observacoes: document.getElementById("fcObs").value || ""
+      });
+      var host = document.createElement("div");
+      host.style.position = "fixed"; host.style.left = "-9999px"; host.innerHTML = html;
+      document.body.appendChild(host);
+      U.printElement("fechoDoc", "Fecho de Caixa " + data);
+      setTimeout(function () { host.remove(); }, 1500);
     };
   }
 
@@ -230,6 +280,51 @@
     document.getElementById("relOut").innerHTML = C.reportSheet(r.titulo, r.sub, r.headers, r.rows, r.totals);
   }
 
+  function afterMidas() {
+    var tabs = document.getElementById("midasTabs");
+    var content = document.getElementById("midasContent");
+    function show(tab) {
+      var t = tabs.querySelectorAll(".tab");
+      for (var i = 0; i < t.length; i++) t[i].classList.toggle("active", t[i].getAttribute("data-tab") === tab);
+      if (tab === "aptidao") { content.innerHTML = V.aptidaoTab(); wireAptidao(); }
+      else if (tab === "leads") { content.innerHTML = V.leadsTab(); wireLeads(); }
+      else { content.innerHTML = V.estagiosTab(); wireEstagios(); }
+    }
+    tabs.addEventListener("click", function (e) { var tab = e.target.getAttribute("data-tab"); if (tab) show(tab); });
+    show("estagios");
+  }
+  function wireEstagios() {
+    V.renderEstagios();
+    document.getElementById("estagioNovo").onclick = function () { V.editarEstagio(null); };
+    ["estagioSearch", "estagioFiltroTipo", "estagioFiltroEstado"].forEach(function (id) {
+      var el = document.getElementById(id);
+      el.addEventListener(el.tagName === "INPUT" ? "input" : "change", U.debounce(V.renderEstagios, 150));
+    });
+  }
+  function wireLeads() {
+    V.renderLeads();
+    document.getElementById("leadNovo").onclick = function () { V.editarLead(null); };
+    ["leadSearch", "leadFiltro"].forEach(function (id) {
+      var el = document.getElementById(id);
+      el.addEventListener(el.tagName === "INPUT" ? "input" : "change", U.debounce(V.renderLeads, 150));
+    });
+    // mudança de estado inline
+    document.getElementById("leadTable").addEventListener("change", function (e) {
+      var sel = e.target;
+      if (!sel.classList || !sel.classList.contains("leadEstado")) return;
+      var lead = D.leadById(sel.getAttribute("data-lead-id"));
+      if (lead) { lead.estado = sel.value; D.saveLead(lead); C.toast("Estado atualizado.", "ok"); V.renderLeads(); }
+    });
+  }
+
+  function wireAptidao() {
+    V.renderAptidao();
+    ["aptSearch", "aptCurso", "aptEstado"].forEach(function (id) {
+      var el = document.getElementById(id);
+      el.addEventListener(el.tagName === "INPUT" ? "input" : "change", U.debounce(V.renderAptidao, 150));
+    });
+  }
+
   function afterConfig() {
     var tabs = document.getElementById("cfgTabs");
     var content = document.getElementById("cfgContent");
@@ -242,6 +337,8 @@
       else if (tab === "listas") { content.innerHTML = V.cfgListas(); }
       else if (tab === "conta") { content.innerHTML = V.cfgConta(); wireConta(); }
       else if (tab === "utilizadores") { content.innerHTML = V.cfgUtilizadores(); wireUtilizadores(); }
+      else if (tab === "auditoria") { content.innerHTML = V.cfgAuditoria(); wireAuditoria(); }
+      else if (tab === "importar") { content.innerHTML = V.cfgImportar(); wireImportar(); }
       else { content.innerHTML = V.cfgDados(); wireDados(); }
     }
     tabs.addEventListener("click", function (e) {
@@ -407,6 +504,114 @@
     });
   }
 
+  function wireImportar() {
+    var registos = [];   // registos validados, prontos a importar
+    var fileEl = document.getElementById("impFile");
+    if (fileEl) fileEl.onchange = function (e) {
+      var f = e.target.files[0]; if (!f) return;
+      var rd = new FileReader();
+      rd.onload = function () { document.getElementById("impText").value = rd.result; };
+      rd.readAsText(f);
+    };
+
+    function chave(s) { return String(s || "").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""); }
+
+    document.getElementById("impPrever").onclick = function () {
+      var tipo = document.getElementById("impTipo").value;
+      var linhas = U.parseCSV(document.getElementById("impText").value);
+      var host = document.getElementById("impPreview");
+      registos = [];
+      if (linhas.length < 2) { host.innerHTML = C.empty("", "Cole dados com cabeçalho + pelo menos 1 linha."); document.getElementById("impImportar").disabled = true; return; }
+      var headers = linhas[0].map(chave);
+      var idx = function (nome) { return headers.indexOf(nome); };
+      var get = function (linha, nome) { var i = idx(nome); return i >= 0 ? String(linha[i] || "").trim() : ""; };
+      var avisos = [];
+      for (var li = 1; li < linhas.length; li++) {
+        var l = linhas[li];
+        if (tipo === "Estudantes") {
+          var nome = get(l, "nome");
+          if (!nome) { avisos.push("Linha " + (li + 1) + ": sem nome (ignorada)."); continue; }
+          var dup = D.estudantesSemelhantes(nome, get(l, "contacto"), get(l, "bi")).length > 0;
+          registos.push({
+            _tipo: "estudante", _dup: dup,
+            nome: nome, contacto: get(l, "contacto"), curso: get(l, "curso"), bi: get(l, "bi"),
+            whatsapp: get(l, "whatsapp"), periodo: get(l, "periodo"), unidade: get(l, "unidade"),
+            tipoCurso: get(l, "tipocurso"), regime: get(l, "regime"),
+            dataMatricula: get(l, "datamatricula") || U.hoje(), estado: get(l, "estado") || "ativo"
+          });
+        } else {
+          var ref = get(l, "estudante") || get(l, "nome") || get(l, "matricula");
+          var valor = U.parseMoeda(get(l, "valor") || get(l, "valorpago"));
+          var est = V.resolverEstudante(ref);
+          if (!est) { avisos.push("Linha " + (li + 1) + ": estudante \"" + ref + "\" não encontrado (ignorada)."); continue; }
+          if (!(valor > 0)) { avisos.push("Linha " + (li + 1) + ": valor inválido (ignorada)."); continue; }
+          registos.push({
+            _tipo: "pagamento", est: est, valor: valor,
+            categoria: get(l, "categoria") || get(l, "emolumento") || "Outros",
+            emolumento: get(l, "emolumento") || get(l, "categoria") || "Outros",
+            forma: get(l, "forma") || get(l, "formapagamento"),
+            data: get(l, "data") || U.hoje()
+          });
+        }
+      }
+      var rows = registos.slice(0, 50).map(function (r) {
+        if (r._tipo === "estudante") return "<tr><td>" + U.esc(r.nome) + (r._dup ? ' <span class="badge warn">possível duplicado</span>' : "") + "</td><td>" + U.esc(r.contacto) + "</td><td>" + U.esc(r.curso) + "</td></tr>";
+        return "<tr><td>" + U.esc(r.est.nome) + "</td><td>" + U.esc(r.categoria) + "</td><td class='text-right num'>" + U.moeda(r.valor) + "</td></tr>";
+      }).join("");
+      var head = tipo === "Estudantes" ? "<th>Nome</th><th>Contacto</th><th>Curso</th>" : "<th>Estudante</th><th>Categoria</th><th class='text-right'>Valor</th>";
+      host.innerHTML =
+        (avisos.length ? '<div class="login-err" style="position:static">' + avisos.slice(0, 10).map(U.esc).join("<br>") + (avisos.length > 10 ? "<br>…" : "") + "</div>" : "") +
+        "<p class='help mt'>" + registos.length + " registo(s) prontos a importar" + (registos.length > 50 ? " (a mostrar 50)" : "") + ".</p>" +
+        (registos.length ? '<div class="table-wrap"><table class="data"><thead><tr>' + head + "</tr></thead><tbody>" + rows + "</tbody></table></div>" : "");
+      document.getElementById("impImportar").disabled = !registos.length;
+    };
+
+    document.getElementById("impImportar").onclick = function () {
+      if (!registos.length) return;
+      var btn = document.getElementById("impImportar");
+      btn.disabled = true; btn.textContent = "A importar…";
+      // importação sequencial (aloca matrícula/recibo de forma atómica por registo)
+      var i = 0, okN = 0;
+      function passo() {
+        if (i >= registos.length) {
+          C.toast("Importação concluída: " + okN + " registo(s).", "ok");
+          btn.textContent = "Importar"; App.refresh();
+          return;
+        }
+        var r = registos[i++];
+        var prox = function () { okN++; passo(); };
+        var falha = function () { passo(); };
+        if (r._tipo === "estudante") {
+          D.alocarMatricula().then(function (num) {
+            D.saveEstudante({ matricula: num, nome: r.nome, contacto: r.contacto, curso: r.curso, bi: r.bi, whatsapp: r.whatsapp, periodo: r.periodo, unidade: r.unidade, tipoCurso: r.tipoCurso, regime: r.regime, dataMatricula: r.dataMatricula, estado: r.estado });
+            prox();
+          }).catch(falha);
+        } else {
+          var emo = D.emolumentosAtivos().filter(function (x) { return x.nome === r.emolumento || x.categoria === r.categoria; })[0];
+          V._criarPagamento(r.est, { emolumentoId: emo ? emo.id : "", emolumento: r.emolumento, categoria: r.categoria, valorPago: r.valor, formaPagamento: r.forma, data: r.data }).then(prox).catch(falha);
+        }
+      }
+      passo();
+    };
+  }
+
+  function wireAuditoria() {
+    if (!window.MidasAudit) return;
+    function load() {
+      var host = document.getElementById("audTable");
+      if (host) host.innerHTML = '<p class="help">A carregar…</p>';
+      window.MidasAudit.list({
+        tabela: document.getElementById("audTabela").value,
+        accao: document.getElementById("audAccao").value
+      }).then(function (rows) { V.renderAuditoria(rows); })
+        .catch(function (e) { var h = document.getElementById("audTable"); if (h) h.innerHTML = C.empty("", "Erro: " + U.esc(e.message)); });
+    }
+    load();
+    document.getElementById("audReload").onclick = load;
+    document.getElementById("audTabela").addEventListener("change", load);
+    document.getElementById("audAccao").addEventListener("change", load);
+  }
+
   function wireDados() {
     document.getElementById("bkExport").onclick = function () {
       U.downloadText("backup-midas-" + U.hoje() + ".json", D.export());
@@ -483,10 +688,23 @@
       }
       var editing = !!fd.get("id");
       var btn = document.getElementById("matGerar");
-      if (btn) { btn.disabled = true; btn.textContent = editing ? "A guardar…" : "A gerar…"; }
       var restoreBtn = function () {
         if (btn) { btn.disabled = false; btn.textContent = editing ? "Guardar alterações" : "Gerar matrícula"; }
       };
+      // Antes de criar uma nova matrícula, avisa se houver estudante parecido.
+      if (!editing) {
+        var semelhantes = D.estudantesSemelhantes(nome, contacto, fd.get("bi"));
+        if (semelhantes.length) {
+          V.confirmaDuplicado(semelhantes,
+            function (esc) { App.navigate("matricula", { id: esc.id }); }, // editar o existente
+            prosseguir);                                                    // criar novo
+          return;
+        }
+      }
+      prosseguir();
+
+      function prosseguir() {
+      if (btn) { btn.disabled = true; btn.textContent = editing ? "A guardar…" : "A gerar…"; }
       // Nº de matrícula: edição mantém; nova matrícula aloca de forma atómica.
       var numeroP = editing ? Promise.resolve(fd.get("matricula")) : D.alocarMatricula();
       numeroP.then(function (numeroMat) {
@@ -532,7 +750,11 @@
             funcionario: fd.get("funcionario"), data: U.agoraISO(), observacoes: fd.get("observacoes")
           }).then(function (pag) { msg += " Recibo " + pag.recibo + " gerado."; finish(); });
         } else { finish(); }
+      }).catch(function (e) {
+        C.toast("Erro ao gerar matrícula: " + (e && e.message ? e.message : e), "err");
+        restoreBtn();
       });
+      }
     }
 
     form.addEventListener("submit", function (ev) { ev.preventDefault(); gerarMatricula(); });
@@ -608,7 +830,9 @@
   document.addEventListener("click", function (e) {
     var t = e.target.closest("[data-go],[data-est-view],[data-est-ficha],[data-est-edit],[data-est-pay],[data-est-del]," +
       "[data-curso-edit],[data-curso-del],[data-pag-view],[data-pag-del],[data-lista-add],[data-lista-del]," +
-      "[data-em-edit],[data-em-toggle],[data-em-del],[data-lixo-restore]");
+      "[data-em-edit],[data-em-toggle],[data-em-del],[data-lixo-restore]," +
+      "[data-fecho-print],[data-fecho-del],[data-estagio-edit],[data-estagio-del]," +
+      "[data-lead-convert],[data-lead-del],[data-lead-wa]");
     if (!t) return;
 
     var go = t.getAttribute("data-go");
@@ -654,6 +878,61 @@
       }, { danger: true, yes: "Eliminar" });
       return;
     }
+    if ((id = t.getAttribute("data-fecho-print"))) {
+      var fc = D.fechoById(id);
+      if (fc) {
+        var host = document.createElement("div");
+        host.style.position = "fixed"; host.style.left = "-9999px"; host.innerHTML = C.fechoHTML(fc);
+        document.body.appendChild(host);
+        U.printElement("fechoDoc", "Fecho de Caixa " + fc.data);
+        setTimeout(function () { host.remove(); }, 1500);
+      }
+      return;
+    }
+    if ((id = t.getAttribute("data-fecho-del"))) {
+      if (window.MidasUsers && D.auth().perfil !== "admin") { C.toast("Apenas o administrador pode eliminar um fecho.", "err"); return; }
+      C.confirm("Eliminar este fecho de caixa?", function () {
+        D.deleteFecho(id); C.toast("Fecho eliminado.", "ok"); V.renderFechosGuardados();
+      }, { danger: true, yes: "Eliminar" });
+      return;
+    }
+    if ((id = t.getAttribute("data-lead-wa"))) {
+      var lwa = D.leadById(id);
+      if (lwa) {
+        var msg = "Olá " + (lwa.nome || "") + "! Falamos do Grupo Midas Angola sobre a sua pré-inscrição";
+        window.open(U.whatsappURL(lwa.whatsapp || lwa.contacto, msg), "_blank");
+      }
+      return;
+    }
+    if ((id = t.getAttribute("data-lead-del"))) {
+      C.confirm("Eliminar este lead?", function () {
+        D.deleteLead(id); C.toast("Lead eliminado.", "ok"); V.renderLeads();
+      }, { danger: true, yes: "Eliminar" });
+      return;
+    }
+    if ((id = t.getAttribute("data-lead-convert"))) {
+      var lead = D.leadById(id);
+      if (!lead) return;
+      C.confirm("Converter \"" + lead.nome + "\" em estudante? Será criada uma ficha que poderá completar depois.", function () {
+        D.alocarMatricula().then(function (num) {
+          D.saveEstudante({
+            matricula: num, nome: lead.nome, contacto: lead.contacto, whatsapp: lead.whatsapp,
+            curso: lead.cursoInteresse, periodo: lead.periodo, unidade: lead.unidade,
+            dataMatricula: U.hoje(), estado: "ativo", observacoes: lead.mensagem ? "Lead: " + lead.mensagem : ""
+          });
+          lead.estado = "Matriculado"; lead.convertidoEm = U.agoraISO(); D.saveLead(lead);
+          C.toast("Lead convertido em estudante (" + num + ").", "ok"); V.renderLeads();
+        });
+      }, { yes: "Converter" });
+      return;
+    }
+    if ((id = t.getAttribute("data-estagio-edit"))) { V.editarEstagio(id); return; }
+    if ((id = t.getAttribute("data-estagio-del"))) {
+      C.confirm("Eliminar este estágio?", function () {
+        D.deleteEstagio(id); C.toast("Estágio eliminado.", "ok"); V.renderEstagios();
+      }, { danger: true, yes: "Eliminar" });
+      return;
+    }
     if ((id = t.getAttribute("data-lixo-restore"))) {
       D.restaurarLixo(id); C.toast("Registo restaurado.", "ok");
       V.renderLixo();
@@ -693,6 +972,24 @@
     window.Auth.gate(startApp);
   }
 
+  function setupSyncPill() {
+    var pill = document.getElementById("syncPill");
+    if (!pill || !window.MidasSync) return; // só em modo Supabase
+    function render() {
+      var online = window.MidasSync.online();
+      var n = window.MidasSync.pendentes();
+      pill.hidden = false;
+      if (!online) { pill.className = "sync-pill off"; pill.textContent = "● Offline" + (n ? " · " + n + " por enviar" : ""); }
+      else if (n) { pill.className = "sync-pill pend"; pill.textContent = "↻ A sincronizar " + n + "…"; }
+      else { pill.className = "sync-pill ok"; pill.textContent = "● Online"; }
+    }
+    window.MidasSync.aoMudar(render);
+    window.addEventListener("online", render);
+    window.addEventListener("offline", render);
+    pill.onclick = function () { window.MidasSync.sincronizar().then(render); };
+    render();
+  }
+
   function startApp() {
     applyAparencia();
     // user chip + logout
@@ -712,6 +1009,7 @@
 
     document.getElementById("menuToggle").addEventListener("click", openNav);
     document.getElementById("overlay").addEventListener("click", closeNav);
+    setupSyncPill();
 
     window.addEventListener("hashchange", function () {
       App.render((location.hash || "#dashboard").slice(1));

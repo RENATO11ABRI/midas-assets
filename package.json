@@ -1,0 +1,10 @@
+{
+  "name": "turmas-midas-2026",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sistema de gestão de matrículas, cursos, pagamentos e recibos — Grupo Midas Angola",
+  "scripts": {
+    "check": "for f in js/*.js; do node --check \"$f\"; done",
+    "test": "node --test"
+  }
+}

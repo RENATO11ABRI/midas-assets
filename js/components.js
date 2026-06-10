@@ -80,6 +80,26 @@
     return '<span class="badge ' + (map[estado] || "off") + '">' + U.esc(estado || "—") + "</span>";
   };
 
+  // ---- Gráfico de barras (sem dependências; respeita tema/cores) ----------
+  // items = [{ label, value }]; opts = { moeda:true, vazio:"..." }
+  C.chartBars = function (items, opts) {
+    opts = opts || {};
+    items = (items || []).filter(Boolean);
+    if (!items.length) return C.empty("", opts.vazio || "Sem dados para apresentar.");
+    var max = 0;
+    items.forEach(function (i) { var v = Number(i.value) || 0; if (v > max) max = v; });
+    if (max <= 0) max = 1;
+    var rows = items.map(function (i) {
+      var v = Number(i.value) || 0;
+      var pct = Math.max(2, Math.round((v / max) * 100));
+      return '<div class="chart-row">' +
+        '<div class="chart-label" title="' + U.esc(i.label) + '">' + U.esc(i.label) + "</div>" +
+        '<div class="chart-track"><div class="chart-fill" style="width:' + pct + '%"></div></div>' +
+        '<div class="chart-val">' + (opts.moeda ? U.moeda(v) : v) + "</div></div>";
+    }).join("");
+    return '<div class="chart-bars">' + rows + "</div>";
+  };
+
   // ---- Receipt HTML --------------------------------------------------------
   // ---- Document helpers ----------------------------------------------------
   C._docHead = function (titulo, num, data) {
@@ -116,6 +136,17 @@
       " · " + U.esc(s.endereco) + "</div>";
   };
 
+  // ---- QR de verificação (gerado pela Edge Function "qr") -----------------
+  // Aparece nos documentos quando o backend Supabase está configurado.
+  C._qrBlock = function (tipo, id) {
+    if (!id || !window.MIDAS_CONFIG || !window.MIDAS_CONFIG.supabaseUrl) return "";
+    var base = location.origin + location.pathname.replace(/[^/]*$/, "");
+    var verify = base + "verificar.html?t=" + encodeURIComponent(tipo) + "&id=" + encodeURIComponent(id);
+    var src = window.MIDAS_CONFIG.supabaseUrl + "/functions/v1/qr?data=" + encodeURIComponent(verify);
+    return '<div class="qr-block"><img src="' + src + '" alt="QR de verificação" width="96" height="96" />' +
+      "<small>Verifique a autenticidade<br>deste documento</small></div>";
+  };
+
   // ---- Receipt (2 vias, A4) -----------------------------------------------
   // pag = pagamento record
   C._receiptVia = function (pag, label) {
@@ -139,6 +170,7 @@
         C._docItem("Observações", obs, true) +
       "</div>" +
       '<div class="doc-amount"><span class="k">Valor pago</span><span class="v num">' + U.moeda(pag.valorPago) + "</span></div>" +
+      C._qrBlock("recibo", pag.recibo) +
       C._docSign() +
       '<div class="doc-foot">Documento emitido pelo sistema interno do ' + U.esc(s.instituicao) + ".</div>" +
       "</div>";
@@ -187,6 +219,7 @@
         C._docItem("Valor pago", U.moeda(valorPago)) +
         C._docItem("Forma de pagamento", est.formaPagamento) +
       "</div>" +
+      C._qrBlock("matricula", est.matricula) +
       C._docSign() +
       '<div class="doc-foot">Documento emitido pelo sistema interno do ' + U.esc(s.instituicao) + ".</div>" +
       "</div>";
@@ -221,6 +254,110 @@
       (rows.length === 0 ? '<p style="text-align:center;color:#888;margin-top:18px">Sem registos para os filtros aplicados.</p>' : "") +
       '<div class="ps-foot"><span>' + U.esc(s.sistema) + " — Ano letivo " + U.esc(s.anoLetivo) +
         "</span><span>Total de registos: " + rows.length + "</span></div></div>";
+  };
+
+  // ---- Extrato de conta do estudante (A4) ---------------------------------
+  C.extratoHTML = function (est) {
+    var s = D.db().settings;
+    var pags = D.pagamentosDeEstudante(est.id).slice().sort(function (a, b) { return (a.data || "") < (b.data || "") ? -1 : 1; });
+    var pago = D.totalPagoEstudante(est.id);
+    var curso = D.cursoByNome(est.curso);
+    var totalCurso = curso ? (Number(curso.valorTotal) || 0) : 0;
+    var saldo = totalCurso ? Math.max(0, totalCurso - pago) : 0;
+    var situacao = !totalCurso ? "—" : (saldo > 0 ? "Em dívida" : "Regularizado");
+    var linhas = pags.length ? pags.map(function (p) {
+      return "<tr><td>" + U.dataPT(p.data) + "</td><td>" + U.esc(p.recibo) + "</td><td>" + U.esc(p.emolumento) +
+        "</td><td>" + U.esc(p.formaPagamento || "") + "</td><td style='text-align:right'>" + U.moeda(p.valorPago) + "</td></tr>";
+    }).join("") : "<tr><td colspan='5' style='text-align:center;color:#888'>Sem pagamentos.</td></tr>";
+    return '<div class="print-sheet" id="extratoDoc">' +
+      '<div class="ps-head"><div><h2>Extrato de Conta</h2><div>' + U.esc(est.nome) + " · " + U.esc(est.matricula) + "</div></div>" +
+        '<div class="org"><img src="' + U.logoURL(true) + '" alt="" style="height:42px"><br><strong>' + U.esc(s.instituicao) +
+        "</strong><br><small>Emitido: " + U.dataHoraPT(U.agoraISO()) + "</small></div></div>" +
+      '<div class="doc-grid" style="margin-bottom:12px">' +
+        C._docItem("Curso", est.curso) + C._docItem("Período", est.periodo) +
+        C._docItem("Contacto", est.contacto) + C._docItem("Estado", est.estado) +
+      "</div>" +
+      "<table><thead><tr><th>Data</th><th>Recibo</th><th>Categoria</th><th>Forma</th><th style='text-align:right'>Valor</th></tr></thead><tbody>" +
+        linhas + "</tbody></table>" +
+      '<div class="doc-amount"><span class="k">Total pago</span><span class="v num">' + U.moeda(pago) + "</span></div>" +
+      (totalCurso ? '<div class="doc-amount"><span class="k">Saldo em dívida</span><span class="v num">' + U.moeda(saldo) + "</span></div>" : "") +
+      '<p style="margin:6px 0"><strong>Situação financeira:</strong> ' + U.esc(situacao) + "</p>" +
+      C._docSign() + C._docFoot() + "</div>";
+  };
+  C.verExtrato = function (est) {
+    C.modal({
+      title: "Extrato — " + est.nome,
+      body: C.extratoHTML(est),
+      footer:
+        '<button class="btn btn-light" onclick="App.closeModal()">Fechar</button>' +
+        '<button class="btn btn-gold" id="exPrint">Imprimir</button>' +
+        '<button class="btn btn-primary" id="exPdf">Guardar PDF</button>',
+      onOpen: function () {
+        var go = function () { U.printElement("extratoDoc", "Extrato " + est.nome); };
+        document.getElementById("exPrint").onclick = go;
+        document.getElementById("exPdf").onclick = function () { C.toast("Na janela de impressão escolha “Guardar como PDF”.", "ok"); go(); };
+      }
+    });
+  };
+
+  // ---- Mapa de propinas / carnê (A4) --------------------------------------
+  C.mapaPropinasHTML = function (est) {
+    var s = D.db().settings;
+    var m = D.mapaPropinas(est);
+    var badge = function (e) {
+      var map = { "Pago": "ok", "Parcial": "warn", "Atrasado": "danger", "Em Falta": "off" };
+      return '<span class="badge ' + (map[e] || "off") + '">' + U.esc(e) + "</span>";
+    };
+    var linhas = m.itens.length ? m.itens.map(function (it) {
+      return "<tr><td>" + U.esc(it.descricao) + "</td><td>" + (it.vencimento ? U.dataPT(it.vencimento) : "—") + "</td>" +
+        "<td style='text-align:right'>" + U.moeda(it.valorPrevisto) + "</td>" +
+        "<td style='text-align:right'>" + U.moeda(it.valorPago) + "</td>" +
+        "<td style='text-align:right'>" + U.moeda(it.saldo) + "</td><td>" + badge(it.estado) + "</td></tr>";
+    }).join("") : "<tr><td colspan='6' style='text-align:center;color:#888'>Sem plano (curso sem valores definidos).</td></tr>";
+    return '<div class="print-sheet" id="carneDoc">' +
+      '<div class="ps-head"><div><h2>Mapa de Propinas</h2><div>' + U.esc(est.nome) + " · " + U.esc(est.matricula) + "</div></div>" +
+        '<div class="org"><img src="' + U.logoURL(true) + '" alt="" style="height:42px"><br><strong>' + U.esc(s.instituicao) + "</strong></div></div>" +
+      '<div class="doc-grid" style="margin-bottom:10px">' + C._docItem("Curso", est.curso) + C._docItem("Período", est.periodo) + "</div>" +
+      "<table><thead><tr><th>Descrição</th><th>Vencimento</th><th style='text-align:right'>Previsto</th><th style='text-align:right'>Pago</th><th style='text-align:right'>Em dívida</th><th>Estado</th></tr></thead><tbody>" +
+        linhas + "</tbody></table>" +
+      '<div class="doc-amount"><span class="k">Total previsto</span><span class="v num">' + U.moeda(m.totalPrevisto) + "</span></div>" +
+      '<div class="doc-amount"><span class="k">Total pago</span><span class="v num">' + U.moeda(m.totalPago) + "</span></div>" +
+      '<div class="doc-amount"><span class="k">Total em dívida</span><span class="v num">' + U.moeda(m.totalDivida) + "</span></div>" +
+      C._docFoot() + "</div>";
+  };
+  C.verMapaPropinas = function (est) {
+    C.modal({
+      title: "Mapa de Propinas — " + est.nome,
+      body: C.mapaPropinasHTML(est),
+      footer: '<button class="btn btn-light" onclick="App.closeModal()">Fechar</button>' +
+        '<button class="btn btn-gold" id="cnPrint">Imprimir</button>',
+      onOpen: function () { document.getElementById("cnPrint").onclick = function () { U.printElement("carneDoc", "Mapa de Propinas " + est.nome); }; }
+    });
+  };
+
+  // ---- Fecho de caixa (A4) ------------------------------------------------
+  C.fechoHTML = function (fc) {
+    var s = D.db().settings;
+    var t = fc.totais || {};
+    var linhaTot = function (k) { return "<tr><td>" + U.esc(k) + "</td><td style='text-align:right'>" + U.moeda(t[k] || 0) + "</td></tr>"; };
+    var linhas = (fc.recibos || []).map(function (r) {
+      return "<tr><td>" + U.esc(r.recibo) + "</td><td>" + U.esc(r.estudante) + "</td><td>" + U.esc(r.forma || "") +
+        "</td><td style='text-align:right'>" + U.moeda(r.valor) + "</td></tr>";
+    }).join("");
+    return '<div class="print-sheet" id="fechoDoc">' +
+      '<div class="ps-head"><div><h2>Fecho de Caixa</h2><div>' + U.dataPT(fc.data) + " · " + U.esc(fc.funcionario || "Todos") + "</div></div>" +
+        '<div class="org"><img src="' + U.logoURL(true) + '" alt="" style="height:42px"><br><strong>' + U.esc(s.instituicao) + "</strong></div></div>" +
+      "<h4>Totais por forma de pagamento</h4>" +
+      "<table><tbody>" +
+        ["Dinheiro", "TPA", "Transferência", "Multicaixa Express", "Outras"].map(linhaTot).join("") +
+        "<tr><th>Total geral</th><th style='text-align:right'>" + U.moeda(fc.totalGeral || 0) + "</th></tr>" +
+        "<tr><td>Nº de recibos</td><td style='text-align:right'>" + (fc.numRecibos || 0) + "</td></tr>" +
+      "</tbody></table>" +
+      "<h4>Recibos do dia</h4>" +
+      "<table><thead><tr><th>Recibo</th><th>Estudante</th><th>Forma</th><th style='text-align:right'>Valor</th></tr></thead><tbody>" +
+        (linhas || "<tr><td colspan='4' style='text-align:center;color:#888'>Sem recibos.</td></tr>") + "</tbody></table>" +
+      (fc.observacoes ? "<p><strong>Observações:</strong> " + U.esc(fc.observacoes) + "</p>" : "") +
+      C._docSign() + C._docFoot() + "</div>";
   };
 
   // View receipt in modal with print/pdf actions

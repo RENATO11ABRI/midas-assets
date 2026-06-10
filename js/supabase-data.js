@@ -91,14 +91,43 @@
       });
   }
 
+  /* ---- Fila de sincronização offline (outbox) ----------------------- */
+  var OUTBOX_KEY = "midas_outbox_v1";
+  function outboxLer() { try { return JSON.parse(localStorage.getItem(OUTBOX_KEY) || "[]"); } catch (e) { return []; } }
+  function outboxGravar(q) { try { localStorage.setItem(OUTBOX_KEY, JSON.stringify(q)); } catch (e) {} notificarSync(); }
+  function enfileirar(op) { var q = outboxLer(); q.push(op); outboxGravar(q); }
+  function notificarSync() { var s = window.MidasSync; if (s && typeof s._onChange === "function") s._onChange(); }
+
   function upsertRow(table, obj) {
-    sb.from(table).upsert({ id: obj.id, dados: obj, atualizado_em: new Date().toISOString() })
-      .then(function (res) { if (res.error) fail("Não foi possível guardar online. Verifique a ligação.", res.error); });
+    var row = { id: obj.id, dados: obj, atualizado_em: new Date().toISOString() };
+    if (!navigator.onLine) { enfileirar({ kind: "upsert", table: table, obj: obj }); return; }
+    sb.from(table).upsert(row)
+      .then(function (res) { if (res.error) fail("Não foi possível guardar online. Verifique a ligação.", res.error); })
+      .catch(function () { enfileirar({ kind: "upsert", table: table, obj: obj }); }); // falha de rede -> fila
   }
 
   function deleteRow(table, id) {
+    if (!navigator.onLine) { enfileirar({ kind: "delete", table: table, id: id }); return; }
     sb.from(table).delete().eq("id", id)
-      .then(function (res) { if (res.error) fail("Não foi possível eliminar online.", res.error); });
+      .then(function (res) { if (res.error) fail("Não foi possível eliminar online.", res.error); })
+      .catch(function () { enfileirar({ kind: "delete", table: table, id: id }); });
+  }
+
+  function flushOutbox() {
+    if (!navigator.onLine) return Promise.resolve(false);
+    var q = outboxLer();
+    if (!q.length) { notificarSync(); return Promise.resolve(true); }
+    var i = 0;
+    function passo() {
+      if (i >= q.length) { outboxGravar([]); return Promise.resolve(true); }
+      var op = q[i++];
+      var p = op.kind === "delete"
+        ? sb.from(op.table).delete().eq("id", op.id)
+        : sb.from(op.table).upsert({ id: op.obj.id, dados: op.obj, atualizado_em: new Date().toISOString() });
+      return p.then(function () { return passo(); })   // erro de servidor (ex.: RLS): descarta para não ciclar
+        .catch(function () { outboxGravar(q.slice(i - 1)); return false; }); // rede falhou: mantém o resto
+    }
+    return passo();
   }
 
   function bulkUpsert(table, arr) {
@@ -146,11 +175,11 @@
       })
       .then(function () { return Promise.all([
         fetchAll("cursos"), fetchAll("emolumentos"),
-        fetchAll("estudantes"), fetchAll("pagamentos")
+        fetchAll("estudantes"), fetchAll("pagamentos"), fetchAll("fechos"), fetchAll("estagios"), fetchAll("leads")
       ]); })
       .then(function (r) {
         db.cursos = r[0]; db.emolumentos = r[1];
-        db.estudantes = r[2]; db.pagamentos = r[3];
+        db.estudantes = r[2]; db.pagamentos = r[3]; db.fechos = r[4] || []; db.estagios = r[5] || []; db.leads = r[6] || [];
         var seeds = [];
         // Só semeia se o perfil tiver permissão de escrita (evita erros de RLS
         // para quem não é admin/directora). Os dados ficam na cache de qualquer forma.
@@ -164,7 +193,8 @@
         }
         reconcileSeqs(db);
         return Promise.all(seeds);
-      });
+      })
+      .then(function (r) { flushOutbox().then(notificarSync); return r; }); // envia alterações offline pendentes
   }
 
   // Evita números repetidos entre dispositivos: avança os contadores para além
@@ -189,7 +219,9 @@
   var base = {};
   ["save", "saveEstudante", "deleteEstudante", "savePagamento", "deletePagamento",
    "saveCurso", "deleteCurso", "saveEmolumento", "deleteEmolumento", "toggleEmolumento",
-   "restaurarLixo", "reporCatalogo", "reset", "import"].forEach(function (m) { base[m] = D[m].bind(D); });
+   "restaurarLixo", "reporCatalogo", "reset", "import",
+   "saveFecho", "deleteFecho", "saveEstagio", "deleteEstagio",
+   "saveLead", "deleteLead"].forEach(function (m) { base[m] = D[m].bind(D); });
 
   // Evita reenviar a configuração completa a cada gravação de entidade: as
   // entidades têm a sua própria linha, por isso o save() interno é silenciado.
@@ -207,6 +239,15 @@
 
   D.savePagamento = function (pag) { var r = quiet(base.savePagamento, [pag]); upsertRow("pagamentos", r); return r; };
   D.deletePagamento = function (id) { quiet(base.deletePagamento, [id]); deleteRow("pagamentos", id); pushConfig(); };
+
+  D.saveFecho = function (f) { var r = quiet(base.saveFecho, [f]); upsertRow("fechos", r); return r; };
+  D.deleteFecho = function (id) { quiet(base.deleteFecho, [id]); deleteRow("fechos", id); };
+
+  D.saveEstagio = function (e) { var r = quiet(base.saveEstagio, [e]); upsertRow("estagios", r); return r; };
+  D.deleteEstagio = function (id) { quiet(base.deleteEstagio, [id]); deleteRow("estagios", id); };
+
+  D.saveLead = function (l) { var r = quiet(base.saveLead, [l]); upsertRow("leads", r); return r; };
+  D.deleteLead = function (id) { quiet(base.deleteLead, [id]); deleteRow("leads", id); };
 
   D.saveCurso = function (c) { var r = quiet(base.saveCurso, [c]); upsertRow("cursos", r); return r; };
   D.deleteCurso = function (id) { quiet(base.deleteCurso, [id]); deleteRow("cursos", id); };
@@ -439,5 +480,30 @@
     setPassword: function (userId, password) { return chamarAdmin({ action: "setPassword", userId: userId, password: password }); },
     remove: function (userId) { return chamarAdmin({ action: "remove", userId: userId }); }
   };
+
+  /* ---- Auditoria (leitura; só admin/directora pela RLS) -------------- */
+  window.MidasAudit = {
+    podeVer: function () { return ["admin", "directora"].indexOf(_perfil.perfil) >= 0; },
+    list: function (filtros) {
+      filtros = filtros || {};
+      var q = sb.from("auditoria")
+        .select("tabela,registo_id,accao,utilizador_nome,quando")
+        .order("quando", { ascending: false }).limit(300);
+      if (filtros.tabela) q = q.eq("tabela", filtros.tabela);
+      if (filtros.accao) q = q.eq("accao", filtros.accao);
+      return q.then(function (res) { if (res.error) throw new Error(res.error.message); return res.data || []; });
+    }
+  };
+
+  /* ---- Estado de sincronização / offline ---------------------------- */
+  window.MidasSync = {
+    online: function () { return navigator.onLine; },
+    pendentes: function () { return outboxLer().length; },
+    sincronizar: function () { return flushOutbox().then(function (ok) { notificarSync(); return ok; }); },
+    _onChange: null,
+    aoMudar: function (cb) { this._onChange = cb; }
+  };
+  window.addEventListener("online", function () { flushOutbox().then(notificarSync); });
+  window.addEventListener("offline", notificarSync);
 
 })(window);

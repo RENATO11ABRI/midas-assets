@@ -131,6 +131,34 @@
       U._download(blob, filename);
     },
 
+    // Link "click-to-chat" do WhatsApp (Angola: 9 dígitos → prefixo 244)
+    whatsappURL: function (numero, mensagem) {
+      var n = String(numero || "").replace(/\D/g, "");
+      if (!n) return "";
+      if (n.length === 9) n = "244" + n;
+      return "https://wa.me/" + n + (mensagem ? "?text=" + encodeURIComponent(mensagem) : "");
+    },
+
+    // Parser CSV simples (deteta ; ou , ; suporta aspas). Devolve array de arrays.
+    parseCSV: function (text) {
+      text = String(text || "");
+      var firstLine = text.split("\n")[0] || "";
+      var delim = firstLine.indexOf(";") >= 0 ? ";" : ",";
+      var rows = [], row = [], cur = "", inQ = false;
+      for (var i = 0; i < text.length; i++) {
+        var ch = text[i];
+        if (inQ) {
+          if (ch === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else inQ = false; }
+          else cur += ch;
+        } else if (ch === '"') { inQ = true; }
+        else if (ch === delim) { row.push(cur); cur = ""; }
+        else if (ch === "\n") { row.push(cur); rows.push(row); row = []; cur = ""; }
+        else if (ch !== "\r") { cur += ch; }
+      }
+      if (cur.length || row.length) { row.push(cur); rows.push(row); }
+      return rows.filter(function (r) { return r.some(function (c) { return String(c).trim() !== ""; }); });
+    },
+
     // small helpers
     by: function (key) { return function (a, b) { return a[key] < b[key] ? 1 : -1; }; },
     sum: function (arr, fn) { return arr.reduce(function (s, x) { return s + (Number(fn(x)) || 0); }, 0); },

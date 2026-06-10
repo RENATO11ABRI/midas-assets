@@ -142,6 +142,9 @@
       cursos: [],
       estudantes: [],
       pagamentos: [],
+      fechos: [],
+      estagios: [],
+      leads: [],
       lixo: []
     };
   }
@@ -458,6 +461,154 @@
       this.save();
     },
 
+    // ---- Fecho de caixa ----------------------------------------------------
+    fechos: function () { return this.load().fechos || []; },
+    fechoById: function (id) { return (this.load().fechos || []).filter(function (f) { return f.id === id; })[0]; },
+    // Pagamentos de um dia (YYYY-MM-DD), opcionalmente de um funcionário
+    pagamentosDoDia: function (ymd, funcionario) {
+      return this.load().pagamentos.filter(function (p) {
+        if ((p.data || "").slice(0, 10) !== ymd) return false;
+        if (funcionario && p.funcionario !== funcionario) return false;
+        return true;
+      });
+    },
+    saveFecho: function (fecho) {
+      var db = this.load();
+      if (!db.fechos) db.fechos = [];
+      if (fecho.id) {
+        for (var i = 0; i < db.fechos.length; i++) {
+          if (db.fechos[i].id === fecho.id) { db.fechos[i] = fecho; this.save(); return fecho; }
+        }
+      }
+      fecho.id = this.uid("fec");
+      db.fechos.push(fecho); this.save(); return fecho;
+    },
+    deleteFecho: function (id) {
+      var db = this.load();
+      db.fechos = (db.fechos || []).filter(function (f) { return f.id !== id; });
+      this.save();
+    },
+
+    // ---- Estágios ----------------------------------------------------------
+    estagios: function () { return this.load().estagios || []; },
+    estagioById: function (id) { return (this.load().estagios || []).filter(function (e) { return e.id === id; })[0]; },
+    estagiosDeEstudante: function (estId) { return (this.load().estagios || []).filter(function (e) { return e.estudanteId === estId; }); },
+    saveEstagio: function (est) {
+      var db = this.load();
+      if (!db.estagios) db.estagios = [];
+      if (est.id) {
+        for (var i = 0; i < db.estagios.length; i++) {
+          if (db.estagios[i].id === est.id) { db.estagios[i] = est; this.save(); return est; }
+        }
+      }
+      est.id = this.uid("est_g");
+      db.estagios.push(est); this.save(); return est;
+    },
+    deleteEstagio: function (id) {
+      var db = this.load();
+      db.estagios = (db.estagios || []).filter(function (e) { return e.id !== id; });
+      this.save();
+    },
+
+    // ---- Aptidão para a defesa --------------------------------------------
+    aptidaoDefesa: function (est) {
+      var self = this;
+      if (!est) return { apto: false, criterios: [], motivos: ["Estudante inválido"] };
+      var pags = this.pagamentosDeEstudante(est.id);
+      var tem = function (frag) {
+        return pags.some(function (p) { return self._normNome((p.categoria || "") + " " + (p.emolumento || "")).indexOf(frag) >= 0; });
+      };
+      var estagioConcluido = this.estagiosDeEstudante(est.id).some(function (e) {
+        return self._normNome(e.tipo).indexOf("curricular") >= 0 && self._normNome(e.estado).indexOf("conclu") >= 0;
+      });
+      var crit = [
+        { nome: "Propinas regularizadas", ok: this.saldoDevedor(est) <= 0 },
+        { nome: "Emolumentos da Defesa pagos", ok: tem("defesa") || tem("juri") },
+        { nome: "Estágio Curricular pago", ok: tem("estagio") },
+        { nome: "Declaração paga", ok: tem("declara") },
+        { nome: "Exame Prático pago", ok: tem("exame") },
+        { nome: "Estágio concluído", ok: estagioConcluido }
+      ];
+      var motivos = crit.filter(function (c) { return !c.ok; }).map(function (c) { return c.nome; });
+      return { apto: motivos.length === 0, criterios: crit, motivos: motivos };
+    },
+
+    // ---- Mapa de propinas / carnê -----------------------------------------
+    _mesesDuracao: function (duracao) {
+      var m = String(duracao || "").match(/(\d+)\s*mes/i);
+      return m ? parseInt(m[1], 10) : 0;
+    },
+    mapaPropinas: function (est) {
+      var self = this;
+      var itens = [];
+      var pago0 = est ? this.totalPagoEstudante(est.id) : 0;
+      var curso = est && est.curso ? this.cursoByNome(est.curso) : null;
+      if (!est || !curso) return { itens: itens, totalPrevisto: 0, totalPago: pago0, totalDivida: 0 };
+      var pags = this.pagamentosDeEstudante(est.id);
+      var somaCat = function (frag) {
+        return pags.filter(function (p) { return self._normNome((p.categoria || "") + " " + (p.emolumento || "")).indexOf(frag) >= 0; })
+          .reduce(function (s, p) { return s + (Number(p.valorPago) || 0); }, 0);
+      };
+      var hojeYMD = new Date().toISOString().slice(0, 10);
+      var push = function (categoria, descricao, previsto, venc) {
+        if (!(Number(previsto) > 0)) return;
+        itens.push({ categoria: categoria, descricao: descricao, valorPrevisto: Number(previsto) || 0, vencimento: venc || "" });
+      };
+      push("Inscrição", "Inscrição", curso.valorInscricao);
+      push("Matrícula", "Matrícula", curso.valorMatricula);
+      var nMeses = this._mesesDuracao(curso.duracao);
+      var inicio = est.dataMatricula ? new Date(String(est.dataMatricula).slice(0, 10) + "T00:00:00") : null;
+      for (var i = 0; i < nMeses; i++) {
+        var venc = "";
+        if (inicio && !isNaN(inicio)) { var d = new Date(inicio); d.setMonth(d.getMonth() + i); venc = d.toISOString().slice(0, 10); }
+        push("Propina", "Mensalidade " + (i + 1), curso.valorMensalidade, venc);
+      }
+      push("Estágio", "Estágio", curso.valorEstagio);
+      push("Defesa", "Defesa", curso.valorDefesa);
+      push("Certificado", "Certificado", curso.valorCertificado);
+
+      var restante = {
+        "Inscrição": somaCat("inscri"), "Matrícula": somaCat("matricula"), "Propina": somaCat("propina"),
+        "Estágio": somaCat("estagio"), "Defesa": somaCat("defesa"), "Certificado": somaCat("certificado")
+      };
+      itens.forEach(function (it) {
+        var disp = restante[it.categoria] || 0;
+        var p = Math.min(disp, it.valorPrevisto);
+        it.valorPago = p; restante[it.categoria] = disp - p;
+        it.saldo = Math.max(0, it.valorPrevisto - p);
+        if (p >= it.valorPrevisto) it.estado = "Pago";
+        else if (p > 0) it.estado = "Parcial";
+        else if (it.vencimento && it.vencimento < hojeYMD) it.estado = "Atrasado";
+        else it.estado = "Em Falta";
+      });
+      return {
+        itens: itens,
+        totalPrevisto: itens.reduce(function (s, it) { return s + it.valorPrevisto; }, 0),
+        totalPago: itens.reduce(function (s, it) { return s + it.valorPago; }, 0),
+        totalDivida: itens.reduce(function (s, it) { return s + it.saldo; }, 0)
+      };
+    },
+
+    // ---- Leads (pré-matrícula / funil) ------------------------------------
+    leads: function () { return this.load().leads || []; },
+    leadById: function (id) { return (this.load().leads || []).filter(function (l) { return l.id === id; })[0]; },
+    saveLead: function (lead) {
+      var db = this.load();
+      if (!db.leads) db.leads = [];
+      if (lead.id) {
+        for (var i = 0; i < db.leads.length; i++) {
+          if (db.leads[i].id === lead.id) { db.leads[i] = lead; this.save(); return lead; }
+        }
+      }
+      lead.id = this.uid("lead");
+      db.leads.push(lead); this.save(); return lead;
+    },
+    deleteLead: function (id) {
+      var db = this.load();
+      db.leads = (db.leads || []).filter(function (l) { return l.id !== id; });
+      this.save();
+    },
+
     // ---- Aggregations ------------------------------------------------------
     // Saldo em dívida de um estudante (valor do curso - total pago)
     saldoDevedor: function (est) {
@@ -471,6 +622,31 @@
     },
     totalPagoEstudante: function (estId) {
       return this.pagamentosDeEstudante(estId).reduce(function (s, p) { return s + (Number(p.valorPago) || 0); }, 0);
+    },
+
+    // Possíveis duplicados: estudantes com nome semelhante (ignora maiúsculas/
+    // acentos), nome contido, >=2 tokens em comum, ou mesmo contacto/BI.
+    _normNome: function (s) {
+      return String(s == null ? "" : s).trim().toLowerCase()
+        .normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ");
+    },
+    estudantesSemelhantes: function (nome, contacto, bi) {
+      var norm = this._normNome;
+      var n = norm(nome);
+      if (!n) return [];
+      var ct = norm(contacto), b = norm(bi);
+      var tokens = n.split(" ").filter(Boolean);
+      return this.estudantes().filter(function (e) {
+        var en = norm(e.nome);
+        if (!en) return false;
+        if (en === n) return true;
+        if (en.indexOf(n) >= 0 || n.indexOf(en) >= 0) return true;
+        if (ct && norm(e.contacto) && norm(e.contacto) === ct) return true;
+        if (b && norm(e.bi) && norm(e.bi) === b) return true;
+        var et = en.split(" ").filter(Boolean);
+        var comuns = tokens.filter(function (t) { return t.length > 1 && et.indexOf(t) >= 0; }).length;
+        return comuns >= 2;
+      });
     }
   };
 
