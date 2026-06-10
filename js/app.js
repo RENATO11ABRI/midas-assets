@@ -140,6 +140,10 @@
     V.renderFechosGuardados();
 
     document.getElementById("fcGuardar").onclick = function () {
+      var perfil = D.auth().perfil;
+      if (window.MidasUsers && perfil !== "admin" && perfil !== "directora") {
+        C.toast("Apenas o Administrador/Diretora pode fechar o caixa.", "err"); return;
+      }
       var data = document.getElementById("fcData").value || hoje;
       var func = document.getElementById("fcFunc").value || "";
       var resumo = V._resumoCaixa(data, func);
@@ -566,6 +570,7 @@
 
     document.getElementById("impImportar").onclick = function () {
       if (!registos.length) return;
+      if (V.caixaBloqueadoModal()) return;   // exige fecho do caixa do dia anterior
       var btn = document.getElementById("impImportar");
       btn.disabled = true; btn.textContent = "A importar…";
       // importação sequencial (aloca matrícula/recibo de forma atómica por registo)
@@ -685,6 +690,7 @@
         C.toast("Nome, contacto e curso são obrigatórios.", "err"); return;
       }
       var editing = !!fd.get("id");
+      if (!editing && V.caixaBloqueadoModal()) return;   // exige fecho do caixa do dia anterior
       var btn = document.getElementById("matGerar");
       var restoreBtn = function () {
         if (btn) { btn.disabled = false; btn.textContent = editing ? "Guardar alterações" : "Gerar matrícula"; }
@@ -905,6 +911,7 @@
     if ((id = t.getAttribute("data-lead-convert"))) {
       var lead = D.leadById(id);
       if (!lead) return;
+      if (V.caixaBloqueadoModal()) return;   // exige fecho do caixa do dia anterior
       C.confirm("Converter \"" + lead.nome + "\" em estudante? Será criada uma ficha que poderá completar depois.", function () {
         D.alocarMatricula().then(function (num) {
           D.saveEstudante({

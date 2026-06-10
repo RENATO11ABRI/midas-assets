@@ -524,6 +524,27 @@
       db.fechos = (db.fechos || []).filter(function (f) { return f.id !== id; });
       this.save();
     },
+    // Um dia (YYYY-MM-DD) considera-se fechado se houver um fecho "Todos" (ou
+    // sem funcionário) gravado para essa data.
+    caixaDiaFechado: function (ymd) {
+      return (this.load().fechos || []).some(function (f) {
+        return (f.data || "").slice(0, 10) === ymd && (!f.funcionario || f.funcionario === "Todos");
+      });
+    },
+    // Devolve o dia MAIS ANTIGO (anterior a hoje) que teve movimentos mas ainda
+    // não foi fechado — ou null se estiver tudo em ordem. Usado para bloquear
+    // novos movimentos enquanto o caixa do(s) dia(s) anterior(es) não fechar.
+    caixaBloqueado: function () {
+      var hoje = new Date().toISOString().slice(0, 10);
+      var dias = {};
+      this.load().pagamentos.forEach(function (p) {
+        var d = (p.data || "").slice(0, 10);
+        if (d && d < hoje) dias[d] = true;
+      });
+      var self = this;
+      var abertos = Object.keys(dias).filter(function (d) { return !self.caixaDiaFechado(d); }).sort();
+      return abertos.length ? abertos[0] : null;
+    },
 
     // ---- Estágios ----------------------------------------------------------
     estagios: function () { return this.load().estagios || []; },
