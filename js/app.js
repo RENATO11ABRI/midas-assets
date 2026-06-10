@@ -90,11 +90,11 @@
 
   /* ---- After-render wiring per route ------------------------------------ */
   function afterEstudantes() {
-    V.renderEstudantesTable();
-    var rerender = U.debounce(V.renderEstudantesTable, 150);
-    document.getElementById("estSearch").addEventListener("input", rerender);
-    document.getElementById("estFiltroCurso").addEventListener("change", V.renderEstudantesTable);
-    document.getElementById("estFiltroEstado").addEventListener("change", V.renderEstudantesTable);
+    var reset = function () { V._estState.pagina = 1; V.renderEstudantesTable(); };
+    reset();
+    document.getElementById("estSearch").addEventListener("input", U.debounce(reset, 200));
+    document.getElementById("estFiltroCurso").addEventListener("change", reset);
+    document.getElementById("estFiltroEstado").addEventListener("change", reset);
     document.getElementById("expEstCsv").onclick = exportEstudantesCSV;
     document.getElementById("expEstPdf").onclick = function () {
       var r = V.buildReport("matriculas", "", "");
@@ -822,13 +822,19 @@
       "[data-curso-edit],[data-curso-del],[data-pag-view],[data-pag-del],[data-lista-add],[data-lista-del]," +
       "[data-em-edit],[data-em-toggle],[data-em-del],[data-lixo-restore]," +
       "[data-fecho-print],[data-fecho-del],[data-estagio-edit],[data-estagio-del]," +
-      "[data-lead-convert],[data-lead-del],[data-lead-wa]");
+      "[data-lead-convert],[data-lead-del],[data-lead-wa],[data-est-pag]");
     if (!t) return;
 
     var go = t.getAttribute("data-go");
     if (go) { App.navigate(go); return; }
 
     var id;
+    if ((id = t.getAttribute("data-est-pag"))) {
+      if (id === "ant" && V._estState.pagina > 1) V._estState.pagina--;
+      else if (id === "seg") V._estState.pagina++;
+      V.renderEstudantesTable();
+      return;
+    }
     if ((id = t.getAttribute("data-est-view"))) { V.fichaEstudante(id); return; }
     if ((id = t.getAttribute("data-est-ficha"))) { var ef = D.estudanteById(id); if (ef) C.viewFichaMatricula(ef); return; }
     if ((id = t.getAttribute("data-est-edit"))) { App.navigate("matricula", { id: id }); return; }

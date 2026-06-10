@@ -11,5 +11,10 @@
    ========================================================================== */
 window.MIDAS_CONFIG = {
   supabaseUrl: "https://cfwntrkztoeiugbtcesh.supabase.co",
-  supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmd250cmt6dG9laXVnYnRjZXNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NTUyNzEsImV4cCI6MjA5NjMzMTI3MX0.dQcnYz89Eie0qRO1ujaXke-RFC-ORAjiqhItlxZp9Aw"
+  supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmd250cmt6dG9laXVnYnRjZXNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NTUyNzEsImV4cCI6MjA5NjMzMTI3MX0.dQcnYz89Eie0qRO1ujaXke-RFC-ORAjiqhItlxZp9Aw",
+
+  // ESCALA (opt-in): quando true, a lista/pesquisa de estudantes usa consultas
+  // paginadas no servidor (requer correr supabase/escala.sql). Predefinição:
+  // false — mantém o comportamento atual. Ative só após correr o SQL e testar.
+  escala: false
 };
