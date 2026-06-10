@@ -94,7 +94,7 @@
     return {
       settings: {
         instituicao: "Grupo Midas Angola",
-        sistema: "Turmas Midas 2026",
+        sistema: "MIDAS2026",
         slogan: "Do Zero ao Emprego",
         moeda: "Kz",
         nif: "",
