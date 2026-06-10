@@ -13,27 +13,50 @@
     "Verde Escuro Institucional": { brandTop: "#04231a", brandBottom: "#062b22", primary: "#0c5a3f", primaryHover: "#11744f", heroMid: "#063a2c", heroEnd: "#0c7a57", accent: "#c9a24b", accentHover: "#9c7a2c" },
     "Preto Premium":            { brandTop: "#0c0d0f", brandBottom: "#16181c", primary: "#23262c", primaryHover: "#33373f", heroMid: "#1a1c20", heroEnd: "#2a2e35", accent: "#caa44c", accentHover: "#a8853a" }
   };
+  // Aparência (sistema de design premium): paleta/tema/sidebar/densidade via
+  // atributos em <html>, persistidos em localStorage (+ settings p/ sincronizar).
+  var APARENCIA_DEF = { palette: "slate", theme: "light", sidebar: "executive", density: "comfortable" };
+  function lerAparencia() {
+    var s = (D.db && D.db().settings) || {};
+    return {
+      palette: localStorage.getItem("midas_palette") || s.paleta || APARENCIA_DEF.palette,
+      theme: localStorage.getItem("midas_theme") || (s.modo === "noite" ? "dark" : APARENCIA_DEF.theme),
+      sidebar: localStorage.getItem("midas_sidebar") || APARENCIA_DEF.sidebar,
+      density: localStorage.getItem("midas_density") || APARENCIA_DEF.density
+    };
+  }
+  function marcarAparencia(a) {
+    var mark = function (sel, attr, val) {
+      var els = document.querySelectorAll(sel);
+      for (var i = 0; i < els.length; i++) els[i].classList.toggle("active", els[i].getAttribute(attr) === val);
+    };
+    mark(".pal-opt", "data-pal", a.palette);
+    mark("#themeSeg [data-theme-set]", "data-theme-set", a.theme);
+    mark("#sideSeg [data-side-set]", "data-side-set", a.sidebar);
+    mark("#densSeg [data-dens-set]", "data-dens-set", a.density);
+  }
   function applyAparencia() {
-    var s = D.db().settings;
-    var t = TEMAS[s.tema] || TEMAS["Verde Midas"];
-    var brand = s.corPrincipal || t.brandTop;
-    var sec = s.corSecundaria || t.heroEnd;
-    var btn = s.corBotao || t.primary;
-    var root = document.documentElement.style;
-    root.setProperty("--green-900", brand);
-    root.setProperty("--green-800", t.brandBottom);
-    root.setProperty("--teal-900", t.brandBottom);
-    root.setProperty("--teal-800", t.heroMid);
-    root.setProperty("--teal-600", sec);
-    root.setProperty("--green-700", btn);
-    root.setProperty("--green-600", t.primaryHover);
-    root.setProperty("--gold-500", t.accent);
-    root.setProperty("--gold-600", t.accentHover);
-    document.body.classList.toggle("dark", s.modo === "noite");
-    // logótipos dinâmicos
+    var a = lerAparencia();
+    var r = document.documentElement;
+    r.setAttribute("data-palette", a.palette);
+    r.setAttribute("data-theme", a.theme);
+    r.setAttribute("data-sidebar", a.sidebar);
+    r.setAttribute("data-density", a.density);
+    document.body.classList.toggle("dark", a.theme === "dark"); // compat. styles.css antigo
     var url = U.logoURL(false);
     var imgs = document.querySelectorAll("#app .logo");
     for (var i = 0; i < imgs.length; i++) imgs[i].src = url;
+    marcarAparencia(a);
+  }
+  // Define uma preferência de aparência e persiste (localStorage + settings).
+  function setAparencia(chave, valor) {
+    var mapL = { palette: "midas_palette", theme: "midas_theme", sidebar: "midas_sidebar", density: "midas_density" };
+    try { localStorage.setItem(mapL[chave], valor); } catch (e) {}
+    var s = D.db().settings;
+    if (chave === "palette") s.paleta = valor;
+    if (chave === "theme") s.modo = (valor === "dark" ? "noite" : "dia");
+    D.save();
+    applyAparencia();
   }
   window.applyAparencia = applyAparencia;
 
@@ -72,8 +95,9 @@
       if (!ROUTES[route]) route = "dashboard";
       this.current = route;
       var view = document.getElementById("view");
-      view.innerHTML = ROUTES[route].render(this.params);
+      view.innerHTML = '<div class="page view-enter">' + ROUTES[route].render(this.params) + "</div>";
       view.scrollTop = 0; window.scrollTo(0, 0);
+      var cb = document.getElementById("crumbHere"); if (cb) cb.textContent = ROUTES[route].title || "";
       // active nav
       var links = document.querySelectorAll(".nav-link");
       for (var i = 0; i < links.length; i++) {
@@ -864,6 +888,27 @@
     window.Auth.gate(startApp);
   }
 
+  function setupAppearance() {
+    var btn = document.getElementById("appeBtn");
+    var pop = document.getElementById("appePop");
+    if (btn && pop) {
+      btn.onclick = function (e) { e.stopPropagation(); pop.hidden = !pop.hidden; };
+      document.addEventListener("click", function (e) {
+        if (pop.hidden) return;
+        if (!pop.contains(e.target) && e.target !== btn && !btn.contains(e.target)) pop.hidden = true;
+      });
+      pop.addEventListener("click", function (e) {
+        var el = e.target.closest && e.target.closest("[data-pal],[data-theme-set],[data-side-set],[data-dens-set]");
+        if (!el) return;
+        if (el.hasAttribute("data-pal")) setAparencia("palette", el.getAttribute("data-pal"));
+        else if (el.hasAttribute("data-theme-set")) setAparencia("theme", el.getAttribute("data-theme-set"));
+        else if (el.hasAttribute("data-side-set")) setAparencia("sidebar", el.getAttribute("data-side-set"));
+        else if (el.hasAttribute("data-dens-set")) setAparencia("density", el.getAttribute("data-dens-set"));
+      });
+    }
+    marcarAparencia(lerAparencia());
+  }
+
   function setupSyncPill() {
     var pill = document.getElementById("syncPill");
     if (!pill || !window.MidasSync) return; // só em modo Supabase
@@ -887,11 +932,17 @@
     // user chip + logout
     var a = D.auth();
     var chip = document.getElementById("userChip");
-    if (chip) chip.textContent = "" + (a.nome || a.user);
+    if (chip) {
+      var nm = a.nome || a.user || "Utilizador";
+      var ini = nm.trim().split(/\s+/).map(function (w) { return w[0] || ""; }).slice(0, 2).join("").toUpperCase();
+      chip.innerHTML = '<span class="av">' + U.esc(ini || "U") + "</span>" +
+        '<div class="uc-t"><strong>' + U.esc(nm) + "</strong><small>" + U.esc(a.perfil || "Conta") + "</small></div>";
+    }
     var modo = document.getElementById("modoToggle");
     if (modo) modo.onclick = function () {
-      var s = D.db().settings; s.modo = s.modo === "noite" ? "dia" : "noite"; D.save(); applyAparencia();
+      setAparencia("theme", document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark");
     };
+    setupAppearance();
     var logout = document.getElementById("logoutBtn");
     if (logout) logout.onclick = function () {
       C.confirm("Terminar a sessão?", function () {

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="pt" data-theme="light" data-palette="slate" data-sidebar="executive" data-density="comfortable">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -16,32 +16,23 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
   <link rel="stylesheet" href="css/styles.css" />
+  <!-- Sistema de design premium (carregado depois: redefine tokens e re-estiliza
+       os componentes partilhados; styles.css mantém login/modais/toasts/recibos) -->
+  <link rel="stylesheet" href="css/midas-ds.css" />
 </head>
 <body>
   <!-- ===== Login screen ===== -->
-  <div id="loginScreen" class="login-screen" hidden></div>
+  <div id="loginScreen" class="login" hidden></div>
 
   <!-- ===== App Shell ===== -->
-  <div id="app" hidden>
-    <!-- Topbar (mobile) -->
-    <header class="topbar">
-      <button class="menu-toggle" id="menuToggle" aria-label="Abrir menu"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round"/></svg></button>
-      <div class="topbar-brand">
-        <img src="assets/logo.svg" alt="Grupo Midas Angola" class="logo" />
-        <div class="brand-text">
-          <strong>Grupo Midas Angola</strong>
-          <small>MIDAS2026</small>
-        </div>
-      </div>
-    </header>
-
+  <div class="app" id="app" hidden>
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
-      <div class="sidebar-brand">
+      <div class="side-brand">
         <img src="assets/logo.svg" alt="Grupo Midas Angola" class="logo" />
-        <div class="brand-text">
+        <div class="bt">
           <strong>Grupo Midas Angola</strong>
-          <small>Do Zero ao Emprego</small>
+          <small>MIDAS2026</small>
         </div>
       </div>
       <nav class="nav">
@@ -56,19 +47,40 @@
         <a href="#relatorios" class="nav-link" data-route="relatorios"><span class="ico"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Relatórios</a>
         <a href="#config" class="nav-link" data-route="config"><span class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> Configurações</a>
       </nav>
-      <div class="sidebar-footer">
+      <div class="side-foot">
         <div class="sync-pill" id="syncPill" hidden></div>
         <div class="user-chip" id="userChip"></div>
-        <button class="modo-toggle" id="modoToggle">Alternar Modo Dia / Noite</button>
         <button class="btn-logout" id="logoutBtn">Terminar sessão</button>
-        <small>© 2026 Grupo Midas Angola</small>
       </div>
     </aside>
 
     <div class="overlay" id="overlay"></div>
 
-    <!-- Main content -->
-    <main class="content" id="view"></main>
+    <!-- Content -->
+    <div class="content">
+      <header class="topbar">
+        <button class="icon-btn menu-toggle" id="menuToggle" aria-label="Menu"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round"/></svg></button>
+        <div class="crumbs"><span>Grupo Midas</span><span class="sep">/</span><span class="here" id="crumbHere">Dashboard</span></div>
+        <div class="topbar-spacer"></div>
+        <button class="icon-btn" id="modoToggle" aria-label="Tema (Dia/Noite)"><svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+        <div class="appe-wrap">
+          <button class="icon-btn" id="appeBtn" aria-label="Aparência"><svg viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="10.5" r="2.5"/><circle cx="8.5" cy="7.5" r="2.5"/><circle cx="6.5" cy="12.5" r="2.5"/><path d="M12 2a10 10 0 1 0 0 20 2.5 2.5 0 0 0 2-4 2.5 2.5 0 0 1 2-4h2a4 4 0 0 0 4-4 10 10 0 0 0-10-8z"/></svg></button>
+          <div class="appe-pop" id="appePop" hidden>
+            <div class="appe-grp"><div class="lbl">Paleta</div>
+              <div class="pal-list">
+                <div class="pal-opt" data-pal="slate"><span class="pal-sw"><i style="background:#0f172a"></i><i style="background:#14b8a6"></i><i style="background:#e2e8f0"></i></span><span class="pal-name">Slate + Turquesa</span></div>
+                <div class="pal-opt" data-pal="supabase"><span class="pal-sw"><i style="background:#171717"></i><i style="background:#3ecf8e"></i><i style="background:#ececec"></i></span><span class="pal-name">Supabase</span></div>
+                <div class="pal-opt" data-pal="midas"><span class="pal-sw"><i style="background:#0c2c20"></i><i style="background:#0f6243"></i><i style="background:#bd9442"></i></span><span class="pal-name">Midas Verde</span></div>
+              </div>
+            </div>
+            <div class="appe-grp"><div class="lbl">Tema</div><div class="appe-seg" id="themeSeg"><button data-theme-set="light">Dia</button><button data-theme-set="dark">Noite</button></div></div>
+            <div class="appe-grp"><div class="lbl">Sidebar</div><div class="appe-seg" id="sideSeg"><button data-side-set="executive">Escura</button><button data-side-set="light">Clara</button></div></div>
+            <div class="appe-grp"><div class="lbl">Densidade</div><div class="appe-seg" id="densSeg"><button data-dens-set="comfortable">Confortável</button><button data-dens-set="compact">Compacta</button></div></div>
+          </div>
+        </div>
+      </header>
+      <main id="view"></main>
+    </div>
   </div>
 
   <!-- Modal host -->
