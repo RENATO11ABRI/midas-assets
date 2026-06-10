@@ -331,6 +331,121 @@
       '</div>';
   };
 
+  S.cursos = function () {
+    var tipos = ["Técnico","Profissional","Especialização","Técnico","Profissional"];
+    var dur = ["18 meses","24 meses","12 meses","36 meses"];
+    var rows = CURSOS.map(function (c, i) {
+      var ativo = i !== 6 && i !== 9;
+      var insc = [15000,18000,20000][i%3], mat = [85000,92000,78000,110000][i%4], prop = [22000,25000,30000][i%3];
+      return '<tr>'+
+        '<td><div class="cell-strong">'+c+'</div><div class="cell-sub">'+tipos[i%tipos.length]+' · '+dur[i%dur.length]+'</div></td>'+
+        '<td>'+["Manhã","Tarde","Noite"][i%3]+'</td>'+
+        '<td>'+["Presencial","Híbrido","Pós-laboral"][i%3]+'</td>'+
+        '<td class="text-right num">'+KZ(insc)+'</td>'+
+        '<td class="text-right num">'+KZ(mat)+'</td>'+
+        '<td class="text-right num">'+KZ(prop)+'</td>'+
+        '<td>'+(ativo?'<span class="badge ok">Ativo</span>':'<span class="badge off">Inativo</span>')+'</td>'+
+        '<td><div class="row-actions"><button class="btn btn-sm">Editar</button></div></td></tr>';
+    }).join("");
+    return pageHead("Cursos", CURSOS.length+" cursos · valores de inscrição, matrícula e propina",
+        '<button class="btn">'+svg(I.download)+'Exportar</button><button class="btn btn-primary">'+svg(I.plus)+'Novo curso</button>')+
+      '<div class="grid kpis">'+
+        kpi("Cursos no catálogo", CURSOS.length, I.courses, null, null, "")+
+        kpi("Cursos ativos", CURSOS.length-2, I.check, null, null, "abertos a matrícula")+
+        kpi("Propina média", KZ(25666), I.cash, null, null, "por mês")+
+        kpi("Períodos", 3, I.report, null, null, "Manhã · Tarde · Noite")+
+      '</div>'+
+      '<div class="toolbar mt-lg"><div class="search">'+svg(I.search,'si')+'<input placeholder="Pesquisar curso..."></div>'+
+        '<select class="select"><option>Todos os tipos</option><option>Técnico</option><option>Profissional</option><option>Especialização</option></select>'+
+        '<div class="seg"><button class="on">Todos</button><button>Ativos</button><button>Inativos</button></div></div>'+
+      '<div class="card"><div class="card-body flush"><div class="table-wrap"><table class="data">'+
+        '<thead><tr><th>Curso</th><th>Período</th><th>Regime</th><th class="text-right">Inscrição</th><th class="text-right">Matrícula</th><th class="text-right">Propina</th><th>Estado</th><th></th></tr></thead>'+
+        '<tbody>'+rows+'</tbody></table></div></div></div>';
+  };
+
+  S.pagamentos = function () {
+    var total = DB.pagamentos.reduce(function(a,p){return a+p.valor;},0);
+    var hoje = DB.pagamentos.slice(0,4).reduce(function(a,p){return a+p.valor;},0);
+    var rows = DB.pagamentos.map(function (p) {
+      return '<tr><td><div class="cell-strong num">'+p.recibo+'</div></td>'+
+        '<td>'+p.nome+'</td><td>'+p.emolumento+'</td>'+
+        '<td><span class="badge info no-dot">'+p.forma+'</span></td>'+
+        '<td class="num">'+p.data.split("-").reverse().join("/")+'</td>'+
+        '<td class="text-right num cell-strong">'+KZ(p.valor)+'</td>'+
+        '<td><div class="row-actions"><button class="btn btn-sm" data-go="recibos">Recibo</button></div></td></tr>';
+    }).join("");
+    return pageHead("Pagamentos", DB.pagamentos.length+" registos · receção e emissão de recibos",
+        '<button class="btn">'+svg(I.download)+'Exportar CSV</button><button class="btn btn-primary">'+svg(I.plus)+'Registar pagamento</button>')+
+      '<div class="grid kpis">'+
+        kpi("Recebido hoje", KZ(hoje), I.cash, "6", "up", "pagamentos")+
+        kpi("Recebido no mês", KZ(total), I.cash, "8.4%", "up", "Junho 2026")+
+        kpi("Pagamentos registados", DB.pagamentos.length, I.receipt, null, null, "este mês")+
+        kpi("Ticket médio", KZ(Math.round(total/DB.pagamentos.length)), I.pay, null, null, "por recibo")+
+      '</div>'+
+      '<div class="toolbar mt-lg"><div class="search">'+svg(I.search,'si')+'<input placeholder="Pesquisar por recibo, estudante ou curso..."></div>'+
+        '<select class="select"><option>Todos os emolumentos</option>'+EMOL.map(function(e){return '<option>'+e+'</option>';}).join("")+'</select>'+
+        '<select class="select"><option>Todas as formas</option><option>Multicaixa</option><option>Numerário</option><option>Transferência</option></select></div>'+
+      '<div class="card"><div class="card-body flush"><div class="table-wrap"><table class="data">'+
+        '<thead><tr><th>Recibo</th><th>Estudante</th><th>Emolumento</th><th>Forma</th><th>Data</th><th class="text-right">Valor</th><th></th></tr></thead>'+
+        '<tbody>'+rows+'</tbody>'+
+        '<tfoot><tr><td colspan="5" class="cell-strong">Total ('+DB.pagamentos.length+' registos)</td><td class="text-right num cell-strong">'+KZ(total)+'</td><td></td></tr></tfoot>'+
+        '</table></div></div></div>';
+  };
+
+  S.relatorios = function () {
+    var porMes = [{label:"Janeiro",value:580000},{label:"Fevereiro",value:720000},{label:"Março",value:660000},
+      {label:"Abril",value:880000},{label:"Maio",value:790000},{label:"Junho",value:950000}];
+    var porCurso = CURSOS.slice(0,6).map(function (c,i){ return {label:c, value:[820000,640000,560000,430000,390000,300000][i]}; });
+    var totalAno = porMes.reduce(function(a,m){return a+m.value;},0);
+    return pageHead("Relatórios", "Ferramenta executiva · receitas, matrículas e desempenho",
+        '<button class="btn">'+svg(I.print)+'Imprimir</button><button class="btn btn-primary">'+svg(I.download)+'Exportar relatório</button>')+
+      '<div class="card mb"><div class="card-body"><div class="toolbar" style="margin:0">'+
+        '<select class="select"><option>Receitas por mês</option><option>Matrículas por curso</option><option>Pagamentos por funcionário</option><option>Dívidas em aberto</option></select>'+
+        '<select class="select"><option>Ano letivo 2026</option><option>Último trimestre</option><option>Junho 2026</option></select>'+
+        '<select class="select"><option>Todos os polos</option>'+UNIDADES.map(function(u){return '<option>'+u+'</option>';}).join("")+'</select>'+
+        '<button class="btn btn-primary">'+svg(I.filter)+'Aplicar</button></div></div></div>'+
+      '<div class="grid kpis">'+
+        kpi("Receita do período", KZ(totalAno), I.cash, "8.4%", "up", "vs. período anterior")+
+        kpi("Matrículas", 128, I.students, "12%", "up", "no período")+
+        kpi("Recibos emitidos", 312, I.receipt, null, null, "no período")+
+        kpi("Média mensal", KZ(Math.round(totalAno/6)), I.report, null, null, "receita")+
+      '</div>'+
+      '<div class="grid two-col mt-lg">'+
+        '<div class="card"><div class="card-head"><div><h3>Receita por mês</h3><div class="ch-sub">Ano letivo 2026 (Kz)</div></div></div><div class="card-body">'+chartBars(porMes,{money:true})+'</div></div>'+
+        '<div class="card"><div class="card-head"><div><h3>Receita por curso</h3><div class="ch-sub">Top 6</div></div></div><div class="card-body">'+chartBars(porCurso,{money:true})+'</div></div>'+
+      '</div>'+
+      '<div class="card mt-lg"><div class="card-head"><h3>Detalhe mensal</h3></div><div class="card-body flush"><div class="table-wrap"><table class="data">'+
+        '<thead><tr><th>Mês</th><th class="text-right">Matrículas</th><th class="text-right">Recibos</th><th class="text-right">Receita</th></tr></thead><tbody>'+
+        porMes.map(function (m,i){ return '<tr><td class="cell-strong">'+m.label+'</td><td class="text-right num">'+[18,24,19,28,21,18][i]+'</td><td class="text-right num">'+[42,55,48,62,51,54][i]+'</td><td class="text-right num cell-strong">'+KZ(m.value)+'</td></tr>'; }).join("")+
+        '</tbody><tfoot><tr><td class="cell-strong">Total</td><td class="text-right num cell-strong">128</td><td class="text-right num cell-strong">312</td><td class="text-right num cell-strong">'+KZ(totalAno)+'</td></tr></tfoot></table></div></div></div>';
+  };
+
+  S.fecho = function () {
+    var formas = { "Numerário":0, "Multicaixa":0, "Transferência":0 };
+    DB.pagamentos.slice(0,8).forEach(function (p) { formas[p.forma] = (formas[p.forma]||0) + p.valor; });
+    var total = Object.keys(formas).reduce(function(a,k){return a+formas[k];},0);
+    var formaRows = Object.keys(formas).map(function (k) {
+      return '<div class="set-row" style="grid-template-columns:1fr auto;padding:13px 0"><div class="srl"><strong>'+k+'</strong></div>'+
+        '<div class="num cell-strong" style="font-size:15px">'+KZ(formas[k])+'</div></div>';
+    }).join("");
+    var trans = DB.pagamentos.slice(0,8).map(function (p) {
+      return '<tr><td class="num">'+p.recibo+'</td><td>'+p.nome+'</td><td><span class="badge info no-dot">'+p.forma+'</span></td><td class="text-right num cell-strong">'+KZ(p.valor)+'</td></tr>';
+    }).join("");
+    return pageHead("Fecho de Caixa", "Resumo do dia · 20 de Junho de 2026",
+        '<button class="btn">'+svg(I.print)+'Imprimir folha</button><button class="btn btn-primary">'+svg(I.check)+'Fechar caixa do dia</button>')+
+      '<div class="grid" style="grid-template-columns:1fr 1.4fr;align-items:start;gap:18px">'+
+        '<div class="card"><div class="card-head"><h3>Resumo por forma de pagamento</h3></div><div class="card-body">'+formaRows+
+          '<div class="doc-amount" style="margin-top:16px"><span class="k">Total do dia</span><span class="v num">'+KZ(total)+'</span></div>'+
+          '<div class="dl" style="grid-template-columns:1fr 1fr;margin-top:18px">'+
+            '<div><div class="k">Transações</div><div class="v num">8</div></div>'+
+            '<div><div class="k">Operador</div><div class="v">Tesouraria</div></div>'+
+          '</div></div></div>'+
+        '<div class="card"><div class="card-head"><h3>Transações do dia</h3><span class="badge ok no-dot">'+KZ(total)+'</span></div><div class="card-body flush"><div class="table-wrap"><table class="data">'+
+          '<thead><tr><th>Recibo</th><th>Estudante</th><th>Forma</th><th class="text-right">Valor</th></tr></thead><tbody>'+trans+'</tbody>'+
+          '<tfoot><tr><td colspan="3" class="cell-strong">Total</td><td class="text-right num cell-strong">'+KZ(total)+'</td></tr></tfoot></table></div></div></div>'+
+      '</div>';
+  };
+
   S.generic = function (title, sub) {
     return pageHead(title, sub, '<button class="btn btn-primary">'+svg(I.plus)+'Adicionar</button>')+
       '<div class="card"><div class="empty"><div class="e-ico">'+svg(I.dash)+'</div>'+
@@ -463,6 +578,17 @@
       if (s) { root.setAttribute("data-sidebar", s.getAttribute("data-side-set")); setLS("midas_sidebar", s.getAttribute("data-side-set")); syncAppearance(); return; }
       var d = e.target.closest("[data-dens-set]");
       if (d) { root.setAttribute("data-density", d.getAttribute("data-dens-set")); setLS("midas_density", d.getAttribute("data-dens-set")); syncAppearance(); return; }
+    });
+
+    // ----- Login (pré-visualização) -----
+    var loginScreen = document.getElementById("loginScreen");
+    document.getElementById("logoutBtn").addEventListener("click", function () {
+      loginScreen.classList.add("open");
+    });
+    document.getElementById("loginForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      loginScreen.classList.remove("open");
+      route("dashboard");
     });
 
     var start = "dashboard";

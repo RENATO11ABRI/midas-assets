@@ -158,10 +158,12 @@ A app atual e este design partilham muita nomenclatura. Principais alterações 
 | `.toolbar` / `.search-box` | `.toolbar` / `.search` (+ `.seg`, `.select`) | |
 | `.doc-a4` / `.via` / `.doc-head` | `.doc` / `.doc-head` / `.doc-rows` / `.doc-row` / `.doc-amount` / `.doc-sign` | usa tokens `--doc-*` (sempre claro p/ impressão) |
 | `.tabs` / `.tab` | iguais | indicador agora `--accent-600` |
+| `.login-screen` / `.login-card` | `.login` / `.login-card` (+ `.login-brand`, `.login-form`) | full-screen sobre `--side-bg` com grelha subtil; ver §7 |
+| `table tfoot` (totais) | `table.data tfoot td` | linha de total a `--panel-2`, borda superior |
 | `.modal*` / `.toast*` | manter os do repo, **reestilizar** com os novos tokens | não recriados aqui |
 
-> **Componentes não incluídos neste pacote** (modais, toasts, login, relatórios em folha): manter a lógica
-> existente e apenas reestilizar com os tokens novos. O login pode seguir o padrão `.doc`/`.card` (fundo `--side-bg`, cartão `.card`).
+> **Componentes não incluídos neste pacote** (modais, toasts, relatórios em folha de impressão): manter a lógica
+> existente e apenas reestilizar com os tokens novos.
 
 ---
 
@@ -191,6 +193,23 @@ Todos seguem: `.page` → `.page-head` → conteúdo. Markup completo em `refere
 ### Configurações (`V.config`)
 - Cartão **Aparência**: linhas `.set-row` (label+descrição | controlo) → grelha de 3 `.pal-opt` (paletas) + 3 `.appe-seg` (Tema, Sidebar, Densidade).
 - 2 cartões: "Identidade institucional" e "Numeração de documentos" (formulários ligados a settings reais).
+
+### Login (`.login` / `#loginScreen`)
+- Camada full-screen (`position:fixed`) sobre `--side-bg` com grelha subtil mascarada por radial-gradient.
+- `.login-card` central (máx 400px): logo 60px, título, sistema (`.sys` a `--accent-600`), slogan em pill, 2 campos `.field`, botão `.btn-primary.btn-block`, `.login-hint`, rodapé.
+- No repo, ligar ao `js/auth.js` existente (o submit faz `Auth.login` e mostra a app).
+
+### Cursos (`S.cursos`)
+- 4 KPIs (catálogo, ativos, propina média, períodos) + `.toolbar` (pesquisa + tipo + seg) + tabela: curso (`.cell-strong`+`.cell-sub` tipo/duração), período, regime, valores (`.num`, `.text-right`), estado (`.badge`), ação.
+
+### Pagamentos (`S.pagamentos`)
+- 4 KPIs (hoje, mês, registos, ticket médio) + `.toolbar` (pesquisa + emolumento + forma) + tabela com forma em `.badge.info.no-dot` + **linha de total** (`tfoot`). Ação "Recibo".
+
+### Relatórios (`S.relatorios`)
+- Barra de filtros num cartão (tipo de relatório, período, polo, botão "Aplicar") + 4 KPIs de resumo + 2 cartões de gráficos (`.chart`) + tabela "Detalhe mensal" com `tfoot` de totais.
+
+### Fecho de Caixa (`S.fecho`)
+- Grid 2 col: cartão **Resumo por forma de pagamento** (linhas `.set-row` + `.doc-amount` "Total do dia" + `.dl`) e cartão **Transações do dia** (tabela com `tfoot`). Ação "Fechar caixa do dia".
 
 ---
 

@@ -29,6 +29,7 @@
             <strong>Secretaria</strong>
             <small>Administrador</small>
           </div>
+          <button class="logout-btn" id="logoutBtn" style="margin-left:auto" aria-label="Terminar sessão"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         </div>
       </div>
     </aside>
@@ -76,6 +77,24 @@
 
       <main id="view"></main>
     </div>
+  </div>
+
+  <div class="login" id="loginScreen">
+    <form class="login-card" id="loginForm">
+      <div class="login-brand">
+        <img src="assets/logo.svg" class="logo" alt="" />
+        <h1>Grupo Midas Angola</h1>
+        <div class="sys">Turmas Midas 2026</div>
+        <div class="slogan">Do Zero ao Emprego</div>
+      </div>
+      <div class="login-form">
+        <div class="field"><label>Utilizador</label><input value="secretaria" /></div>
+        <div class="field"><label>Palavra-passe</label><input type="password" value="midas2026" /></div>
+        <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+      </div>
+      <div class="login-hint">Demonstração · utilizador <strong>secretaria</strong> · palavra-passe <strong>midas2026</strong></div>
+      <div class="login-foot">© 2026 Grupo Midas Angola</div>
+    </form>
   </div>
 
   <script src="redesign/prototype.js"></script>
