@@ -23,6 +23,8 @@ Deno.serve(async (req) => {
 
   const data = new URL(req.url).searchParams.get("data") || "";
   if (!data) return new Response("Falta o parâmetro 'data'.", { status: 400, headers: cors });
+  // Limita o tamanho para evitar abuso/DoS (URLs de verificação são curtas).
+  if (data.length > 512) return new Response("Conteúdo demasiado longo.", { status: 413, headers: cors });
 
   try {
     const svg: string = await QRCode.toString(data, { type: "svg", margin: 1, width: 240, errorCorrectionLevel: "M" });

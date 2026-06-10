@@ -240,7 +240,14 @@
     },
 
     save: function () {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(_db));
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(_db));
+      } catch (e) {
+        // Ex.: QuotaExceededError. Os dados continuam em memória e (em modo
+        // Supabase) são gravados no servidor; só a cache local falhou.
+        if (window.console) console.error("Falha ao gravar cache local:", e);
+        if (window.C && C.toast) C.toast("Aviso: a cache local está cheia. Os dados foram guardados no servidor, mas faça uma cópia de segurança.", "err");
+      }
     },
 
     db: function () { return this.load(); },
@@ -392,6 +399,8 @@
     },
     cursoById: function (id) { return this.load().cursos.filter(function (c) { return c.id === id; })[0]; },
     cursoByNome: function (nome) { return this.load().cursos.filter(function (c) { return c.nome === nome; })[0]; },
+    // true quando o estudante referencia um curso que já não existe (eliminado/renomeado)
+    cursoEmFalta: function (est) { return !!(est && est.curso && !this.cursoByNome(est.curso)); },
     saveCurso: function (curso) {
       var db = this.load();
       if (curso.id) {
@@ -535,7 +544,7 @@
 
     // ---- Mapa de propinas / carnê -----------------------------------------
     _mesesDuracao: function (duracao) {
-      var m = String(duracao || "").match(/(\d+)\s*mes/i);
+      var m = String(duracao || "").match(/(\d+)\s*m[eê]s/i); // "12 meses", "1 mês"
       return m ? parseInt(m[1], 10) : 0;
     },
     mapaPropinas: function (est) {
