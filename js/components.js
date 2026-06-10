@@ -160,6 +160,16 @@
 
   // ---- Receipt (2 vias, A4) -----------------------------------------------
   // pag = pagamento record
+  // Tabela de emolumentos quando o recibo tem vários itens.
+  C._itensRecibo = function (pag) {
+    if (!pag.itens || pag.itens.length < 2) return "";
+    var linhas = pag.itens.map(function (it) {
+      return "<tr><td>" + U.esc(it.emolumento) + "</td><td style='text-align:right'>" + U.moeda(it.valorPago) + "</td></tr>";
+    }).join("");
+    return '<table class="doc-itens" style="width:100%;border-collapse:collapse;margin:6px 0">' +
+      "<thead><tr><th style='text-align:left'>Emolumento</th><th style='text-align:right'>Valor</th></tr></thead>" +
+      "<tbody>" + linhas + "</tbody></table>";
+  };
   C._receiptVia = function (pag, label) {
     var s = D.db().settings;
     var obs = pag.observacoes || pag.referencia;
@@ -180,7 +190,9 @@
         C._docItem("Forma de pagamento", pag.formaPagamento) +
         C._docItem("Observações", obs, true) +
       "</div>" +
-      '<div class="doc-amount"><span class="k">Valor pago</span><span class="v num">' + U.moeda(pag.valorPago) + "</span></div>" +
+      C._itensRecibo(pag) +
+      '<div class="doc-amount"><span class="k">' + (pag.itens && pag.itens.length > 1 ? "Total pago" : "Valor pago") +
+        '</span><span class="v num">' + U.moeda(pag.valorPago) + "</span></div>" +
       C._qrBlock("recibo", pag.recibo) +
       C._docSign() +
       '<div class="doc-foot">Documento emitido pelo sistema interno do ' + U.esc(s.instituicao) + ".</div>" +

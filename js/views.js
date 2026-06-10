@@ -664,11 +664,11 @@
         '<div class="field"><label>Contacto</label><input name="contacto" id="payContacto" type="tel" value="' +
           (sel ? U.esc(sel.contacto || "") : "") + '"></div>' +
         '<div class="field"><label>Curso</label><select name="curso" id="payCurso">' + cursoOpts + "</select></div>" +
-        '<div class="field"><label>Tipo de pagamento <span class="req">*</span></label><select name="emolumentoId" id="payEmol" required>' +
-          V.emolumentoOptions(D.emolumentoPadrao("Propina")) + "</select></div>" +
+        '<div class="field full"><label>Emolumentos <span class="req">*</span></label>' +
+          '<div id="payItens"></div>' +
+          '<div class="pay-item-add"><button type="button" class="btn btn-light btn-sm" id="payAddItem">+ Adicionar emolumento</button>' +
+            '<span class="pay-total">Total: <strong id="payTotal">' + U.moeda(0) + "</strong></span></div></div>" +
         '<div class="field"><label>Mês de referência</label><input type="month" name="mesReferencia"></div>' +
-        '<div class="field"><label>Valor pago (Kz) <span class="req">*</span></label>' +
-          "<input type='number' name='valorPago' id='payValor' min='0.01' step='0.01' required></div>" +
         '<div class="field"><label>Forma de pagamento</label><select name="formaPagamento">' +
           U.optionList(db.formasPagamento) + "</select></div>" +
         '<div class="field"><label>Data</label><input type="date" name="data" value="' + U.hoje() + '"></div>' +
@@ -693,20 +693,47 @@
             if (cu && e.curso) cu.value = e.curso;
           }
         });
-        var payEmol = document.getElementById("payEmol");
-        if (payEmol) payEmol.addEventListener("change", function () {
-          var v = D.emolumentoValor(this.value);
-          var vi = document.getElementById("payValor");
-          if (v > 0 && vi) vi.value = v;
-        });
+        // ---- Emolumentos (vários por recibo) ----
+        var itensHost = document.getElementById("payItens");
+        var emolOpts = V.emolumentoOptions(D.emolumentoPadrao("Propina"));
+        function recalcTotal() {
+          var t = 0;
+          [].slice.call(itensHost.querySelectorAll(".pay-val")).forEach(function (inp) { t += U.parseMoeda(inp.value); });
+          document.getElementById("payTotal").textContent = U.moeda(t);
+        }
+        function addRow(presetId) {
+          var row = document.createElement("div");
+          row.className = "pay-item-row";
+          row.innerHTML = '<select class="pay-emol">' + emolOpts + "</select>" +
+            "<input type='number' class='pay-val' min='0' step='0.01' placeholder='Valor'>" +
+            '<button type="button" class="btn btn-danger btn-sm pay-del" title="Remover">×</button>';
+          itensHost.appendChild(row);
+          var selE = row.querySelector(".pay-emol"), valE = row.querySelector(".pay-val");
+          if (presetId) selE.value = presetId;
+          var fill = function () { var v = D.emolumentoValor(selE.value); if (v > 0) valE.value = v; recalcTotal(); };
+          selE.addEventListener("change", fill);
+          valE.addEventListener("input", recalcTotal);
+          row.querySelector(".pay-del").addEventListener("click", function () {
+            if (itensHost.querySelectorAll(".pay-item-row").length > 1) { row.remove(); recalcTotal(); }
+            else C.toast("Tem de haver pelo menos um emolumento.", "err");
+          });
+          fill();
+        }
+        document.getElementById("payAddItem").onclick = function () { addRow(); };
+        addRow(D.emolumentoPadrao("Propina"));
+
         document.getElementById("savePag").onclick = function () {
           if (V.caixaBloqueadoModal()) return;   // exige fecho do caixa do dia anterior
           var fd = new FormData(document.getElementById("formPag"));
           var nomeRaw = (document.getElementById("payEstNome").value || "").trim();
-          var valor = U.parseMoeda(fd.get("valorPago"));
           if (!nomeRaw) { C.toast("Escreva o nome do estudante.", "err"); return; }
-          if (!(valor > 0)) { C.toast("O valor pago deve ser maior que zero.", "err"); return; }
-          var emo = D.emolumentoById(fd.get("emolumentoId"));
+          var itens = [];
+          [].slice.call(itensHost.querySelectorAll(".pay-item-row")).forEach(function (row) {
+            var emo = D.emolumentoById(row.querySelector(".pay-emol").value);
+            var v = U.parseMoeda(row.querySelector(".pay-val").value);
+            if (v > 0) itens.push({ emolumentoId: emo ? emo.id : "", emolumento: emo ? emo.nome : "Outros", categoria: emo ? emo.categoria : "Outros", valorPago: v });
+          });
+          if (!itens.length) { C.toast("Adicione pelo menos um emolumento com valor.", "err"); return; }
           var btn = document.getElementById("savePag");
           var restore = function () { if (btn) { btn.disabled = false; btn.textContent = "Registar e gerar recibo"; } };
           var contacto = fd.get("contacto") || "", curso = fd.get("curso") || "";
@@ -715,8 +742,7 @@
           var registar = function (est, novo) {
             if (btn) { btn.disabled = true; btn.textContent = "A registar…"; }
             V._criarPagamento(est, {
-              emolumentoId: emo ? emo.id : "", emolumento: emo ? emo.nome : "Outros",
-              categoria: emo ? emo.categoria : "Outros", valorPago: valor,
+              itens: itens,
               mesReferencia: fd.get("mesReferencia"),
               formaPagamento: fd.get("formaPagamento"), funcionario: fd.get("funcionario"),
               data: fd.get("data") ? fd.get("data") + "T" + new Date().toTimeString().slice(0, 8) : U.agoraISO(),
@@ -783,17 +809,28 @@
 
   V._criarPagamento = function (est, extra) {
     return D.alocarRecibo().then(function (numero) {
+      // Suporta vários emolumentos por recibo (extra.itens). Mantém valorPago
+      // como TOTAL e emolumento como resumo, para Fecho/relatórios continuarem
+      // a funcionar (que somam valorPago e mostram emolumento).
+      var itens = (extra.itens && extra.itens.length) ? extra.itens : null;
+      var valorTotal = itens
+        ? itens.reduce(function (s, it) { return s + (Number(it.valorPago) || 0); }, 0)
+        : (Number(extra.valorPago) || 0);
+      var resumoEmol = itens
+        ? (itens.length === 1 ? itens[0].emolumento : itens.map(function (it) { return it.emolumento; }).join(" + "))
+        : (extra.emolumento || "Outros");
       var pag = {
         recibo: numero,
         estudanteId: est.id, estudanteNome: est.nome, matricula: est.matricula,
         contacto: est.contacto, curso: est.curso, periodo: est.periodo,
         unidade: est.unidade, tipoCurso: est.tipoCurso, duracao: est.duracao, regime: est.regime,
         data: extra.data || U.agoraISO(),
-        emolumentoId: extra.emolumentoId || "",
-        emolumento: extra.emolumento || "Outros",
-        categoria: extra.categoria || "",
+        emolumentoId: itens && itens.length === 1 ? itens[0].emolumentoId : (extra.emolumentoId || ""),
+        emolumento: resumoEmol,
+        categoria: itens ? (itens[0].categoria || "") : (extra.categoria || ""),
+        itens: itens || undefined,
         mesReferencia: extra.mesReferencia || "",
-        valorPago: extra.valorPago || 0,
+        valorPago: valorTotal,
         formaPagamento: extra.formaPagamento || "",
         funcionario: extra.funcionario || "",
         referencia: extra.referencia || "",
