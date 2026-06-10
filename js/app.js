@@ -176,87 +176,13 @@
 
   function afterRecibos() {
     V.renderRecibos();
-    // search listeners
+    // Emitir recibo = mesmo fluxo do Registar Pagamento (modal único)
+    document.getElementById("recNovo").onclick = function () { V.novoPagamento(null); };
+    // Pesquisa / reimpressão
     ["recSearch", "recDe", "recAte"].forEach(function (id) {
       var el = document.getElementById(id);
       el.addEventListener(el.type === "date" ? "change" : "input", U.debounce(V.renderRecibos, 150));
     });
-
-    var form = document.getElementById("formRecibo");
-    var setVal = function (n, v) { if (form.elements[n]) form.elements[n].value = v == null ? "" : v; };
-
-    // auto-fill escrevendo o nome do estudante (com sugestões via datalist)
-    var recEstNome = document.getElementById("recEstNome");
-    var recEstId = document.getElementById("recEst");
-    if (recEstNome) recEstNome.addEventListener("input", function () {
-      var est = V.resolverEstudante(this.value);
-      if (est) {
-        recEstId.value = est.id;
-        setVal("nome", est.nome); setVal("contacto", est.contacto); setVal("matricula", est.matricula);
-        setVal("curso", est.curso); setVal("periodo", est.periodo); setVal("unidade", est.unidade);
-      } else {
-        recEstId.value = "";   // permite escrever um nome livre (pagamento avulso)
-      }
-    });
-
-    // auto-fill value when selecting the emolumento
-    var recEmol = document.getElementById("recEmol");
-    if (recEmol) recEmol.addEventListener("change", function () {
-      var v = D.emolumentoValor(this.value);
-      if (v > 0) setVal("valorPago", v);
-    });
-
-    document.getElementById("recLimpar").onclick = function () {
-      form.reset();
-      setVal("data", U.hoje());
-      var pc = document.getElementById("recPreviewCard"); pc.hidden = true;
-      document.getElementById("recPreview").innerHTML = "";
-    };
-
-    document.getElementById("recGerar").onclick = function () {
-      var g = function (n) { return form.elements[n] ? form.elements[n].value : ""; };
-      var nome = (g("nome") || "").trim();
-      var valor = U.parseMoeda(g("valorPago"));
-      if (!nome) { C.toast("Indique o nome do estudante.", "err"); return; }
-      if (!(valor > 0)) { C.toast("O valor pago deve ser maior que zero.", "err"); return; }
-      var dataVal = g("data");
-      var emo = D.emolumentoById(g("emolumentoId"));
-      var btnRec = document.getElementById("recGerar");
-      if (btnRec) { btnRec.disabled = true; btnRec.textContent = "A gerar…"; }
-      // Nº do recibo alocado de forma atómica (sem duplicação multi-dispositivo)
-      D.alocarRecibo().then(function (numero) {
-        var pag = {
-          recibo: numero,
-          estudanteId: g("estudanteId") || "",
-          estudanteNome: nome, matricula: g("matricula"), contacto: g("contacto"),
-          curso: g("curso"), periodo: g("periodo"), unidade: g("unidade"),
-          tipoCurso: "", duracao: "", regime: "",
-          emolumentoId: emo ? emo.id : "", emolumento: emo ? emo.nome : "Outros",
-          categoria: emo ? emo.categoria : "Outros", mesReferencia: g("mesReferencia"),
-          valorPago: valor, formaPagamento: g("formaPagamento"),
-          funcionario: g("funcionario"), referencia: "", observacoes: g("observacoes"),
-          data: dataVal ? dataVal + "T" + new Date().toTimeString().slice(0, 8) : U.agoraISO()
-        };
-        D.savePagamento(pag);
-        App._lastRecibo = pag;
-        document.getElementById("recPreview").innerHTML = C.receiptHTML(pag);
-        document.getElementById("recPreviewCard").hidden = false;
-        document.getElementById("recNum").textContent = D.peekRecibo();
-        C.toast("Recibo " + pag.recibo + " gerado.", "ok");
-        V.renderRecibos();
-        document.getElementById("recPreviewCard").scrollIntoView({ behavior: "smooth", block: "start" });
-        if (btnRec) { btnRec.disabled = false; btnRec.textContent = "Gerar recibo"; }
-      });
-    };
-
-    var printRec = function () {
-      if (!App._lastRecibo) { C.toast("Gere um recibo primeiro.", "err"); return; }
-      U.printElement("receiptDoc", "Recibo " + App._lastRecibo.recibo);
-    };
-    document.getElementById("recImprimir").onclick = printRec;
-    document.getElementById("recPdf").onclick = function () {
-      C.toast("Na janela de impressão escolha “Guardar como PDF”.", "ok"); printRec();
-    };
   }
 
   function afterRelatorios() {
