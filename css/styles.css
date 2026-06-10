@@ -504,3 +504,12 @@ body.dark .chart-track { background: rgba(255,255,255,.08); }
 .check-list { display: flex; flex-direction: column; gap: 8px; }
 .check-row { display: flex; align-items: center; gap: 9px; font-size: 14px; color: var(--ink); cursor: pointer; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; }
 .check-row input { width: 16px; height: 16px; }
+
+/* ===== Recibo com vários emolumentos (modal) ===== */
+.pay-item-row { display: grid; grid-template-columns: 1fr 130px auto; gap: 8px; align-items: center; margin-bottom: 8px; }
+.pay-item-row .pay-emol, .pay-item-row .pay-val { padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 13.5px; font-family: inherit; background: #fff; color: var(--ink); width: 100%; }
+.pay-item-row .pay-del { padding: 6px 11px; line-height: 1; }
+.pay-item-add { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 4px; flex-wrap: wrap; }
+.pay-total { font-size: 14px; color: var(--ink); }
+.pay-total strong { color: var(--green-700); }
+body.dark .pay-item-row .pay-emol, body.dark .pay-item-row .pay-val { background: #0f1519; }
