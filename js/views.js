@@ -699,6 +699,7 @@
           if (v > 0 && vi) vi.value = v;
         });
         document.getElementById("savePag").onclick = function () {
+          if (V.caixaBloqueadoModal()) return;   // exige fecho do caixa do dia anterior
           var fd = new FormData(document.getElementById("formPag"));
           var nomeRaw = (document.getElementById("payEstNome").value || "").trim();
           var valor = U.parseMoeda(fd.get("valorPago"));
@@ -753,6 +754,31 @@
   };
   // Cria registo de pagamento a partir de um estudante + dados.
   // Devolve uma Promise<pagamento> (o número do recibo é alocado de forma atómica).
+  // Bloqueio do caixa: se houver um dia anterior por fechar, impede novos
+  // movimentos financeiros e mostra como desbloquear. Devolve true se bloqueado.
+  V.caixaBloqueadoModal = function () {
+    var dia = D.caixaBloqueado();
+    if (!dia) return false;
+    var perfil = D.auth().perfil;
+    var podeFechar = !window.MidasUsers || perfil === "admin" || perfil === "directora";
+    C.modal({
+      title: "Caixa por fechar",
+      body: "<p>Há um dia com movimentos por fechar: <strong>" + U.dataPT(dia) + "</strong>.</p>" +
+        "<p>Não é possível registar novos <strong>pagamentos</strong> nem <strong>matrículas</strong> " +
+        "enquanto o caixa desse dia não for fechado.</p>" +
+        (podeFechar
+          ? "<p>Vá a <strong>Fecho de Caixa</strong>, escolha essa data e <strong>Guardar fecho</strong> para desbloquear.</p>"
+          : "<p>Peça ao <strong>Administrador/Diretora</strong> para fechar o caixa desse dia.</p>"),
+      footer: '<button class="btn btn-light" onclick="App.closeModal()">Fechar</button>' +
+        (podeFechar ? '<button class="btn btn-primary" id="irFecho">Ir para Fecho de Caixa</button>' : ""),
+      onOpen: function () {
+        var b = document.getElementById("irFecho");
+        if (b) b.onclick = function () { C.closeModal(); App.navigate("fecho"); };
+      }
+    });
+    return true;
+  };
+
   V._criarPagamento = function (est, extra) {
     return D.alocarRecibo().then(function (numero) {
       var pag = {
