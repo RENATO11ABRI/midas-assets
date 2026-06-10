@@ -1557,23 +1557,39 @@
      9. MIDAS 2026 — Estágios e Aptidão para a Defesa
      ======================================================================= */
   V.midas = function () {
-    return C.pageHead("MIDAS 2026", "Gestão avançada — estágios e aptidão para a defesa") +
+    return C.pageHead("MIDAS 2026", "Gestão de finalistas — estágios e aptidão para a defesa") +
       '<div class="tabs" id="midasTabs">' +
         '<div class="tab active" data-tab="estagios">Estágios</div>' +
         '<div class="tab" data-tab="aptidao">Aptidão para Defesa</div>' +
-        '<div class="tab" data-tab="leads">Leads</div>' +
       '</div><div id="midasContent"></div>';
   };
   V.ESTAGIO_TIPOS = ["Preliminar", "Curricular"];
   V.ESTAGIO_ESTADOS = ["Por iniciar", "A decorrer", "Concluído", "Reprovado"];
   V.estagiosTab = function () {
     return '<div class="card"><div class="card-head"><h3>Estágios</h3>' +
-      '<button class="btn btn-primary" id="estagioNovo">Novo estágio</button></div>' +
+      '<div class="flex" style="gap:8px">' +
+        '<button class="btn btn-light" id="estagioCsv">Exportar CSV</button>' +
+        '<button class="btn btn-light" id="estagioPdf">Imprimir mapa</button>' +
+        '<button class="btn btn-primary" id="estagioNovo">Novo estágio</button></div></div>' +
       '<div class="toolbar">' +
-        '<div class="search-box"><input id="estagioSearch" placeholder="Pesquisar por estudante, local, supervisor..."></div>' +
+        '<div class="search-box"><input id="estagioSearch" placeholder="Pesquisar por estudante, matrícula, local, supervisor..."></div>' +
+        '<div class="field"><label>Curso</label><select id="estagioFiltroCurso"><option value="">Todos</option>' + U.optionList(D.cursos().map(function (c) { return c.nome; })) + "</select></div>" +
         '<div class="field"><label>Tipo</label><select id="estagioFiltroTipo"><option value="">Todos</option>' + U.optionList(V.ESTAGIO_TIPOS) + "</select></div>" +
         '<div class="field"><label>Estado</label><select id="estagioFiltroEstado"><option value="">Todos</option>' + U.optionList(V.ESTAGIO_ESTADOS) + "</select></div>" +
       '</div><div id="estagioTable"></div></div>';
+  };
+  // Lista de estágios filtrada (partilhada por render/exportação).
+  V._estagiosFiltrados = function () {
+    var g = function (id) { var el = document.getElementById(id); return el ? el.value : ""; };
+    var q = (g("estagioSearch") || "").toLowerCase();
+    var fcur = g("estagioFiltroCurso"), ft = g("estagioFiltroTipo"), fe = g("estagioFiltroEstado");
+    return D.estagios().filter(function (e) {
+      if (fcur && e.curso !== fcur) return false;
+      if (ft && e.tipo !== ft) return false;
+      if (fe && e.estado !== fe) return false;
+      if (q && (e.estudanteNome + " " + (e.matricula || "") + " " + (e.local || "") + " " + (e.supervisor || "") + " " + (e.curso || "")).toLowerCase().indexOf(q) < 0) return false;
+      return true;
+    }).sort(function (a, b) { return (a.dataInicio || "") < (b.dataInicio || "") ? 1 : -1; });
   };
   V._duracaoEstagio = function (e) {
     if (e.dataInicio && e.dataFim) {
@@ -1588,34 +1604,32 @@
     }
     return e.cargaHoraria ? U.esc(String(e.cargaHoraria)) : "—";
   };
+  V._estagioEstadoBadge = function (estado) {
+    var cls = (estado || "").toLowerCase().indexOf("conclu") >= 0 ? "ok"
+      : (estado === "Reprovado" ? "danger" : (estado === "A decorrer" ? "info" : "off"));
+    return '<span class="badge ' + cls + '">' + U.esc(estado || "—") + "</span>";
+  };
   V.renderEstagios = function () {
-    var q = (document.getElementById("estagioSearch").value || "").toLowerCase();
-    var ft = document.getElementById("estagioFiltroTipo").value;
-    var fe = document.getElementById("estagioFiltroEstado").value;
     var todos = D.estagios();
-    var list = todos.filter(function (e) {
-      if (ft && e.tipo !== ft) return false;
-      if (fe && e.estado !== fe) return false;
-      if (q && (e.estudanteNome + " " + (e.local || "") + " " + (e.supervisor || "") + " " + (e.curso || "")).toLowerCase().indexOf(q) < 0) return false;
-      return true;
-    }).sort(function (a, b) { return (a.dataInicio || "") < (b.dataInicio || "") ? 1 : -1; });
+    var list = V._estagiosFiltrados();
     var host = document.getElementById("estagioTable");
     var cont = function (f) { return todos.filter(f).length; };
-    var stats =
-      V._stat("Total", todos.length) +
-      V._stat("Em curso", cont(function (e) { return e.estado === "A decorrer"; })) +
-      V._stat("Concluídos", cont(function (e) { return (e.estado || "").toLowerCase().indexOf("conclu") >= 0; })) +
-      V._stat("Curriculares", cont(function (e) { return e.tipo === "Curricular"; })) +
-      V._stat("Preliminares", cont(function (e) { return e.tipo === "Preliminar"; }));
-    var statsHtml = '<div class="grid stats mb">' + stats + "</div>";
+    var statsHtml = '<div class="grid stats mb">' +
+      V._stat("Total", todos.length, { icon: "book" }) +
+      V._stat("Em curso", cont(function (e) { return e.estado === "A decorrer"; }), { icon: "trend", accent: "info" }) +
+      V._stat("Concluídos", cont(function (e) { return (e.estado || "").toLowerCase().indexOf("conclu") >= 0; }), { icon: "userCheck", accent: "green" }) +
+      V._stat("Curriculares", cont(function (e) { return e.tipo === "Curricular"; }), { icon: "cap" }) +
+      V._stat("Preliminares", cont(function (e) { return e.tipo === "Preliminar"; }), { icon: "layers" }) + "</div>";
     if (!list.length) { host.innerHTML = statsHtml + C.empty("", "Nenhum estágio encontrado."); return; }
     var rows = list.map(function (e) {
-      return "<tr><td><strong>" + U.esc(e.estudanteNome) + "</strong><br><small>" + U.esc(e.curso || "") + "</small></td>" +
+      var semFim = !e.dataFim && (e.estado === "A decorrer" || e.estado === "Por iniciar");
+      return "<tr><td><strong>" + U.esc(e.estudanteNome) + "</strong><br><small>" + U.esc(e.matricula || "") + " · " + U.esc(e.curso || "") + "</small></td>" +
         '<td><span class="badge gold">' + U.esc(e.tipo) + "</span></td>" +
         "<td>" + U.esc(e.local || "—") + "<br><small>" + U.esc(e.supervisor || "") + "</small></td>" +
-        "<td>" + U.dataPT(e.dataInicio) + "<br><small>até " + U.dataPT(e.dataFim) + "</small></td>" +
+        "<td>" + U.dataPT(e.dataInicio) + "<br><small>até " + U.dataPT(e.dataFim) +
+          (semFim ? ' <span class="badge warn">⚠ sem término</span>' : "") + "</small></td>" +
         "<td>" + V._duracaoEstagio(e) + "</td>" +
-        '<td><span class="badge ' + ((e.estado || "").toLowerCase().indexOf("conclu") >= 0 ? "ok" : (e.estado === "Reprovado" ? "danger" : (e.estado === "A decorrer" ? "info" : "off"))) + '">' + U.esc(e.estado || "—") + "</span></td>" +
+        "<td>" + V._estagioEstadoBadge(e.estado) + "</td>" +
         '<td><div class="row-actions"><button class="btn btn-light btn-sm" data-estagio-edit="' + e.id + '">Editar</button>' +
         '<button class="btn btn-danger btn-sm" data-estagio-del="' + e.id + '">Eliminar</button></div></td></tr>';
     }).join("");
@@ -1623,21 +1637,42 @@
       "<th>Estudante</th><th>Tipo</th><th>Local / Supervisor</th><th>Período</th><th>Duração</th><th>Estado</th><th>Ações</th>" +
       "</tr></thead><tbody>" + rows + "</tbody></table></div><p class='help mt'>" + list.length + " estágio(s).</p>";
   };
+  V._mapaEstagiosHTML = function (list) {
+    var s = D.db().settings;
+    var linhas = list.length ? list.map(function (e) {
+      return "<tr><td>" + U.esc(e.estudanteNome) + "</td><td>" + U.esc(e.matricula || "") + "</td><td>" + U.esc(e.curso || "") +
+        "</td><td>" + U.esc(e.tipo || "") + "</td><td>" + U.esc(e.local || "") + "</td><td>" + U.esc(e.supervisor || "") +
+        "</td><td>" + U.dataPT(e.dataInicio) + " a " + U.dataPT(e.dataFim) + "</td><td>" + U.esc(V._duracaoEstagio(e)) +
+        "</td><td>" + U.esc(e.estado || "") + "</td></tr>";
+    }).join("") : "<tr><td colspan='9' style='text-align:center;color:#888'>Sem estágios.</td></tr>";
+    return '<div class="print-sheet" id="mapaEstagiosDoc">' +
+      '<div class="ps-head"><div><h2>Mapa de Estágios</h2><div>' + U.dataPT(U.hoje()) + " · " + list.length + " registo(s)</div></div>" +
+        '<div class="org"><img src="' + U.logoURL(true) + '" alt="" style="height:42px"><br><strong>' + U.esc(s.instituicao) + "</strong></div></div>" +
+      "<table><thead><tr><th>Estudante</th><th>Matrícula</th><th>Curso</th><th>Tipo</th><th>Local</th><th>Supervisor</th><th>Período</th><th>Duração</th><th>Estado</th></tr></thead><tbody>" +
+      linhas + "</tbody></table>" + C._docFoot() + "</div>";
+  };
   V.editarEstagio = function (id) {
     var e = id ? D.estagioById(id) : {};
     var estList = D.estudantes().slice().sort(function (a, b) { return a.nome < b.nome ? -1 : 1; })
       .map(function (x) { return '<option value="' + U.esc(x.nome + " · " + x.matricula) + '"></option>'; }).join("");
     var f = function (n, l, t, v) {
-      return '<div class="field"><label>' + l + "</label><input type='" + (t || "text") + "' name='" + n + "' value='" + (v == null ? "" : U.esc(v)) + "'></div>";
+      return '<div class="field"><label>' + l + "</label><input type='" + (t || "text") + "' name='" + n + "' id='esg_" + n + "' value='" + (v == null ? "" : U.esc(v)) + "'></div>";
     };
     C.modal({
       title: id ? "Editar Estágio" : "Novo Estágio",
-      body: '<form id="formEstagio"><div class="form-grid">' +
-        '<div class="field full"><label>Estudante <span class="req">*</span></label>' +
+      body: '<form id="formEstagio">' +
+        '<p class="help" style="margin-top:0">Escreva o nome do estudante — se já existir, os dados são preenchidos. ' +
+        "Pode também escrever manualmente se ainda não estiver cadastrado.</p>" +
+        '<div class="form-grid">' +
+        '<div class="field full"><label>Nome do estudante <span class="req">*</span></label>' +
           '<input id="esgNome" list="esgList" autocomplete="off" placeholder="Escreva o nome..." value="' + (e.estudanteNome ? U.esc(e.estudanteNome) : "") + '">' +
           '<datalist id="esgList">' + estList + "</datalist>" +
           '<input type="hidden" name="estudanteId" id="esgId" value="' + (e.estudanteId || "") + '"></div>' +
-        '<div class="field"><label>Tipo</label><select name="tipo">' + U.optionList(V.ESTAGIO_TIPOS, e.tipo || "Curricular") + "</select></div>" +
+        f("matricula", "Nº de matrícula", "text", e.matricula) +
+        f("contacto", "Contacto", "tel", e.contacto) +
+        '<div class="field"><label>Curso</label><input name="curso" id="esg_curso" list="esgCursos" value="' + U.esc(e.curso || "") + '">' +
+          '<datalist id="esgCursos">' + D.cursos().map(function (c) { return '<option value="' + U.esc(c.nome) + '"></option>'; }).join("") + "</datalist></div>" +
+        '<div class="field"><label>Tipo de estágio</label><select name="tipo">' + U.optionList(V.ESTAGIO_TIPOS, e.tipo || "Curricular") + "</select></div>" +
         '<div class="field"><label>Estado</label><select name="estado">' + U.optionList(V.ESTAGIO_ESTADOS, e.estado || "Por iniciar") + "</select></div>" +
         f("local", "Local de estágio", "text", e.local) +
         f("supervisor", "Supervisor", "text", e.supervisor) +
@@ -1651,13 +1686,27 @@
         '<button class="btn btn-primary" id="esgSave">Guardar</button>',
       onOpen: function () {
         var nome = document.getElementById("esgNome"), hid = document.getElementById("esgId");
-        nome.addEventListener("input", function () { var s = V.resolverEstudante(this.value); hid.value = s ? s.id : ""; });
+        var setIf = function (idf, v) { var el = document.getElementById(idf); if (el && (!el.value || el.value === "")) el.value = v == null ? "" : v; };
+        nome.addEventListener("input", function () {
+          var s = V.resolverEstudante(this.value);
+          hid.value = s ? s.id : "";
+          if (s) { // preenche (sem apagar o que já estiver)
+            setIf("esg_matricula", s.matricula); setIf("esg_contacto", s.contacto);
+            var cu = document.getElementById("esg_curso"); if (cu && !cu.value) cu.value = s.curso || "";
+          }
+        });
         document.getElementById("esgSave").onclick = function () {
           var fd = new FormData(document.getElementById("formEstagio"));
+          var nm = (nome.value || "").split(" · ")[0].trim();
+          if (nm.length < 2) { C.toast("Indique o nome do estudante.", "err"); return; }
           var est = D.estudanteById(hid.value) || V.resolverEstudante(nome.value);
-          if (!est) { C.toast("Escolha um estudante válido.", "err"); return; }
           D.saveEstagio({
-            id: fd.get("id") || undefined, estudanteId: est.id, estudanteNome: est.nome, curso: est.curso,
+            id: fd.get("id") || undefined,
+            estudanteId: est ? est.id : "",
+            estudanteNome: est ? est.nome : nm,
+            matricula: fd.get("matricula") || (est ? est.matricula : ""),
+            contacto: fd.get("contacto") || (est ? est.contacto : ""),
+            curso: fd.get("curso") || (est ? est.curso : ""),
             tipo: fd.get("tipo"), estado: fd.get("estado"), local: fd.get("local"), supervisor: fd.get("supervisor"),
             dataInicio: fd.get("dataInicio"), dataFim: fd.get("dataFim"), cargaHoraria: fd.get("cargaHoraria"),
             observacoes: fd.get("observacoes")
@@ -1702,6 +1751,10 @@
       }
     });
   };
+  V._estagioCurricular = function (estId) {
+    return D.estagiosDeEstudante(estId).filter(function (e) { return e.tipo === "Curricular"; })
+      .sort(function (a, b) { return (a.dataInicio || "") < (b.dataInicio || "") ? 1 : -1; })[0];
+  };
   V.renderAptidao = function () {
     var q = (document.getElementById("aptSearch").value || "").toLowerCase();
     var fc = document.getElementById("aptCurso").value;
@@ -1710,91 +1763,63 @@
       if (fc && e.curso !== fc) return false;
       if (q && (e.nome + " " + e.matricula).toLowerCase().indexOf(q) < 0) return false;
       return true;
-    }).map(function (e) { return { e: e, r: D.aptidaoDefesa(e) }; });
+    }).map(function (e) { return { e: e, r: D.aptidaoDefesa(e), saldo: D.saldoDevedor(e), eg: V._estagioCurricular(e.id) }; });
     if (fe) avals = avals.filter(function (a) { return fe === "Apto" ? a.r.apto : !a.r.apto; });
     var aptos = avals.filter(function (a) { return a.r.apto; }).length;
+    var pct = avals.length ? Math.round((aptos / avals.length) * 100) : 0;
     var stats = document.getElementById("aptStats");
-    if (stats) stats.innerHTML = V._stat("Total avaliados", avals.length) + V._stat("Aptos", aptos) + V._stat("Não aptos", avals.length - aptos);
+    if (stats) stats.innerHTML =
+      V._stat("Total avaliados", avals.length, { icon: "users" }) +
+      V._stat("Aptos", aptos, { icon: "userCheck", accent: "green" }) +
+      V._stat("Não aptos", avals.length - aptos, { icon: "alert", accent: "danger" }) +
+      V._stat("Taxa de aptidão", pct + "%", { icon: "trend", accent: "gold" });
     var host = document.getElementById("aptTable");
     if (!avals.length) { host.innerHTML = C.empty("", "Sem estudantes para mostrar."); return; }
     var rows = avals.sort(function (a, b) { return a.r.apto === b.r.apto ? 0 : (a.r.apto ? 1 : -1); }).map(function (a) {
+      var fin = a.saldo <= 0 ? '<span class="badge ok">Regularizado</span>' : '<span class="badge danger">Dívida ' + U.moeda(a.saldo) + "</span>";
+      var eg = a.eg ? V._estagioEstadoBadge(a.eg.estado) : '<span class="badge off">Sem estágio</span>';
       return "<tr><td><strong>" + U.esc(a.e.nome) + "</strong><br><small>" + U.esc(a.e.matricula) + "</small></td>" +
         "<td>" + U.esc(a.e.curso || "—") + "</td>" +
+        "<td>" + fin + "</td>" +
+        "<td>" + eg + "</td>" +
         "<td>" + (a.r.apto ? '<span class="badge ok">Apto</span>' : '<span class="badge danger">Não apto</span>') + "</td>" +
-        "<td><small>" + (a.r.apto ? "—" : U.esc(a.r.motivos.join("; "))) + "</small></td></tr>";
+        "<td><small>" + (a.r.apto ? "—" : U.esc(a.r.motivos.join("; "))) + "</small></td>" +
+        '<td><button class="btn btn-light btn-sm" data-apt-view="' + a.e.id + '">Ver</button></td></tr>';
     }).join("");
-    host.innerHTML = '<div class="table-wrap"><table class="data"><thead><tr><th>Estudante</th><th>Curso</th><th>Situação</th><th>Em falta</th></tr></thead><tbody>' + rows + "</tbody></table></div>";
+    host.innerHTML = '<div class="table-wrap"><table class="data"><thead><tr>' +
+      "<th>Estudante</th><th>Curso</th><th>Financeiro</th><th>Estágio curricular</th><th>Situação</th><th>Em falta</th><th></th>" +
+      "</tr></thead><tbody>" + rows + "</tbody></table></div><p class='help mt'>" + avals.length + " estudante(s).</p>";
   };
-
-  /* ---- Leads (funil de pré-matrícula) ---- */
-  V.LEAD_ESTADOS = ["Novo", "Contactado", "Interessado", "Matriculado", "Perdido"];
-  V.leadsTab = function () {
-    return '<div class="card"><div class="card-head"><h3>Funil de Leads</h3>' +
-      '<button class="btn btn-light" id="leadNovo">Adicionar manualmente</button></div>' +
-      '<p class="help">Pré-inscrições recebidas pelo site (página <code>inscricao.html</code>) e contactos adicionados manualmente.</p>' +
-      '<div class="grid stats mb" id="leadStats"></div>' +
-      '<div class="toolbar"><div class="search-box"><input id="leadSearch" placeholder="Pesquisar nome, contacto, curso..."></div>' +
-        '<div class="field"><label>Estado</label><select id="leadFiltro"><option value="">Todos</option>' + U.optionList(V.LEAD_ESTADOS) + "</select></div></div>" +
-      '<div id="leadTable"></div></div>';
-  };
-  V.renderLeads = function () {
-    var all = D.leads();
-    var stats = document.getElementById("leadStats");
-    if (stats) stats.innerHTML = V.LEAD_ESTADOS.map(function (s) {
-      return V._stat(s, all.filter(function (l) { return (l.estado || "Novo") === s; }).length);
+  V.aptidaoDetalhe = function (estId) {
+    var est = D.estudanteById(estId);
+    if (!est) return;
+    var r = D.aptidaoDefesa(est);
+    var saldo = D.saldoDevedor(est);
+    var eg = V._estagioCurricular(est.id);
+    var pags = D.pagamentosDeEstudante(est.id).sort(U.by("data"));
+    var pagRows = pags.length ? pags.map(function (p) {
+      return "<tr><td>" + U.dataPT(p.data) + "</td><td>" + U.esc(p.recibo || "") + "</td><td>" + U.esc(p.emolumento || "") +
+        "</td><td class='text-right num'>" + U.moeda(p.valorPago) + "</td></tr>";
+    }).join("") : "<tr><td colspan='4' style='text-align:center;color:#888'>Sem pagamentos.</td></tr>";
+    var critList = r.criterios.map(function (c) {
+      return '<li class="' + (c.ok ? "crit-ok" : "crit-no") + '">' + (c.ok ? "✔ " : "✘ ") + U.esc(c.nome) + "</li>";
     }).join("");
-    var q = (document.getElementById("leadSearch").value || "").toLowerCase();
-    var fe = document.getElementById("leadFiltro").value;
-    var list = all.filter(function (l) {
-      if (fe && (l.estado || "Novo") !== fe) return false;
-      if (q && (l.nome + " " + (l.contacto || "") + " " + (l.cursoInteresse || "")).toLowerCase().indexOf(q) < 0) return false;
-      return true;
-    }).sort(function (a, b) { return (a.criadoEm || "") < (b.criadoEm || "") ? 1 : -1; });
-    var host = document.getElementById("leadTable");
-    if (!host) return;
-    if (!list.length) { host.innerHTML = C.empty("", "Sem leads para mostrar."); return; }
-    var rows = list.map(function (l) {
-      var est = l.estado || "Novo";
-      var wa = l.whatsapp || l.contacto;
-      return "<tr><td><strong>" + U.esc(l.nome) + "</strong><br><small>" + U.esc(l.contacto || "") + "</small></td>" +
-        "<td>" + U.esc(l.cursoInteresse || "—") + "<br><small>" + U.esc(l.periodo || "") + "</small></td>" +
-        "<td><small>" + U.esc(l.origem || "site") + "</small><br><small>" + U.dataPT(l.criadoEm) + "</small></td>" +
-        '<td><select class="leadEstado" data-lead-id="' + l.id + '">' + U.optionList(V.LEAD_ESTADOS, est) + "</select></td>" +
-        '<td><div class="row-actions">' +
-          (wa ? '<button class="btn btn-light btn-sm" data-lead-wa="' + l.id + '">WhatsApp</button>' : "") +
-          (est !== "Matriculado" ? '<button class="btn btn-primary btn-sm" data-lead-convert="' + l.id + '">Converter</button>' : "") +
-          '<button class="btn btn-danger btn-sm" data-lead-del="' + l.id + '">Eliminar</button>' +
-        "</div></td></tr>";
-    }).join("");
-    host.innerHTML = '<div class="table-wrap"><table class="data"><thead><tr><th>Lead</th><th>Interesse</th><th>Origem</th><th>Estado</th><th>Ações</th></tr></thead><tbody>' +
-      rows + "</tbody></table></div><p class='help mt'>" + list.length + " lead(s).</p>";
-  };
-  V.editarLead = function (id) {
-    var l = id ? D.leadById(id) : {};
-    var f = function (n, lab, v) { return '<div class="field"><label>' + lab + "</label><input name='" + n + "' value='" + U.esc(v || "") + "'></div>"; };
     C.modal({
-      title: id ? "Editar lead" : "Novo lead",
-      body: '<form id="formLead"><div class="form-grid">' +
-        '<div class="field full"><label>Nome <span class="req">*</span></label><input name="nome" value="' + U.esc(l.nome || "") + '"></div>' +
-        f("contacto", "Contacto", l.contacto) + f("whatsapp", "WhatsApp", l.whatsapp) +
-        f("cursoInteresse", "Curso de interesse", l.cursoInteresse) + f("periodo", "Período", l.periodo) +
-        '<div class="field"><label>Estado</label><select name="estado">' + U.optionList(V.LEAD_ESTADOS, l.estado || "Novo") + "</select></div>" +
-        '<div class="field full"><label>Mensagem</label><textarea name="mensagem">' + U.esc(l.mensagem || "") + "</textarea></div>" +
-        "</div>" + (id ? "<input type='hidden' name='id' value='" + id + "'>" : "") + "</form>",
-      footer: '<button class="btn btn-light" onclick="App.closeModal()">Cancelar</button><button class="btn btn-primary" id="leadSave">Guardar</button>',
-      onOpen: function () {
-        document.getElementById("leadSave").onclick = function () {
-          var fd = new FormData(document.getElementById("formLead"));
-          var nome = (fd.get("nome") || "").trim();
-          if (nome.length < 3) { C.toast("Indique o nome.", "err"); return; }
-          D.saveLead({
-            id: fd.get("id") || undefined, nome: nome, contacto: fd.get("contacto"), whatsapp: fd.get("whatsapp"),
-            cursoInteresse: fd.get("cursoInteresse"), periodo: fd.get("periodo"), estado: fd.get("estado"),
-            mensagem: fd.get("mensagem"), origem: l.origem || "manual", criadoEm: l.criadoEm || U.agoraISO()
-          });
-          C.closeModal(); C.toast("Lead guardado.", "ok"); V.renderLeads();
-        };
-      }
+      title: "Aptidão — " + est.nome,
+      body:
+        '<div class="dl mb">' +
+          '<div class="dl-item"><div class="k">Curso</div><div class="v">' + U.esc(est.curso || "—") + "</div></div>" +
+          '<div class="dl-item"><div class="k">Situação</div><div class="v">' + (r.apto ? '<span class="badge ok">Apto</span>' : '<span class="badge danger">Não apto</span>') + "</div></div>" +
+          '<div class="dl-item"><div class="k">Financeiro</div><div class="v">' + (saldo <= 0 ? "Regularizado" : "Em dívida: " + U.moeda(saldo)) + "</div></div>" +
+          '<div class="dl-item"><div class="k">Estágio curricular</div><div class="v">' + (eg ? U.esc(eg.estado) + (eg.local ? " · " + U.esc(eg.local) : "") : "Não registado") + "</div></div>" +
+        "</div>" +
+        (r.apto ? '<p class="crit-ok" style="font-weight:600">✔ Cumpre todos os critérios exigidos.</p>'
+                : '<p class="crit-no" style="font-weight:600">✘ Não apto. Em falta: ' + U.esc(r.motivos.join("; ")) + ".</p>") +
+        '<h4>Critérios</h4><ul class="crit-list">' + critList + "</ul>" +
+        "<h4>Pagamentos encontrados</h4>" +
+        '<div class="table-wrap"><table class="data"><thead><tr><th>Data</th><th>Recibo</th><th>Emolumento</th><th class="text-right">Valor</th></tr></thead><tbody>' +
+        pagRows + "</tbody></table></div>",
+      footer: '<button class="btn btn-light" onclick="App.closeModal()">Fechar</button>'
     });
   };
 
