@@ -364,9 +364,16 @@
     var t = fc.totais || {};
     var linhaTot = function (k) { return "<tr><td>" + U.esc(k) + "</td><td style='text-align:right'>" + U.moeda(t[k] || 0) + "</td></tr>"; };
     var linhas = (fc.recibos || []).map(function (r) {
-      return "<tr><td>" + U.esc(r.recibo) + "</td><td>" + U.esc(r.estudante) + "</td><td>" + U.esc(r.forma || "") +
-        "</td><td style='text-align:right'>" + U.moeda(r.valor) + "</td></tr>";
+      return "<tr><td>" + U.esc(r.recibo) + "</td><td>" + U.esc(r.estudante) + "</td><td>" + U.esc(r.funcionario || "") +
+        "</td><td>" + U.esc(r.forma || "") + "</td><td style='text-align:right'>" + U.moeda(r.valor) + "</td></tr>";
     }).join("");
+    var tabObj = function (titulo, obj) {
+      var ks = Object.keys(obj || {}).filter(function (k) { return (obj[k] || 0) !== 0; }).sort();
+      if (!ks.length) return "";
+      return "<h4>" + titulo + "</h4><table><tbody>" + ks.map(function (k) {
+        return "<tr><td>" + U.esc(k) + "</td><td style='text-align:right'>" + U.moeda(obj[k]) + "</td></tr>";
+      }).join("") + "</tbody></table>";
+    };
     return '<div class="print-sheet" id="fechoDoc">' +
       '<div class="ps-head"><div><h2>Fecho de Caixa</h2><div>' + U.dataPT(fc.data) + " · " + U.esc(fc.funcionario || "Todos") + "</div></div>" +
         '<div class="org"><img src="' + U.logoURL(true) + '" alt="" style="height:42px"><br><strong>' + U.esc(s.instituicao) + "</strong></div></div>" +
@@ -376,9 +383,11 @@
         "<tr><th>Total geral</th><th style='text-align:right'>" + U.moeda(fc.totalGeral || 0) + "</th></tr>" +
         "<tr><td>Nº de recibos</td><td style='text-align:right'>" + (fc.numRecibos || 0) + "</td></tr>" +
       "</tbody></table>" +
+      tabObj("Totais por emolumento", fc.porEmol) +
+      tabObj("Totais por funcionário", fc.porFunc) +
       "<h4>Recibos do dia</h4>" +
-      "<table><thead><tr><th>Recibo</th><th>Estudante</th><th>Forma</th><th style='text-align:right'>Valor</th></tr></thead><tbody>" +
-        (linhas || "<tr><td colspan='4' style='text-align:center;color:#888'>Sem recibos.</td></tr>") + "</tbody></table>" +
+      "<table><thead><tr><th>Recibo</th><th>Estudante</th><th>Funcionário</th><th>Forma</th><th style='text-align:right'>Valor</th></tr></thead><tbody>" +
+        (linhas || "<tr><td colspan='5' style='text-align:center;color:#888'>Sem recibos.</td></tr>") + "</tbody></table>" +
       (fc.observacoes ? "<p><strong>Observações:</strong> " + U.esc(fc.observacoes) + "</p>" : "") +
       C._docSign() + C._docFoot() + "</div>";
   };

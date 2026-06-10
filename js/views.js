@@ -849,13 +849,27 @@
     var totais = {};
     V._FORMAS_FECHO.forEach(function (f) { totais[f] = 0; });
     totais["Outras"] = 0;
+    var porEmol = {}, porFunc = {};
     var totalGeral = 0;
     pags.forEach(function (p) {
       var v = Number(p.valorPago) || 0; totalGeral += v;
       var f = p.formaPagamento;
       if (V._FORMAS_FECHO.indexOf(f) >= 0) totais[f] += v; else totais["Outras"] += v;
+      var fn = p.funcionario || "—"; porFunc[fn] = (porFunc[fn] || 0) + v;
+      // por emolumento (expande os itens quando o recibo tem vários)
+      if (p.itens && p.itens.length) {
+        p.itens.forEach(function (it) { var k = it.emolumento || "Outros"; porEmol[k] = (porEmol[k] || 0) + (Number(it.valorPago) || 0); });
+      } else { var k = p.emolumento || "Outros"; porEmol[k] = (porEmol[k] || 0) + v; }
     });
-    return { recibos: pags.slice().sort(U.by("data")), totais: totais, totalGeral: totalGeral };
+    return { recibos: pags.slice().sort(U.by("data")), totais: totais, porEmol: porEmol, porFunc: porFunc, totalGeral: totalGeral };
+  };
+  // Tabela "chave → valor (moeda)" para os detalhes do fecho.
+  V._tabelaTotais = function (titulo, obj) {
+    var keys = Object.keys(obj || {}).filter(function (k) { return (obj[k] || 0) !== 0; }).sort();
+    if (!keys.length) return "";
+    return "<h4>" + U.esc(titulo) + '</h4><div class="table-wrap"><table class="data"><tbody>' +
+      keys.map(function (k) { return "<tr><td>" + U.esc(k) + "</td><td class='text-right num'>" + U.moeda(obj[k]) + "</td></tr>"; }).join("") +
+      "</tbody></table></div>";
   };
   V.fecho = function () {
     var db = D.db();
@@ -890,9 +904,16 @@
     if (!r.recibos.length) { host.innerHTML = C.empty("", "Sem recibos para esta data/funcionário."); return; }
     var rows = r.recibos.map(function (p) {
       return "<tr><td>" + U.esc(p.recibo) + "</td><td>" + U.esc(p.estudanteNome) + "</td><td>" + U.esc(p.emolumento) +
-        "</td><td>" + U.esc(p.formaPagamento || "") + "</td><td class='text-right num'>" + U.moeda(p.valorPago) + "</td></tr>";
+        "</td><td>" + U.esc(p.formaPagamento || "") + "</td><td>" + U.esc(p.funcionario || "") +
+        "</td><td class='text-right num'>" + U.moeda(p.valorPago) + "</td></tr>";
     }).join("");
-    host.innerHTML = '<div class="table-wrap"><table class="data"><thead><tr><th>Recibo</th><th>Estudante</th><th>Emolumento</th><th>Forma</th><th class="text-right">Valor</th></tr></thead><tbody>' + rows + "</tbody></table></div>";
+    host.innerHTML =
+      '<div class="grid two-col">' +
+        '<div>' + V._tabelaTotais("Por emolumento", r.porEmol) + "</div>" +
+        '<div>' + V._tabelaTotais("Por funcionário", r.porFunc) + "</div>" +
+      "</div>" +
+      "<h4>Recibos do dia</h4>" +
+      '<div class="table-wrap"><table class="data"><thead><tr><th>Recibo</th><th>Estudante</th><th>Emolumento</th><th>Forma</th><th>Funcionário</th><th class="text-right">Valor</th></tr></thead><tbody>' + rows + "</tbody></table></div>";
   };
   V.renderFechosGuardados = function () {
     var host = document.getElementById("fcGuardados");
