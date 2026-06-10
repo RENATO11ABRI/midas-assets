@@ -239,7 +239,6 @@
       var t = tabs.querySelectorAll(".tab");
       for (var i = 0; i < t.length; i++) t[i].classList.toggle("active", t[i].getAttribute("data-tab") === tab);
       if (tab === "aptidao") { content.innerHTML = V.aptidaoTab(); wireAptidao(); }
-      else if (tab === "leads") { content.innerHTML = V.leadsTab(); wireLeads(); }
       else { content.innerHTML = V.estagiosTab(); wireEstagios(); }
     }
     tabs.addEventListener("click", function (e) { var tab = e.target.getAttribute("data-tab"); if (tab) show(tab); });
@@ -248,25 +247,21 @@
   function wireEstagios() {
     V.renderEstagios();
     document.getElementById("estagioNovo").onclick = function () { V.editarEstagio(null); };
-    ["estagioSearch", "estagioFiltroTipo", "estagioFiltroEstado"].forEach(function (id) {
+    ["estagioSearch", "estagioFiltroCurso", "estagioFiltroTipo", "estagioFiltroEstado"].forEach(function (id) {
       var el = document.getElementById(id);
       el.addEventListener(el.tagName === "INPUT" ? "input" : "change", U.debounce(V.renderEstagios, 150));
     });
-  }
-  function wireLeads() {
-    V.renderLeads();
-    document.getElementById("leadNovo").onclick = function () { V.editarLead(null); };
-    ["leadSearch", "leadFiltro"].forEach(function (id) {
-      var el = document.getElementById(id);
-      el.addEventListener(el.tagName === "INPUT" ? "input" : "change", U.debounce(V.renderLeads, 150));
-    });
-    // mudança de estado inline
-    document.getElementById("leadTable").addEventListener("change", function (e) {
-      var sel = e.target;
-      if (!sel.classList || !sel.classList.contains("leadEstado")) return;
-      var lead = D.leadById(sel.getAttribute("data-lead-id"));
-      if (lead) { lead.estado = sel.value; D.saveLead(lead); C.toast("Estado atualizado.", "ok"); V.renderLeads(); }
-    });
+    document.getElementById("estagioCsv").onclick = function () {
+      var rows = V._estagiosFiltrados().map(function (e) {
+        return [e.estudanteNome, e.matricula || "", e.curso || "", e.tipo || "", e.estado || "",
+          e.local || "", e.supervisor || "", U.ymd(e.dataInicio), U.ymd(e.dataFim), V._duracaoEstagio(e), e.cargaHoraria || ""];
+      });
+      U.exportCSV("estagios.csv",
+        ["Estudante", "Matrícula", "Curso", "Tipo", "Estado", "Local", "Supervisor", "Início", "Término", "Duração", "Carga horária"], rows);
+    };
+    document.getElementById("estagioPdf").onclick = function () {
+      C.imprimirHTML(V._mapaEstagiosHTML(V._estagiosFiltrados()), "mapaEstagiosDoc", "Mapa de Estágios");
+    };
   }
 
   function wireAptidao() {
@@ -782,7 +777,7 @@
       "[data-curso-edit],[data-curso-del],[data-pag-view],[data-pag-del],[data-lista-add],[data-lista-del]," +
       "[data-em-edit],[data-em-toggle],[data-em-del],[data-lixo-restore]," +
       "[data-fecho-print],[data-fecho-del],[data-estagio-edit],[data-estagio-del]," +
-      "[data-lead-convert],[data-lead-del],[data-lead-wa],[data-est-pag]");
+      "[data-apt-view],[data-est-pag]");
     if (!t) return;
 
     var go = t.getAttribute("data-go");
@@ -846,37 +841,7 @@
       }, { danger: true, yes: "Eliminar" });
       return;
     }
-    if ((id = t.getAttribute("data-lead-wa"))) {
-      var lwa = D.leadById(id);
-      if (lwa) {
-        var msg = "Olá " + (lwa.nome || "") + "! Falamos do Grupo Midas Angola sobre a sua pré-inscrição";
-        window.open(U.whatsappURL(lwa.whatsapp || lwa.contacto, msg), "_blank");
-      }
-      return;
-    }
-    if ((id = t.getAttribute("data-lead-del"))) {
-      C.confirm("Eliminar este lead?", function () {
-        D.deleteLead(id); C.toast("Lead eliminado.", "ok"); V.renderLeads();
-      }, { danger: true, yes: "Eliminar" });
-      return;
-    }
-    if ((id = t.getAttribute("data-lead-convert"))) {
-      var lead = D.leadById(id);
-      if (!lead) return;
-      if (V.caixaBloqueadoModal()) return;   // exige fecho do caixa do dia anterior
-      C.confirm("Converter \"" + lead.nome + "\" em estudante? Será criada uma ficha que poderá completar depois.", function () {
-        D.alocarMatricula().then(function (num) {
-          D.saveEstudante({
-            matricula: num, nome: lead.nome, contacto: lead.contacto, whatsapp: lead.whatsapp,
-            curso: lead.cursoInteresse, periodo: lead.periodo, unidade: lead.unidade,
-            dataMatricula: U.hoje(), estado: "ativo", observacoes: lead.mensagem ? "Lead: " + lead.mensagem : ""
-          });
-          lead.estado = "Matriculado"; lead.convertidoEm = U.agoraISO(); D.saveLead(lead);
-          C.toast("Lead convertido em estudante (" + num + ").", "ok"); V.renderLeads();
-        });
-      }, { yes: "Converter" });
-      return;
-    }
+    if ((id = t.getAttribute("data-apt-view"))) { V.aptidaoDetalhe(id); return; }
     if ((id = t.getAttribute("data-estagio-edit"))) { V.editarEstagio(id); return; }
     if ((id = t.getAttribute("data-estagio-del"))) {
       C.confirm("Eliminar este estágio?", function () {

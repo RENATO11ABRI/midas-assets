@@ -546,3 +546,10 @@ body.dark .stat-ico { background: rgba(255,255,255,.07); }
 .grid.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
 @media (max-width: 1180px) { .grid.stats { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 520px) { .grid.stats { grid-template-columns: 1fr; } }
+
+/* ===== Aptidão — vista detalhada ===== */
+.crit-list { list-style: none; padding: 0; margin: 6px 0 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; }
+.crit-list li { font-size: 13.5px; }
+.crit-ok { color: var(--ok); }
+.crit-no { color: var(--danger); }
+@media (max-width: 600px) { .crit-list { grid-template-columns: 1fr; } }

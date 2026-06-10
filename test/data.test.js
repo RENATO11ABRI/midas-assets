@@ -188,3 +188,20 @@ test("aptidaoDefesa respeita os critérios configurados", function () {
   r = D.aptidaoDefesa(db.estudantes[0]);
   assert.ok(r.criterios.length >= 10);
 });
+
+test("aptidão: critérios reconhecem variações (júri/jurado, sala da defesa)", function () {
+  const db = D.db();
+  db.cursos = [{ id: "c1", nome: "C", valorTotal: 0 }];
+  db.estudantes = [{ id: "e1", nome: "W", curso: "C" }];
+  db.estagios = [];
+  db.pagamentos = [
+    { id: "p1", estudanteId: "e1", emolumento: "Mesa de Jurados", categoria: "Mesa de Jurados", valorPago: 19999 },
+    { id: "p2", estudanteId: "e1", emolumento: "Sala de Defesa", categoria: "Sala de Defesa", valorPago: 10998 }
+  ];
+  db.settings.criteriosAptidao = ["juri"];
+  assert.strictEqual(D.aptidaoDefesa(db.estudantes[0]).apto, true);   // "Mesa de Jurados" conta para júri
+  db.settings.criteriosAptidao = ["sala"];
+  assert.strictEqual(D.aptidaoDefesa(db.estudantes[0]).apto, true);   // "Sala de Defesa" conta para sala
+  db.settings.criteriosAptidao = ["exame"];
+  assert.strictEqual(D.aptidaoDefesa(db.estudantes[0]).apto, false);  // exame não pago
+});

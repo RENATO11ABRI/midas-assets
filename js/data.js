@@ -18,13 +18,26 @@
     "Matrícula", "Inscrição", "Propina", "Estágio Preliminar", "Estágio Curricular",
     "Declaração", "Túnica", "Certificado de Participação", "Certificado de Fim do Curso",
     "Mesa do Júri", "Sala da Defesa", "Emolumentos da Defesa", "Aula Prática",
-    "Orientação", "Exame Prático", "Cartão de Estudante", "Fascículo", "Outros"
+    "Orientação", "Exame Prático", "Termo de Frequência", "Diploma de Mérito",
+    "Cartão de Estudante", "Fascículo", "Outros"
   ];
-  // Catálogo inicial de emolumentos (um por categoria, valor a definir nas Definições)
+  // Valores predefinidos (Kz) dos emolumentos da defesa/finalistas (editáveis em Configurações)
+  var VALORES_EMOLUMENTO = {
+    "Certificado de Fim do Curso": 59998,
+    "Termo de Frequência": 49997,
+    "Mesa do Júri": 19999,
+    "Sala da Defesa": 10998,
+    "Diploma de Mérito": 0,
+    "Estágio Curricular": 60000,
+    "Declaração": 10000,
+    "Exame Prático": 16000,
+    "Emolumentos da Defesa": 150000
+  };
+  // Catálogo inicial de emolumentos (um por categoria; valores predefinidos acima)
   function seedEmolumentos() {
     return CATEGORIAS_EMOLUMENTO.map(function (cat) {
       return {
-        id: MidasData.uid("emo"), nome: cat, categoria: cat, valor: 0,
+        id: MidasData.uid("emo"), nome: cat, categoria: cat, valor: VALORES_EMOLUMENTO[cat] || 0,
         curso: "", tipoCurso: "", unidade: "", estado: "ativo", observacoes: ""
       };
     });
@@ -571,19 +584,22 @@
     // Catálogo de critérios possíveis para a Aptidão à Defesa (configuráveis).
     // tipo: "propinas" (saldo<=0), "estagio" (curricular concluído) ou "emol"
     // (existe pagamento cuja categoria/emolumento contém "frag", já normalizado).
+    // frags: lista de fragmentos (já normalizados, sem acentos/minúsculas) que,
+    // se encontrados no nome/categoria de um pagamento, satisfazem o critério.
     _CRITERIOS_APTIDAO: [
       { id: "propinas", nome: "Propinas regularizadas", tipo: "propinas" },
       { id: "estagio_concl", nome: "Estágio curricular concluído", tipo: "estagio" },
-      { id: "estagio_pago", nome: "Estágio pago", tipo: "emol", frag: "estagio" },
-      { id: "exame", nome: "Exame prático pago", tipo: "emol", frag: "exame" },
-      { id: "tunica", nome: "Túnica paga", tipo: "emol", frag: "tunica" },
-      { id: "defesa", nome: "Emolumentos da defesa pagos", tipo: "emol", frag: "defesa" },
-      { id: "juri", nome: "Mesa do júri paga", tipo: "emol", frag: "juri" },
-      { id: "orientacao", nome: "Orientação paga", tipo: "emol", frag: "orientacao" },
-      { id: "declaracao", nome: "Declaração paga", tipo: "emol", frag: "declara" },
-      { id: "termo", nome: "Termo de frequência pago", tipo: "emol", frag: "termo" },
-      { id: "cert_fim", nome: "Certificado de fim do curso pago", tipo: "emol", frag: "certificado de fim" },
-      { id: "cert_part", nome: "Certificado de participação pago", tipo: "emol", frag: "participa" }
+      { id: "estagio_pago", nome: "Estágio pago", tipo: "emol", frags: ["estagio"] },
+      { id: "exame", nome: "Exame prático pago", tipo: "emol", frags: ["exame"] },
+      { id: "tunica", nome: "Túnica paga", tipo: "emol", frags: ["tunica"] },
+      { id: "defesa", nome: "Emolumentos da defesa pagos", tipo: "emol", frags: ["emolumentos da defesa"] },
+      { id: "juri", nome: "Mesa do júri paga", tipo: "emol", frags: ["juri", "jurado"] },
+      { id: "sala", nome: "Sala da defesa paga", tipo: "emol", frags: ["sala da defesa", "sala de defesa"] },
+      { id: "orientacao", nome: "Orientação paga", tipo: "emol", frags: ["orientacao"] },
+      { id: "declaracao", nome: "Declaração paga", tipo: "emol", frags: ["declara"] },
+      { id: "termo", nome: "Termo de frequência pago", tipo: "emol", frags: ["termo"] },
+      { id: "cert_fim", nome: "Certificado de fim do curso pago", tipo: "emol", frags: ["certificado de fim"] },
+      { id: "cert_part", nome: "Certificado de participação pago", tipo: "emol", frags: ["participa"] }
     ],
     // Critérios ativos (settings.criteriosAptidao = lista de ids). Sem definição
     // => todos ativos (predefinição).
@@ -597,8 +613,16 @@
       var self = this;
       if (!est) return { apto: false, criterios: [], motivos: ["Estudante inválido"] };
       var pags = this.pagamentosDeEstudante(est.id);
-      var tem = function (frag) {
-        return pags.some(function (p) { return self._normNome((p.categoria || "") + " " + (p.emolumento || "")).indexOf(frag) >= 0; });
+      // Procura, em qualquer pagamento (incl. itens de recibos multi-emolumento),
+      // algum dos fragmentos do critério. Ignora acentos e maiúsculas.
+      var temAlgum = function (frags) {
+        return pags.some(function (p) {
+          var textos = [self._normNome((p.categoria || "") + " " + (p.emolumento || ""))];
+          if (p.itens && p.itens.length) p.itens.forEach(function (it) {
+            textos.push(self._normNome((it.categoria || "") + " " + (it.emolumento || "")));
+          });
+          return frags.some(function (f) { return textos.some(function (t) { return t.indexOf(f) >= 0; }); });
+        });
       };
       var estagioConcluido = this.estagiosDeEstudante(est.id).some(function (e) {
         return self._normNome(e.tipo).indexOf("curricular") >= 0 && self._normNome(e.estado).indexOf("conclu") >= 0;
@@ -607,8 +631,8 @@
         var ok;
         if (c.tipo === "propinas") ok = self.saldoDevedor(est) <= 0;
         else if (c.tipo === "estagio") ok = estagioConcluido;
-        else ok = tem(c.frag);
-        return { nome: c.nome, ok: ok };
+        else ok = temAlgum(c.frags || [c.frag]);
+        return { id: c.id, nome: c.nome, ok: ok };
       });
       var motivos = crit.filter(function (c) { return !c.ok; }).map(function (c) { return c.nome; });
       return { apto: motivos.length === 0, criterios: crit, motivos: motivos };
