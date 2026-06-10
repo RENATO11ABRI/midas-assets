@@ -240,7 +240,14 @@
     },
 
     save: function () {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(_db));
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(_db));
+      } catch (e) {
+        // Ex.: QuotaExceededError. Os dados continuam em memória e (em modo
+        // Supabase) são gravados no servidor; só a cache local falhou.
+        if (window.console) console.error("Falha ao gravar cache local:", e);
+        if (window.C && C.toast) C.toast("Aviso: a cache local está cheia. Os dados foram guardados no servidor, mas faça uma cópia de segurança.", "err");
+      }
     },
 
     db: function () { return this.load(); },
@@ -535,7 +542,7 @@
 
     // ---- Mapa de propinas / carnê -----------------------------------------
     _mesesDuracao: function (duracao) {
-      var m = String(duracao || "").match(/(\d+)\s*mes/i);
+      var m = String(duracao || "").match(/(\d+)\s*m[eê]s/i); // "12 meses", "1 mês"
       return m ? parseInt(m[1], 10) : 0;
     },
     mapaPropinas: function (est) {

@@ -5,7 +5,7 @@
    - Pedidos a terceiros (Supabase, fontes, CDN): passam à rede (não cacheados aqui).
    Os dados do utilizador são geridos pela aplicação (localStorage + fila de
    sincronização do Supabase), não pelo service worker. */
-var CACHE = "midas-2026-v1";
+var CACHE = "midas-2026-v2";
 var SHELL = [
   "./",
   "./index.html",
@@ -63,17 +63,16 @@ self.addEventListener("fetch", function (e) {
     return;
   }
 
-  // Recursos: cache-first com revalidação em segundo plano.
+  // Recursos próprios (JS/CSS/imagens): NETWORK-FIRST com fallback para cache.
+  // (Antes era cache-first, o que servia código velho após cada deploy enquanto
+  //  online; network-first garante a versão mais recente e mantém o offline.)
   e.respondWith(
-    caches.match(req).then(function (cached) {
-      var network = fetch(req).then(function (res) {
-        if (res && res.status === 200) {
-          var copy = res.clone();
-          caches.open(CACHE).then(function (c) { c.put(req, copy); });
-        }
-        return res;
-      }).catch(function () { return cached; });
-      return cached || network;
-    })
+    fetch(req).then(function (res) {
+      if (res && res.status === 200) {
+        var copy = res.clone();
+        caches.open(CACHE).then(function (c) { c.put(req, copy); });
+      }
+      return res;
+    }).catch(function () { return caches.match(req); })
   );
 });

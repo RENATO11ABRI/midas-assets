@@ -115,6 +115,9 @@
     _csvCell: function (v) {
       if (v === null || v === undefined) v = "";
       v = String(v);
+      // Anti-injeção de fórmulas (CSV injection): neutraliza células que comecem
+      // por = + - @ (tab/CR) — o Excel executá-las-ia como fórmula.
+      if (/^[=+\-@\t\r]/.test(v)) v = "'" + v;
       if (/[";\n]/.test(v)) v = '"' + v.replace(/"/g, '""') + '"';
       return v;
     },
@@ -141,7 +144,7 @@
 
     // Parser CSV simples (deteta ; ou , ; suporta aspas). Devolve array de arrays.
     parseCSV: function (text) {
-      text = String(text || "");
+      text = String(text || "").replace(/^﻿/, ""); // remove BOM (CSV UTF-8 do Excel)
       var firstLine = text.split("\n")[0] || "";
       var delim = firstLine.indexOf(";") >= 0 ? ";" : ",";
       var rows = [], row = [], cur = "", inQ = false;

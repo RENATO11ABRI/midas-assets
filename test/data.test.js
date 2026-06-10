@@ -104,6 +104,25 @@ test("aptidaoDefesa fica Não apto com dívida", function () {
   assert.ok(r.motivos.indexOf("Propinas regularizadas") >= 0);
 });
 
+test("_csvCell neutraliza injeção de fórmulas (CSV injection)", function () {
+  assert.strictEqual(U._csvCell("=1+1"), "'=1+1");
+  assert.strictEqual(U._csvCell("+chamada"), "'+chamada");
+  assert.strictEqual(U._csvCell("@x"), "'@x");
+  assert.strictEqual(U._csvCell("João"), "João"); // texto normal intacto
+});
+
+test("parseCSV remove BOM e deteta delimitador", function () {
+  const rows = U.parseCSV("﻿nome;contacto\nMaria;923");
+  assert.strictEqual(rows[0][0], "nome"); // sem BOM colado ao 1º cabeçalho
+  assert.strictEqual(rows[1][1], "923");
+});
+
+test("_mesesDuracao aceita singular/plural e acento", function () {
+  assert.strictEqual(D._mesesDuracao("18 meses"), 18);
+  assert.strictEqual(D._mesesDuracao("1 mês"), 1);
+  assert.strictEqual(D._mesesDuracao("4 semanas"), 0);
+});
+
 test("parseMoeda interpreta formato pt e símbolos", function () {
   assert.strictEqual(U.parseMoeda("1.000,50"), 1000.5);
   assert.strictEqual(U.parseMoeda("Kz 2 500"), 2500);
