@@ -221,18 +221,28 @@
       C.toast("Fecho de caixa guardado.", "ok");
       V.renderFechosGuardados();
     };
-    document.getElementById("fcImprimir").onclick = function () {
+    // Constrói o documento de fecho a partir dos campos atuais.
+    var construirFecho = function () {
       var data = document.getElementById("fcData").value || hoje;
       var func = document.getElementById("fcFunc").value || "";
       var resumo = V._resumoCaixa(data, func);
-      var html = C.fechoHTML({
+      return { data: data, html: C.fechoHTML({
         data: data, funcionario: func || "Todos", totais: resumo.totais,
         porEmol: resumo.porEmol, porFunc: resumo.porFunc,
         totalGeral: resumo.totalGeral, numRecibos: resumo.recibos.length,
         recibos: resumo.recibos.map(function (p) { return { recibo: p.recibo, estudante: p.estudanteNome, valor: p.valorPago, forma: p.formaPagamento, funcionario: p.funcionario }; }),
         observacoes: document.getElementById("fcObs").value || ""
-      });
-      C.imprimirHTML(html, "fechoDoc", "Fecho de Caixa " + data);
+      }) };
+    };
+    document.getElementById("fcImprimir").onclick = function () {
+      var f = construirFecho();
+      C.imprimirHTML(f.html, "fechoDoc", "Fecho de Caixa " + f.data);
+    };
+    document.getElementById("fcPdf").onclick = function () {
+      var b = this; b.disabled = true; var t = b.textContent; b.textContent = "A gerar…";
+      var f = construirFecho();
+      C.toast("A gerar o PDF do fecho…", "ok");
+      C.baixarPDFHTML(f.html, "fechoDoc", "Fecho de Caixa " + f.data).then(function () { b.disabled = false; b.textContent = t; });
     };
   }
 
@@ -252,6 +262,12 @@
     document.getElementById("relPrint").onclick = function () {
       if (!document.getElementById("reportDoc")) { C.toast("Gere um relatório primeiro.", "err"); return; }
       U.printElement("reportDoc", document.getElementById("relTitulo").textContent);
+    };
+    document.getElementById("relPdf").onclick = function () {
+      if (!document.getElementById("reportDoc")) { C.toast("Gere um relatório primeiro.", "err"); return; }
+      var b = this; b.disabled = true; var t = b.textContent; b.textContent = "A gerar…";
+      C.toast("A gerar o PDF do relatório…", "ok");
+      U.baixarPDF("reportDoc", document.getElementById("relTitulo").textContent).then(function () { b.disabled = false; b.textContent = t; });
     };
     document.getElementById("relCsv").onclick = function () {
       if (!App._lastReport) { C.toast("Gere um relatório primeiro.", "err"); return; }
@@ -812,7 +828,7 @@
     var t = e.target.closest("[data-go],[data-est-view],[data-est-ficha],[data-est-edit],[data-est-pay],[data-est-del]," +
       "[data-curso-edit],[data-curso-del],[data-pag-view],[data-pag-del],[data-lista-add],[data-lista-del]," +
       "[data-em-edit],[data-em-toggle],[data-em-del],[data-lixo-restore]," +
-      "[data-fecho-print],[data-fecho-del],[data-estagio-edit],[data-estagio-del]," +
+      "[data-fecho-print],[data-fecho-pdf],[data-fecho-del],[data-estagio-edit],[data-estagio-del]," +
       "[data-apt-view],[data-est-pag],[data-turma],[data-est-extrato]");
     if (!t) return;
 
@@ -870,6 +886,11 @@
     if ((id = t.getAttribute("data-fecho-print"))) {
       var fc = D.fechoById(id);
       if (fc) C.imprimirHTML(C.fechoHTML(fc), "fechoDoc", "Fecho de Caixa " + fc.data);
+      return;
+    }
+    if ((id = t.getAttribute("data-fecho-pdf"))) {
+      var fcp = D.fechoById(id);
+      if (fcp) { C.toast("A gerar o PDF do fecho…", "ok"); C.baixarPDFHTML(C.fechoHTML(fcp), "fechoDoc", "Fecho de Caixa " + fcp.data); }
       return;
     }
     if ((id = t.getAttribute("data-fecho-del"))) {

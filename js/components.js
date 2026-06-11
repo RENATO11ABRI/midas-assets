@@ -147,6 +147,16 @@
     setTimeout(function () { host.remove(); }, 2000);
   };
 
+  // Gera PDF (download direto) de um documento que ainda não está no ecrã:
+  // monta-o fora do ecrã, gera o PDF e limpa. Espelha o C.imprimirHTML.
+  C.baixarPDFHTML = function (html, id, nome, opts) {
+    var host = document.createElement("div");
+    host.style.position = "fixed"; host.style.left = "-9999px"; host.style.top = "0";
+    host.innerHTML = html;
+    document.body.appendChild(host);
+    return U.baixarPDF(id, nome, opts).then(function (r) { host.remove(); return r; });
+  };
+
   // ---- QR de verificação (gerado pela Edge Function "qr") -----------------
   // Aparece nos documentos quando o backend Supabase está configurado.
   C._qrBlock = function (tipo, id) {

@@ -895,7 +895,8 @@
         '<div id="fcRecibos" class="mt"></div>' +
         '<div class="field full mt"><label>Observações</label><textarea id="fcObs"></textarea></div>' +
         '<div class="form-actions">' +
-          '<button class="btn btn-light" id="fcImprimir">Imprimir / PDF</button>' +
+          '<button class="btn btn-light" id="fcImprimir">Imprimir</button>' +
+          '<button class="btn btn-gold" id="fcPdf">Guardar PDF</button>' +
           '<button class="btn btn-primary" id="fcGuardar">Guardar fecho</button>' +
         "</div></div>" +
       '<div class="card"><div class="card-head"><h3>Fechos guardados</h3></div><div id="fcGuardados"></div></div>';
@@ -938,6 +939,7 @@
         "<td class='text-right num'>" + U.moeda(f.totalGeral) + "</td><td>" + (f.numRecibos || 0) + "</td>" +
         "<td><small>" + U.esc(f.fechadoPor || "") + "</small></td>" +
         '<td><div class="row-actions"><button class="btn btn-light btn-sm" data-fecho-print="' + f.id + '">Imprimir</button>' +
+        '<button class="btn btn-gold btn-sm" data-fecho-pdf="' + f.id + '">PDF</button>' +
         (admin ? '<button class="btn btn-danger btn-sm" data-fecho-del="' + f.id + '">Eliminar</button>' : "") +
         "</div></td></tr>";
     }).join("");
@@ -1024,7 +1026,8 @@
       "</div></div>" +
       '<div class="card"><div class="card-head"><h3 id="relTitulo">Pré-visualização</h3>' +
         '<div class="flex"><button class="btn btn-light" id="relCsv">CSV</button>' +
-        '<button class="btn btn-gold" id="relPrint">Imprimir / PDF</button></div></div>' +
+        '<button class="btn btn-light" id="relPrint">Imprimir</button>' +
+        '<button class="btn btn-gold" id="relPdf">Guardar PDF</button></div></div>' +
         '<div id="relOut">' + C.empty("", "Escolha o tipo de relatório e clique em “Gerar relatório”.") + "</div></div>";
   };
 
