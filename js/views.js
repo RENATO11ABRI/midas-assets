@@ -592,6 +592,8 @@
 
     var host = document.getElementById("pagTable");
     if (!list.length) { host.innerHTML = C.empty("", "Nenhum pagamento encontrado."); return; }
+    // Pagamentos são append-only para a secretaria: só admin/direção veem "Eliminar".
+    var podeEliminar = !window.MidasUsers || ["admin", "directora"].indexOf(D.auth().perfil) >= 0;
     var rows = list.map(function (p) {
       return "<tr><td>" + U.dataPT(p.data) + "</td>" +
         "<td><strong>" + U.esc(p.recibo) + "</strong></td>" +
@@ -601,7 +603,7 @@
         "<td class='text-right num'><strong>" + U.moeda(p.valorPago) + "</strong></td>" +
         '<td><div class="row-actions">' +
           '<button class="btn btn-light btn-sm" data-pag-view="' + p.id + '">Recibo</button>' +
-          '<button class="btn btn-danger btn-sm" data-pag-del="' + p.id + '">Eliminar</button>' +
+          (podeEliminar ? '<button class="btn btn-danger btn-sm" data-pag-del="' + p.id + '">Eliminar</button>' : "") +
         "</div></td></tr>";
     }).join("");
     host.innerHTML = '<div class="table-wrap"><table class="data"><thead><tr>' +

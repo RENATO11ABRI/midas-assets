@@ -865,6 +865,11 @@
     }
     if ((id = t.getAttribute("data-pag-view"))) { var p = D.pagamentoById(id); if (p) C.viewReceipt(p); return; }
     if ((id = t.getAttribute("data-pag-del"))) {
+      // Pagamentos são append-only para a secretaria (espelha a RLS): só
+      // admin/direção podem eliminar — evita falhas silenciosas no servidor.
+      if (window.MidasUsers && ["admin", "directora"].indexOf(D.auth().perfil) < 0) {
+        C.toast("Apenas o administrador ou a direção podem eliminar um pagamento.", "err"); return;
+      }
       C.confirm("Eliminar este pagamento/recibo? Poderá recuperá-lo na Reciclagem (Configurações → Dados).", function () {
         D.deletePagamento(id); C.toast("Pagamento movido para a reciclagem.", "ok");
         if (App.current === "pagamentos") V.renderPagamentos();
