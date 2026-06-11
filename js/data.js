@@ -164,6 +164,10 @@
 
   // ---- Core store ----------------------------------------------------------
   var _db = null;
+  // Modo protegido: ativado quando a leitura do localStorage falha tendo dados
+  // presentes (ex.: JSON truncado por quota). Bloqueia save() para NÃO destruir
+  // dados possivelmente recuperáveis. Só sai com um reload depois de resolvido.
+  var _protegido = false;
 
   var MidasData = {
     uid: function (prefix) {
@@ -199,9 +203,10 @@
 
     load: function () {
       if (_db) return _db;
-      try {
-        var raw = window.localStorage.getItem(STORAGE_KEY);
-        if (raw) {
+      var raw = null;
+      try { raw = window.localStorage.getItem(STORAGE_KEY); } catch (e) { raw = null; }
+      if (raw) {
+        try {
           _db = JSON.parse(raw);
           // versão do catálogo ANTES do forward-compat (que preencheria a chave)
           var prevCatalogo = (_db.settings && _db.settings.catalogoVersao) || 0;
@@ -243,8 +248,22 @@
             this.save();
           }
           return _db;
+        } catch (e) {
+          // Dados EXISTEM mas não puderam ser lidos (ex.: JSON truncado por
+          // quota). NÃO sobrescrever — podem ser recuperáveis. Trabalha em
+          // memória SEM persistir (modo protegido) e avisa de forma destacada.
+          console.error("Dados guardados ilegíveis — proteção contra perda ativada.", e);
+          _db = defaultDB();
+          _db.cursos = seedCursos();
+          _db.emolumentos = seedEmolumentos();
+          _protegido = true;
+          if (window.C && C.toast) {
+            C.toast("Não foi possível ler os dados guardados. Eles NÃO foram apagados. Faça uma cópia de segurança e contacte o suporte antes de continuar.", "err");
+          }
+          return _db;
         }
-      } catch (e) { console.warn("Falha ao ler dados, a reiniciar.", e); }
+      }
+      // Sem dados guardados (primeira utilização real): semear e gravar.
       _db = defaultDB();
       _db.cursos = seedCursos();
       _db.emolumentos = seedEmolumentos();
@@ -253,6 +272,12 @@
     },
 
     save: function () {
+      if (_protegido) {
+        // Cache em estado suspeito após leitura falhada: não gravar por cima
+        // do localStorage para não destruir dados possivelmente recuperáveis.
+        if (window.console) console.warn("Gravação local bloqueada (modo protegido).");
+        return;
+      }
       try {
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(_db));
       } catch (e) {
@@ -790,6 +815,29 @@
         var hay = self._normNome((e.nome || "") + " " + (e.matricula || "") + " " + (e.contacto || "") + " " + (e.bi || ""));
         return hay.indexOf(q) >= 0;
       }).sort(function (a, b) { return (a.nome || "") < (b.nome || "") ? -1 : 1; }).slice(0, limite || 8);
+    },
+
+    // Resolve um texto (nome, "nome · matrícula" ou parcial) para UM estudante.
+    // Devolve null quando não há correspondência OU quando é AMBÍGUO (vários com
+    // o mesmo nome) — nesse caso o chamador deve pedir desambiguação, para nunca
+    // associar um pagamento ao homónimo errado.
+    resolverEstudante: function (valor) {
+      var norm = this._normNome;
+      var v = norm(valor);
+      if (!v) return null;
+      var ests = this.estudantes();
+      var exato = ests.filter(function (x) {
+        return norm(x.nome + " · " + x.matricula) === v || norm(x.nome) === v;
+      });
+      if (exato.length === 1) return exato[0];
+      if (exato.length > 1) return null; // ambíguo: não adivinhar o homónimo
+      var porMat = ests.filter(function (x) { return x.matricula && v.indexOf(norm(x.matricula)) >= 0; });
+      if (porMat.length === 1) return porMat[0];
+      var parc = ests.filter(function (x) {
+        return norm(x.nome + " · " + x.matricula).indexOf(v) >= 0 || norm(x.nome).indexOf(v) >= 0;
+      });
+      if (parc.length === 1) return parc[0];
+      return null;
     },
 
     // Possíveis duplicados: estudantes com nome semelhante (ignora maiúsculas/

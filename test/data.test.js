@@ -232,6 +232,21 @@ test("pesquisarEstudantes encontra por 1º nome e matrícula", function () {
   assert.strictEqual(D.pesquisarEstudantes("xyz").length, 0);
 });
 
+test("resolverEstudante: único resolve; homónimos devolvem null (não adivinha)", function () {
+  const db = D.db();
+  db.estudantes = [
+    { id: "e1", nome: "Ana Maria", matricula: "M1" },
+    { id: "e2", nome: "João Silva", matricula: "M2" },
+    { id: "e3", nome: "João Silva", matricula: "M3" }
+  ];
+  db.pagamentos = [];
+  assert.strictEqual(D.resolverEstudante("Ana Maria").id, "e1");        // único exato
+  assert.strictEqual(D.resolverEstudante("ana maria").id, "e1");        // acentos/maiúsculas
+  assert.strictEqual(D.resolverEstudante("João Silva"), null);          // homónimos → null
+  assert.strictEqual(D.resolverEstudante("João Silva · M2").id, "e2");  // desambiguado por matrícula
+  assert.strictEqual(D.resolverEstudante("inexistente"), null);
+});
+
 test("_totalPagoIndex soma por estudante e saldoDevedor usa o índice", function () {
   const db = D.db();
   db.cursos = [{ id: "c1", nome: "Curso X", valorTotal: 100000 }];
