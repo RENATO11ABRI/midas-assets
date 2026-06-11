@@ -163,6 +163,24 @@
   }
 
   // ---- Core store ----------------------------------------------------------
+  // Data LOCAL (Angola, UTC+1) em YYYY-MM-DD — evita o recuo de 1 dia do
+  // toISOString() (UTC) em datas à meia-noite.
+  function ymdLocal(d) {
+    var p = function (n) { return (n < 10 ? "0" : "") + n; };
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+  }
+  function nowLocalISO() {
+    var d = new Date();
+    return ymdLocal(d) + "T" + d.toTimeString().slice(0, 8);
+  }
+  // Soma n meses a uma data sem "transbordar": 31/01 + 1 mês = 28/02 (não 03/03).
+  function addMeses(base, n) {
+    var d = new Date(base.getFullYear(), base.getMonth() + n, 1);
+    var diaMax = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    d.setDate(Math.min(base.getDate(), diaMax));
+    return d;
+  }
+
   var _db = null;
   // Modo protegido: ativado quando a leitura do localStorage falha tendo dados
   // presentes (ex.: JSON truncado por quota). Bloqueia save() para NÃO destruir
@@ -409,7 +427,7 @@
       return true;
     },
     esvaziarLixo: function () { var db = this.load(); db.lixo = []; this.save(); },
-    now: function () { return new Date().toISOString(); },
+    now: function () { return nowLocalISO(); },
 
     // ---- Cursos ------------------------------------------------------------
     cursos: function () { return this.load().cursos; },
@@ -473,13 +491,15 @@
     // opts: { busca, curso, estado, ordenar:'recente'|'nome', pagina, porPagina }
     queryEstudantes: function (opts) {
       opts = opts || {};
-      var q = String(opts.busca || "").toLowerCase().trim();
+      var self = this;
+      // Normaliza igual à pesquisa inteligente (ignora acentos): "joao" encontra "João".
+      var q = this._normNome(opts.busca || "");
       var fc = opts.curso || "", fe = opts.estado || "";
       var lista = this.estudantes().filter(function (e) {
         if (fc && e.curso !== fc) return false;
         if (fe && e.estado !== fe) return false;
         if (q) {
-          var hay = (e.nome + " " + (e.contacto || "") + " " + (e.matricula || "") + " " + (e.curso || "") + " " + (e.bi || "")).toLowerCase();
+          var hay = self._normNome((e.nome || "") + " " + (e.contacto || "") + " " + (e.matricula || "") + " " + (e.curso || "") + " " + (e.bi || ""));
           if (hay.indexOf(q) < 0) return false;
         }
         return true;
@@ -573,7 +593,7 @@
     // não foi fechado — ou null se estiver tudo em ordem. Usado para bloquear
     // novos movimentos enquanto o caixa do(s) dia(s) anterior(es) não fechar.
     caixaBloqueado: function () {
-      var hoje = new Date().toISOString().slice(0, 10);
+      var hoje = ymdLocal(new Date());
       var dias = {};
       this.load().pagamentos.forEach(function (p) {
         var d = (p.data || "").slice(0, 10);
@@ -675,11 +695,25 @@
       var curso = est && est.curso ? this.cursoByNome(est.curso) : null;
       if (!est || !curso) return { itens: itens, totalPrevisto: 0, totalPago: pago0, totalDivida: 0 };
       var pags = this.pagamentosDeEstudante(est.id);
+      // Soma por categoria. Recibos com VÁRIOS emolumentos guardam o total em
+      // p.valorPago e a lista discriminada em p.itens — usa os itens para não
+      // creditar o total inteiro a cada categoria (evita dupla contagem).
       var somaCat = function (frag) {
-        return pags.filter(function (p) { return self._normNome((p.categoria || "") + " " + (p.emolumento || "")).indexOf(frag) >= 0; })
-          .reduce(function (s, p) { return s + (Number(p.valorPago) || 0); }, 0);
+        var total = 0;
+        pags.forEach(function (p) {
+          if (p.itens && p.itens.length) {
+            p.itens.forEach(function (it) {
+              if (self._normNome((it.categoria || "") + " " + (it.emolumento || "")).indexOf(frag) >= 0) {
+                total += Number(it.valorPago) || 0;
+              }
+            });
+          } else if (self._normNome((p.categoria || "") + " " + (p.emolumento || "")).indexOf(frag) >= 0) {
+            total += Number(p.valorPago) || 0;
+          }
+        });
+        return total;
       };
-      var hojeYMD = new Date().toISOString().slice(0, 10);
+      var hojeYMD = ymdLocal(new Date());
       var push = function (categoria, descricao, previsto, venc) {
         if (!(Number(previsto) > 0)) return;
         itens.push({ categoria: categoria, descricao: descricao, valorPrevisto: Number(previsto) || 0, vencimento: venc || "" });
@@ -690,7 +724,7 @@
       var inicio = est.dataMatricula ? new Date(String(est.dataMatricula).slice(0, 10) + "T00:00:00") : null;
       for (var i = 0; i < nMeses; i++) {
         var venc = "";
-        if (inicio && !isNaN(inicio)) { var d = new Date(inicio); d.setMonth(d.getMonth() + i); venc = d.toISOString().slice(0, 10); }
+        if (inicio && !isNaN(inicio)) { venc = ymdLocal(addMeses(inicio, i)); }
         push("Propina", "Mensalidade " + (i + 1), curso.valorMensalidade, venc);
       }
       push("Estágio", "Estágio", curso.valorEstagio);

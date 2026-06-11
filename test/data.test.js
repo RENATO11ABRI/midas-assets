@@ -93,6 +93,52 @@ test("mapaPropinas gera itens (inscrição + mensalidades) e estados", function 
   assert.strictEqual(pagas, 2); // 25000 / 12500
 });
 
+test("mapaPropinas não conta em dobro recibos com vários emolumentos (itens)", function () {
+  const db = D.db();
+  db.cursos = [{ id: "c1", nome: "Curso M", valorInscricao: 10000, valorMatricula: 0, valorMensalidade: 12500, valorTotal: 235000, duracao: "18 meses", valorEstagio: 0, valorDefesa: 0, valorCertificado: 0 }];
+  db.estudantes = [{ id: "e1", nome: "X", curso: "Curso M", dataMatricula: "2026-01-10" }];
+  db.pagamentos = [{
+    id: "p1", estudanteId: "e1", valorPago: 22500, categoria: "Inscrição", emolumento: "Inscrição + Propina",
+    itens: [
+      { categoria: "Inscrição", emolumento: "Inscrição", valorPago: 10000 },
+      { categoria: "Propina", emolumento: "Propina", valorPago: 12500 }
+    ]
+  }];
+  const m = D.mapaPropinas(db.estudantes[0]);
+  assert.strictEqual(m.totalPago, 22500); // antes contava 32.500 (10.000 + 22.500)
+  const insc = m.itens.filter(function (i) { return i.categoria === "Inscrição"; })[0];
+  assert.strictEqual(insc.valorPago, 10000);
+  const propPagas = m.itens.filter(function (i) { return i.categoria === "Propina" && i.estado === "Pago"; }).length;
+  assert.strictEqual(propPagas, 1); // 12.500 = 1 mensalidade, não 2
+});
+
+test("mapaPropinas: vencimento não transborda o mês (31/01 -> 28/02)", function () {
+  const db = D.db();
+  db.cursos = [{ id: "c1", nome: "Curso V", valorInscricao: 0, valorMatricula: 0, valorMensalidade: 1000, valorTotal: 18000, duracao: "18 meses", valorEstagio: 0, valorDefesa: 0, valorCertificado: 0 }];
+  db.estudantes = [{ id: "e1", nome: "Z", curso: "Curso V", dataMatricula: "2026-01-31" }];
+  db.pagamentos = [];
+  const m = D.mapaPropinas(db.estudantes[0]);
+  const m2 = m.itens.filter(function (i) { return i.descricao === "Mensalidade 2"; })[0];
+  assert.strictEqual(m2.vencimento, "2026-02-28"); // não "2026-03-03"
+});
+
+test("queryEstudantes ignora acentos na busca (joao encontra João)", async function () {
+  const db = D.db();
+  db.cursos = [];
+  db.estudantes = [{ id: "e1", nome: "João Manuel", matricula: "M1", estado: "ativo", dataMatricula: "2026-01-01" }];
+  db.pagamentos = [];
+  const r = await D.queryEstudantes({ busca: "joao", porPagina: 10 });
+  assert.strictEqual(r.total, 1);
+});
+
+test("U.hoje/agoraISO usam data LOCAL sem 'Z'", function () {
+  const h = U.hoje();
+  assert.match(h, /^\d{4}-\d{2}-\d{2}$/);
+  const a = U.agoraISO();
+  assert.ok(a.indexOf("Z") < 0);         // hora local, sem sufixo UTC
+  assert.strictEqual(a.slice(0, 10), h); // começa na data de hoje
+});
+
 test("aptidaoDefesa fica Não apto com dívida", function () {
   const db = D.db();
   db.cursos = [{ id: "c1", nome: "C", valorTotal: 100000 }];

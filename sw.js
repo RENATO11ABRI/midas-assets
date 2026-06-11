@@ -5,7 +5,7 @@
    - Pedidos a terceiros (Supabase, fontes, CDN): passam à rede (não cacheados aqui).
    Os dados do utilizador são geridos pela aplicação (localStorage + fila de
    sincronização do Supabase), não pelo service worker. */
-var CACHE = "midas-2026-v10";
+var CACHE = "midas-2026-v11";
 var SHELL = [
   "./",
   "./index.html",
