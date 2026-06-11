@@ -12,10 +12,11 @@
     moeda: function (v) {
       var st = U._settings();
       var d = st.casasDecimais == null ? 2 : Number(st.casasDecimais);
-      var sym = st.moeda || "Kz";
+      // O sistema usa exclusivamente o Kwanza angolano (Kz). Símbolo fixo —
+      // também elimina qualquer risco de injeção via um campo de moeda livre.
       var n = Number(v) || 0;
       var s = n.toLocaleString("pt-PT", { minimumFractionDigits: d, maximumFractionDigits: d });
-      return s + " " + sym;
+      return s + " Kz";
     },
     // URL do logótipo (impressão usa o logótipo de impressão se definido)
     logoURL: function (paraImpressao) {
