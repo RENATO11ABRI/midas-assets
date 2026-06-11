@@ -97,57 +97,29 @@
         "</head><body>" + el.outerHTML + "</body></html>";
     },
 
-    // Imprime um elemento (id) em A4 limpo. Usa um iframe oculto em vez de
-    // window.open: não é bloqueado por pop-up blockers, funciona em telemóvel e
-    // espera o load (CSS + imagens) antes de imprimir. Fallback para janela nova.
+    // Imprime um elemento (id) em A4 limpo, numa janela própria.
+    // A janela é aberta SÍNCRONAMENTE dentro do gesto do clique (senão o
+    // pop-up blocker bloqueia) e só imprime depois de o conteúdo carregar
+    // (CSS + imagens), com teto de segurança para nunca bloquear.
     printElement: function (elId, titulo) {
       var el = document.getElementById(elId);
       if (!el) return;
-      var html = U._docHTML(el, titulo);
+      var win = window.open("", "_blank", "width=900,height=700");
+      if (!win) { alert("Para imprimir, permita pop-ups para este site e tente novamente."); return; }
 
-      var frame = document.createElement("iframe");
-      frame.setAttribute("aria-hidden", "true");
-      frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
+      var html = U._docHTML(el, titulo);
+      win.document.open(); win.document.write(html); win.document.close();
+
       var feito = false;
       var imprimir = function () {
         if (feito) return; feito = true;
-        var ok = false;
-        try {
-          var w = frame.contentWindow;
-          w.focus(); w.print(); ok = true;
-        } catch (e) { ok = false; }
-        setTimeout(function () { if (frame.parentNode) frame.remove(); }, 1500);
-        if (!ok) U._printPopup(html); // browsers antigos / iframe falhou
+        try { win.focus(); win.print(); } catch (e) {}
       };
-      // Espera o conteúdo carregar (CSS + imagens) e dá uma folga de 200ms;
-      // teto de segurança de 4s para nunca bloquear.
-      frame.onload = function () { setTimeout(imprimir, 200); };
+      // Imprime quando a janela acabar de carregar; se já estiver pronta, dá
+      // uma folga curta; teto de 4s para o caso de o load não disparar.
+      win.onload = function () { setTimeout(imprimir, 200); };
+      if (win.document.readyState === "complete") setTimeout(imprimir, 350);
       setTimeout(imprimir, 4000);
-
-      // srcdoc dispara um único load (com CSS+imagens), sem a corrida do
-      // about:blank do document.write. Fallback p/ document.write se faltar.
-      if ("srcdoc" in frame) {
-        frame.srcdoc = html;
-        document.body.appendChild(frame);
-      } else {
-        document.body.appendChild(frame);
-        try {
-          var doc = frame.contentWindow.document;
-          doc.open(); doc.write(html); doc.close();
-        } catch (e) {
-          if (frame.parentNode) frame.remove();
-          U._printPopup(html);
-        }
-      }
-    },
-
-    // Fallback: janela nova. Se o pop-up for bloqueado, avisa o utilizador.
-    _printPopup: function (html) {
-      var win = window.open("", "_blank", "width=900,height=700");
-      if (!win) { alert("Permita pop-ups para este site para poder imprimir."); return; }
-      win.document.open(); win.document.write(html); win.document.close();
-      win.focus();
-      setTimeout(function () { try { win.focus(); win.print(); } catch (e) {} }, 600);
     },
 
     // CSV export (Excel friendly, ; separator)
