@@ -86,8 +86,12 @@
       if (!el) return;
       var win = window.open("", "_blank", "width=900,height=700");
       var styles = "";
+      // Só os stylesheets dos documentos (A4 + @media print) entram na impressão.
+      // O overlay do redesign (data-print="skip") fica de fora, senão redefine
+      // .doc-head/.doc-amount/.doc-sign e distorce o recibo.
       var links = document.querySelectorAll('link[rel="stylesheet"]');
       for (var i = 0; i < links.length; i++) {
+        if (links[i].getAttribute("data-print") === "skip") continue;
         styles += '<link rel="stylesheet" href="' + links[i].href + '">';
       }
       win.document.write(
