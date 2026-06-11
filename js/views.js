@@ -610,27 +610,9 @@
       "</tbody></table></div>";
   };
 
-  // Resolve um texto escrito (nome, "nome · matrícula" ou parcial) para um estudante.
-  // Tolerante a maiúsculas, acentos e espaços; só devolve quando há 1 correspondência clara.
-  V.resolverEstudante = function (valor) {
-    var norm = function (s) {
-      return String(s == null ? "" : s).trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-    };
-    var v = norm(valor);
-    if (!v) return null;
-    var ests = D.estudantes();
-    var exato = ests.filter(function (x) {
-      return norm(x.nome + " · " + x.matricula) === v || norm(x.nome) === v;
-    });
-    if (exato.length) return exato[0];
-    var porMat = ests.filter(function (x) { return x.matricula && v.indexOf(norm(x.matricula)) >= 0; });
-    if (porMat.length === 1) return porMat[0];
-    var parc = ests.filter(function (x) {
-      return norm(x.nome + " · " + x.matricula).indexOf(v) >= 0 || norm(x.nome).indexOf(v) >= 0;
-    });
-    if (parc.length === 1) return parc[0];
-    return null;
-  };
+  // Resolve um texto escrito para UM estudante (delega na camada de dados, que
+  // devolve null quando é ambíguo — vários homónimos — para nunca adivinhar).
+  V.resolverEstudante = function (valor) { return D.resolverEstudante(valor); };
 
   // Modal de aviso de possível duplicado. onUsar(estudante) | onCriarNovo()
   V.confirmaDuplicado = function (candidatos, onUsar, onCriarNovo) {
