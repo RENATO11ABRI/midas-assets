@@ -231,3 +231,22 @@ test("pesquisarEstudantes encontra por 1º nome e matrícula", function () {
   assert.strictEqual(D.pesquisarEstudantes("M2").length, 1);
   assert.strictEqual(D.pesquisarEstudantes("xyz").length, 0);
 });
+
+test("_totalPagoIndex soma por estudante e saldoDevedor usa o índice", function () {
+  const db = D.db();
+  db.cursos = [{ id: "c1", nome: "Curso X", valorTotal: 100000 }];
+  db.estudantes = [{ id: "e1", nome: "Ana", curso: "Curso X" }, { id: "e2", nome: "Bia", curso: "Curso X" }];
+  db.pagamentos = [
+    { id: "p1", estudanteId: "e1", valorPago: 30000 },
+    { id: "p2", estudanteId: "e1", valorPago: 20000 },
+    { id: "p3", estudanteId: "e2", valorPago: 100000 },
+    { id: "p4", estudanteId: null, valorPago: 999 } // sem estudante: ignorado
+  ];
+  const idx = D._totalPagoIndex();
+  assert.strictEqual(idx.e1, 50000);
+  assert.strictEqual(idx.e2, 100000);
+  // saldoDevedor com índice == saldoDevedor sem índice (mesmo resultado)
+  assert.strictEqual(D.saldoDevedor(db.estudantes[0], idx), D.saldoDevedor(db.estudantes[0]));
+  assert.strictEqual(D.saldoDevedor(db.estudantes[0], idx), 50000);
+  assert.strictEqual(D.saldoDevedor(db.estudantes[1], idx), 0);
+});

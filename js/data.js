@@ -716,11 +716,25 @@
 
     // ---- Aggregations ------------------------------------------------------
     // Saldo em dívida de um estudante (valor do curso - total pago)
-    saldoDevedor: function (est) {
+    // saldoDevedor(est[, idxPago]): se idxPago (mapa estudanteId→totalPago,
+    // ver _totalPagoIndex) for fornecido, evita varrer todos os pagamentos por
+    // estudante — usado nos cálculos em lote (Turmas).
+    saldoDevedor: function (est, idxPago) {
       var curso = est && est.curso ? this.cursoByNome(est.curso) : null;
       var total = curso ? (Number(curso.valorTotal) || 0) : 0;
       if (!total) return 0;
-      return Math.max(0, total - this.totalPagoEstudante(est.id));
+      var pago = idxPago ? (idxPago[est.id] || 0) : this.totalPagoEstudante(est.id);
+      return Math.max(0, total - pago);
+    },
+    // Índice estudanteId → total pago, num único varrimento dos pagamentos.
+    // Transforma cálculos O(estudantes × pagamentos) em O(estudantes + pagamentos).
+    _totalPagoIndex: function () {
+      var idx = {};
+      this.load().pagamentos.forEach(function (p) {
+        if (!p.estudanteId) return;
+        idx[p.estudanteId] = (idx[p.estudanteId] || 0) + (Number(p.valorPago) || 0);
+      });
+      return idx;
     },
     totalRecebido: function () {
       return this.load().pagamentos.reduce(function (s, p) { return s + (Number(p.valorPago) || 0); }, 0);
@@ -753,10 +767,11 @@
         if (!grupos[key]) grupos[key] = { id: key, curso: e.curso, periodo: per, anoLectivo: ano, estudantes: [] };
         grupos[key].estudantes.push(e);
       });
+      var idxPago = self._totalPagoIndex();
       var arr = Object.keys(grupos).map(function (k) {
         var g = grupos[k];
         g.total = g.estudantes.length;
-        g.comDivida = g.estudantes.filter(function (e) { return self.saldoDevedor(e) > 0; }).length;
+        g.comDivida = g.estudantes.filter(function (e) { return self.saldoDevedor(e, idxPago) > 0; }).length;
         g.regularizados = g.total - g.comDivida;
         g.nome = g.curso + " — " + g.periodo + " — " + g.anoLectivo;
         return g;

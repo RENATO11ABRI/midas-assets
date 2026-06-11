@@ -662,8 +662,6 @@
   V.novoPagamento = function (estId) {
     var db = D.db();
     var sel = estId ? D.estudanteById(estId) : null;
-    var estList = D.estudantes().slice().sort(function (a, b) { return a.nome < b.nome ? -1 : 1; })
-      .map(function (e) { return '<option value="' + U.esc(e.nome + " · " + e.matricula) + '"></option>'; }).join("");
     var cursoOpts = '<option value="">— Curso (opcional) —</option>' +
       D.cursosOrdenados().map(function (c) {
         return '<option value="' + U.esc(c.nome) + '"' + (sel && sel.curso === c.nome ? " selected" : "") + ">" + U.esc(c.nome) + "</option>";
@@ -1817,12 +1815,25 @@
       '<input id="' + id + '" class="busca-int-input" autocomplete="off" placeholder="' +
         U.esc(placeholder || "Escreva o nome do estudante…") + '" value="' + U.esc(value || "") + '">' +
       (opts.hiddenId ? "" : '<input type="hidden" id="' + id + '_id">') +
+      '<div class="bi-chip" id="' + id + '_chip" hidden></div>' +
       '<div class="busca-int-pop" id="' + id + '_pop" hidden></div></div>';
   };
   V.wireBuscaInteligente = function (id, onPick, hiddenId) {
     var inp = document.getElementById(id), pop = document.getElementById(id + "_pop");
     var hid = document.getElementById(hiddenId || (id + "_id"));
+    var chip = document.getElementById(id + "_chip");
     if (!inp || !pop) return;
+    // Mostra "✓ Ligado a …" quando há um estudante existente associado (hid.value).
+    var setChip = function (e) {
+      if (!chip) return;
+      if (e) {
+        var info = [e.matricula, e.curso].filter(Boolean).map(U.esc).join(" · ");
+        chip.innerHTML = '<span>✓ Ligado a <strong>' + U.esc(e.nome) + "</strong>" +
+          (info ? " · " + info : "") + "</span>" +
+          '<button type="button" class="bi-chip-x" aria-label="Desligar">×</button>';
+        chip.hidden = false;
+      } else { chip.innerHTML = ""; chip.hidden = true; }
+    };
     var render = function () {
       var res = D.pesquisarEstudantes(inp.value, 8);
       if (!inp.value.trim() || !res.length) { pop.hidden = true; pop.innerHTML = ""; return; }
@@ -1832,14 +1843,21 @@
       }).join("");
       pop.hidden = false;
     };
-    inp.addEventListener("input", function () { if (hid) hid.value = ""; render(); });
+    // Editar o nome quebra o vínculo (evita pagar/abrir o estudante errado).
+    inp.addEventListener("input", function () { if (hid) hid.value = ""; setChip(null); render(); });
     inp.addEventListener("focus", render);
     pop.addEventListener("click", function (ev) {
       var o = ev.target.closest(".bi-opt"); if (!o) return;
       var e = D.estudanteById(o.getAttribute("data-id"));
-      if (e) { inp.value = e.nome; if (hid) hid.value = e.id; pop.hidden = true; if (onPick) onPick(e); }
+      if (e) { inp.value = e.nome; if (hid) hid.value = e.id; pop.hidden = true; setChip(e); if (onPick) onPick(e); }
+    });
+    if (chip) chip.addEventListener("click", function (ev) {
+      if (!ev.target.closest(".bi-chip-x")) return;
+      if (hid) hid.value = ""; inp.value = ""; setChip(null); inp.focus();
     });
     document.addEventListener("click", function (ev) { if (inp.parentNode && !inp.parentNode.contains(ev.target)) pop.hidden = true; });
+    // Estado inicial: se já vier um estudante ligado (ex.: pagamento aberto a partir da ficha).
+    if (hid && hid.value) setChip(D.estudanteById(hid.value));
   };
 
   V.turmas = function (params) {
