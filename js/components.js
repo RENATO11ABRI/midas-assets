@@ -428,8 +428,9 @@
         document.getElementById("rcClose").onclick = C.closeModal;
         document.getElementById("rcPrint").onclick = function () { U.printElement("receiptDoc", "Recibo " + pag.recibo); };
         document.getElementById("rcPdf").onclick = function () {
-          C.toast("Na janela de impressão escolha “Guardar como PDF”.", "ok");
-          U.printElement("receiptDoc", "Recibo " + pag.recibo);
+          var b = this; b.disabled = true; var txt = b.textContent; b.textContent = "A gerar…";
+          C.toast("A gerar o PDF do recibo…", "ok");
+          U.baixarPDF("receiptDoc", "Recibo " + pag.recibo).then(function () { b.disabled = false; b.textContent = txt; });
         };
       }
     });
@@ -449,7 +450,9 @@
         var go = function () { U.printElement("fichaMatDoc", "Ficha de Matrícula " + est.matricula); };
         document.getElementById("fmPrint").onclick = go;
         document.getElementById("fmPdf").onclick = function () {
-          C.toast("Na janela de impressão escolha “Guardar como PDF”.", "ok"); go();
+          var b = this; b.disabled = true; var txt = b.textContent; b.textContent = "A gerar…";
+          C.toast("A gerar o PDF da ficha…", "ok");
+          U.baixarPDF("fichaMatDoc", "Ficha de Matricula " + est.matricula).then(function () { b.disabled = false; b.textContent = txt; });
         };
       }
     });

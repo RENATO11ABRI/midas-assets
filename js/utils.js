@@ -122,6 +122,74 @@
       setTimeout(imprimir, 4000);
     },
 
+    // Carrega um script externo só quando é preciso (lazy), com cache de
+    // promessa para não recarregar. Usado para o gerador de PDF.
+    _carregarScript: function (src) {
+      U._scripts = U._scripts || {};
+      if (U._scripts[src]) return U._scripts[src];
+      U._scripts[src] = new Promise(function (res, rej) {
+        var s = document.createElement("script");
+        s.src = src;
+        s.onload = function () { res(); };
+        s.onerror = function () { U._scripts[src] = null; rej(new Error("Falha ao carregar " + src)); };
+        document.head.appendChild(s);
+      });
+      return U._scripts[src];
+    },
+
+    // Nome de ficheiro seguro (sem / \ : * ? " < > | e espaços a mais).
+    _nomeFicheiro: function (s) {
+      return String(s || "documento").replace(/[\/\\:*?"<>|]+/g, "-").replace(/\s+/g, " ").trim();
+    },
+
+    // Gera um PDF (A4) a partir de um elemento e faz download direto — sem
+    // diálogo de impressão. Ideal para telemóvel. Usa html2canvas + jsPDF
+    // (carregados sob procura). O documento sai igual ao da impressão: o
+    // overlay do redesign (data-print="skip") é desativado durante a captura.
+    baixarPDF: function (elId, filename) {
+      var el = document.getElementById(elId);
+      if (!el) return Promise.resolve(false);
+      var H2C = "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js";
+      var JPDF = "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js";
+      // Desativa o overlay do redesign durante a captura (mesmo look da impressão).
+      var overlays = document.querySelectorAll('link[rel="stylesheet"][data-print="skip"]');
+      var setOverlay = function (off) { for (var i = 0; i < overlays.length; i++) overlays[i].disabled = off; };
+      return Promise.all([U._carregarScript(H2C), U._carregarScript(JPDF)]).then(function () {
+        var html2canvas = window.html2canvas;
+        var jsPDF = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+        if (!html2canvas || !jsPDF) throw new Error("Bibliotecas de PDF indisponíveis");
+        setOverlay(true);
+        return html2canvas(el, { scale: 2, backgroundColor: "#ffffff", useCORS: true, logging: false })
+          .then(function (canvas) {
+            setOverlay(false);
+            var pdf = new jsPDF("p", "mm", "a4");
+            var pw = pdf.internal.pageSize.getWidth();
+            var ph = pdf.internal.pageSize.getHeight();
+            var margem = 8;
+            var imgW = pw - margem * 2;
+            var imgH = canvas.height * imgW / canvas.width;
+            var img = canvas.toDataURL("image/jpeg", 0.95);
+            if (imgH <= ph - margem * 2) {
+              pdf.addImage(img, "JPEG", margem, margem, imgW, imgH);
+            } else {
+              // Documento mais alto que uma página: pagina deslocando a imagem.
+              var pageH = ph - margem * 2, pos = 0;
+              while (pos < imgH) {
+                pdf.addImage(img, "JPEG", margem, margem - pos, imgW, imgH);
+                pos += pageH;
+                if (pos < imgH) pdf.addPage();
+              }
+            }
+            pdf.save(U._nomeFicheiro(filename) + ".pdf");
+            return true;
+          });
+      }).catch(function (e) {
+        setOverlay(false);
+        alert("Não foi possível gerar o PDF (verifique a ligação à internet). Pode usar “Imprimir” e escolher “Guardar como PDF”.");
+        return false;
+      });
+    },
+
     // CSV export (Excel friendly, ; separator)
     exportCSV: function (filename, headers, rows) {
       var sep = ";";
