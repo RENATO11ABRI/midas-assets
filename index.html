@@ -17,8 +17,10 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
   <link rel="stylesheet" href="css/styles.css" />
   <!-- Sistema de design premium (carregado depois: redefine tokens e re-estiliza
-       os componentes partilhados; styles.css mantém login/modais/toasts/recibos) -->
-  <link rel="stylesheet" href="css/midas-ds.css" />
+       os componentes partilhados; styles.css mantém login/modais/toasts/recibos).
+       data-print="skip": NÃO entra na janela de impressão — os documentos (recibos,
+       fichas, fechos) usam só o styles.css, que tem o layout A4 e o @media print. -->
+  <link rel="stylesheet" href="css/midas-ds.css" data-print="skip" />
 </head>
 <body>
   <!-- ===== Login screen ===== -->
