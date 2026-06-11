@@ -36,11 +36,22 @@
       var n = parseFloat(s);
       return isNaN(n) ? 0 : n;
     },
-    hoje: function () {
-      var d = new Date();
-      return d.toISOString().slice(0, 10);
+    _pad2: function (n) { return (n < 10 ? "0" : "") + n; },
+    // Data LOCAL (Angola, UTC+1) em YYYY-MM-DD. Evita o recuo de 1 dia que o
+    // toISOString() (UTC) provoca em datas perto da meia-noite.
+    _ymdLocal: function (d) {
+      return d.getFullYear() + "-" + U._pad2(d.getMonth() + 1) + "-" + U._pad2(d.getDate());
     },
-    agoraISO: function () { return new Date().toISOString(); },
+    hoje: function () {
+      return U._ymdLocal(new Date());
+    },
+    // Timestamp em hora LOCAL (sem 'Z'), consistente com as datas introduzidas
+    // manualmente; evita que um pagamento perto da meia-noite caia no dia
+    // errado do fecho de caixa.
+    agoraISO: function () {
+      var d = new Date();
+      return U._ymdLocal(d) + "T" + d.toTimeString().slice(0, 8);
+    },
     dataPT: function (iso) {
       if (!iso) return "—";
       var d = new Date(iso.length === 10 ? iso + "T00:00:00" : iso);
