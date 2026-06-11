@@ -134,6 +134,16 @@ test("esc escapa HTML", function () {
   assert.strictEqual(U.esc('<a>&"\''), "&lt;a&gt;&amp;&quot;&#39;");
 });
 
+test("moeda usa sempre Kwanza (Kz), ignorando qualquer símbolo configurado", function () {
+  const db = D.db();
+  db.settings.moeda = '"><img src=x onerror=alert(1)>'; // símbolo malicioso é ignorado
+  db.settings.casasDecimais = 2;
+  const s = U.moeda(1500);
+  assert.ok(/ Kz$/.test(s), "termina em Kz: " + s);              // sempre Kz
+  assert.ok(s.indexOf("<img") < 0 && s.indexOf("onerror") < 0);  // sem injeção
+  assert.ok(/^0,00 Kz$|^0\.00 Kz$/.test(U.moeda(0)), U.moeda(0)); // 2 casas decimais
+});
+
 test("queryEstudantes filtra, ordena e pagina (versão local)", async function () {
   const db = D.db();
   db.cursos = [];

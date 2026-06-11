@@ -1233,7 +1233,7 @@
       '<div class="field"><label>Ano lectivo activo</label><select name="anoLectivo">' +
         U.optionList(["2024/2025", "2025/2026", "2026/2027", "2027/2028"], s.anoLectivo) + "</select></div>" +
       f("anoLetivo", "Ano de numeração (ex.: 2026)", s.anoLetivo) +
-      '<div class="field"><label>Moeda</label><input name="moeda" value="' + U.esc(s.moeda || "Kz") + '"></div>' +
+      '<div class="field"><label>Moeda</label><input value="Kwanza (Kz)" readonly disabled title="O sistema usa apenas o Kwanza angolano (Kz)"><input type="hidden" name="moeda" value="Kz"></div>' +
       '<div class="field"><label>Casas decimais</label><select name="casasDecimais">' +
         U.optionList(["0", "1", "2"], String(s.casasDecimais == null ? 2 : s.casasDecimais)) + "</select></div>" +
       '<div class="fieldset-title">Numeração automática</div>' +
