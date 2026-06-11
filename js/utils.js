@@ -80,43 +80,74 @@
         .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
     },
 
-    // Print a specific element by id in a clean window (professional A4)
-    printElement: function (elId, titulo) {
-      var el = document.getElementById(elId);
-      if (!el) return;
-      var win = window.open("", "_blank", "width=900,height=700");
+    // Monta o HTML completo (A4) do documento a imprimir.
+    // Só os stylesheets dos documentos entram; o overlay do redesign
+    // (data-print="skip") fica de fora, senão redefine .doc-head/.doc-amount/
+    // .doc-sign e distorce o recibo.
+    _docHTML: function (el, titulo) {
       var styles = "";
-      // Só os stylesheets dos documentos (A4 + @media print) entram na impressão.
-      // O overlay do redesign (data-print="skip") fica de fora, senão redefine
-      // .doc-head/.doc-amount/.doc-sign e distorce o recibo.
       var links = document.querySelectorAll('link[rel="stylesheet"]');
       for (var i = 0; i < links.length; i++) {
         if (links[i].getAttribute("data-print") === "skip") continue;
         styles += '<link rel="stylesheet" href="' + links[i].href + '">';
       }
-      win.document.write(
-        "<!DOCTYPE html><html lang='pt'><head><meta charset='utf-8'><title>" +
+      return "<!DOCTYPE html><html lang='pt'><head><meta charset='utf-8'><title>" +
         U.esc(titulo || "Impressão") + "</title>" + styles +
-        "<style>@page{size:A4;margin:14mm}body{background:#fff;margin:0;padding:10px;}</style>" +
-        "</head><body>" + el.outerHTML + "</body></html>"
-      );
-      win.document.close();
-      win.focus();
-      var imprimir = function () { try { win.focus(); win.print(); } catch (e) {} };
-      // Aguarda o carregamento das imagens (logo, QR) antes de imprimir, com um
-      // teto de segurança de 3s para nunca bloquear.
-      var imgs = win.document.images || [];
-      var pendentes = [];
-      for (var j = 0; j < imgs.length; j++) {
-        var im = imgs[j];
-        if (im && !im.complete) {
-          pendentes.push(new Promise(function (res) {
-            im.addEventListener("load", res); im.addEventListener("error", res);
-          }));
+        "<style>@page{size:A4;margin:14mm}html,body{background:#fff;margin:0;padding:10px;}</style>" +
+        "</head><body>" + el.outerHTML + "</body></html>";
+    },
+
+    // Imprime um elemento (id) em A4 limpo. Usa um iframe oculto em vez de
+    // window.open: não é bloqueado por pop-up blockers, funciona em telemóvel e
+    // espera o load (CSS + imagens) antes de imprimir. Fallback para janela nova.
+    printElement: function (elId, titulo) {
+      var el = document.getElementById(elId);
+      if (!el) return;
+      var html = U._docHTML(el, titulo);
+
+      var frame = document.createElement("iframe");
+      frame.setAttribute("aria-hidden", "true");
+      frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
+      var feito = false;
+      var imprimir = function () {
+        if (feito) return; feito = true;
+        var ok = false;
+        try {
+          var w = frame.contentWindow;
+          w.focus(); w.print(); ok = true;
+        } catch (e) { ok = false; }
+        setTimeout(function () { if (frame.parentNode) frame.remove(); }, 1500);
+        if (!ok) U._printPopup(html); // browsers antigos / iframe falhou
+      };
+      // Espera o conteúdo carregar (CSS + imagens) e dá uma folga de 200ms;
+      // teto de segurança de 4s para nunca bloquear.
+      frame.onload = function () { setTimeout(imprimir, 200); };
+      setTimeout(imprimir, 4000);
+
+      // srcdoc dispara um único load (com CSS+imagens), sem a corrida do
+      // about:blank do document.write. Fallback p/ document.write se faltar.
+      if ("srcdoc" in frame) {
+        frame.srcdoc = html;
+        document.body.appendChild(frame);
+      } else {
+        document.body.appendChild(frame);
+        try {
+          var doc = frame.contentWindow.document;
+          doc.open(); doc.write(html); doc.close();
+        } catch (e) {
+          if (frame.parentNode) frame.remove();
+          U._printPopup(html);
         }
       }
-      var teto = new Promise(function (res) { setTimeout(res, 3000); });
-      Promise.race([Promise.all(pendentes), teto]).then(function () { setTimeout(imprimir, 150); });
+    },
+
+    // Fallback: janela nova. Se o pop-up for bloqueado, avisa o utilizador.
+    _printPopup: function (html) {
+      var win = window.open("", "_blank", "width=900,height=700");
+      if (!win) { alert("Permita pop-ups para este site para poder imprimir."); return; }
+      win.document.open(); win.document.write(html); win.document.close();
+      win.focus();
+      setTimeout(function () { try { win.focus(); win.print(); } catch (e) {} }, 600);
     },
 
     // CSV export (Excel friendly, ; separator)
