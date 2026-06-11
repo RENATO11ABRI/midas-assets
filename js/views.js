@@ -675,9 +675,7 @@
         "<strong>é criado automaticamente</strong> a partir deste pagamento.</p>" +
         '<div class="form-grid">' +
         '<div class="field full"><label>Nome do estudante <span class="req">*</span></label>' +
-          '<input id="payEstNome" list="payEstList" autocomplete="off" placeholder="Escreva o nome..." value="' +
-            (sel ? U.esc(sel.nome) : "") + '">' +
-          '<datalist id="payEstList">' + estList + "</datalist>" +
+          V.buscaInteligenteHTML("payEstNome", "Escreva o nome — sugere por curso, período e matrícula…", (sel ? sel.nome : ""), { hiddenId: "payEst" }) +
           '<input type="hidden" name="estudanteId" id="payEst" value="' + (sel ? sel.id : "") + '"></div>' +
         '<div class="field"><label>Contacto</label><input name="contacto" id="payContacto" type="tel" value="' +
           (sel ? U.esc(sel.contacto || "") : "") + '"></div>' +
@@ -699,18 +697,15 @@
         '<button class="btn btn-light" onclick="App.closeModal()">Cancelar</button>' +
         '<button class="btn btn-primary" id="savePag">Registar e gerar recibo</button>',
       onOpen: function () {
-        var payEstNome = document.getElementById("payEstNome");
-        var payEstId = document.getElementById("payEst");
-        if (payEstNome) payEstNome.addEventListener("input", function () {
-          var e = V.resolverEstudante(this.value);
-          payEstId.value = e ? e.id : "";
-          if (e) { // preenche dados do estudante existente (sem apagar o que já esteja)
-            var ct = document.getElementById("payContacto");
-            var cu = document.getElementById("payCurso");
-            if (ct && !ct.value) ct.value = e.contacto || "";
-            if (cu && e.curso) cu.value = e.curso;
-          }
-        });
+        // Pesquisa inteligente: ao escolher um estudante existente, liga-o
+        // (preenche o hidden payEst) e preenche contacto/curso. Se escrever um
+        // nome novo, payEst fica vazio e a gravação cria/associa como antes.
+        V.wireBuscaInteligente("payEstNome", function (e) {
+          var ct = document.getElementById("payContacto");
+          var cu = document.getElementById("payCurso");
+          if (ct && !ct.value) ct.value = e.contacto || "";
+          if (cu && e.curso) cu.value = e.curso;
+        }, "payEst");
         // ---- Emolumentos (vários por recibo) ----
         var itensHost = document.getElementById("payItens");
         var emolOpts = V.emolumentoOptions(D.emolumentoPadrao("Propina"));
@@ -785,8 +780,9 @@
             }).catch(function (e) { C.toast("Erro ao criar estudante: " + (e && e.message ? e.message : e), "err"); restore(); });
           };
 
-          // Existente (resolvido) → usa-o. Senão, verifica duplicados antes de criar.
-          var existente = D.estudanteById(payEstId.value) || V.resolverEstudante(nomeRaw);
+          // Existente (resolvido pela pesquisa ou pelo nome) → usa-o. Senão, verifica duplicados antes de criar.
+          var payEstHid = document.getElementById("payEst");
+          var existente = (payEstHid && D.estudanteById(payEstHid.value)) || V.resolverEstudante(nomeRaw);
           if (existente) { registar(existente, false); return; }
           var semelhantes = D.estudantesSemelhantes(nomeRaw, contacto, null);
           if (semelhantes.length) {
@@ -1815,15 +1811,17 @@
      ======================================================================= */
   V.TURMA_PERIODOS = ["Manhã", "Tarde", "Fim de Semana"];
   // ---- Componente reutilizável: pesquisa inteligente de estudante ----
-  V.buscaInteligenteHTML = function (id, placeholder, value) {
+  V.buscaInteligenteHTML = function (id, placeholder, value, opts) {
+    opts = opts || {};
     return '<div class="busca-int">' +
       '<input id="' + id + '" class="busca-int-input" autocomplete="off" placeholder="' +
         U.esc(placeholder || "Escreva o nome do estudante…") + '" value="' + U.esc(value || "") + '">' +
-      '<input type="hidden" id="' + id + '_id">' +
+      (opts.hiddenId ? "" : '<input type="hidden" id="' + id + '_id">') +
       '<div class="busca-int-pop" id="' + id + '_pop" hidden></div></div>';
   };
-  V.wireBuscaInteligente = function (id, onPick) {
-    var inp = document.getElementById(id), pop = document.getElementById(id + "_pop"), hid = document.getElementById(id + "_id");
+  V.wireBuscaInteligente = function (id, onPick, hiddenId) {
+    var inp = document.getElementById(id), pop = document.getElementById(id + "_pop");
+    var hid = document.getElementById(hiddenId || (id + "_id"));
     if (!inp || !pop) return;
     var render = function () {
       var res = D.pesquisarEstudantes(inp.value, 8);
@@ -1834,12 +1832,12 @@
       }).join("");
       pop.hidden = false;
     };
-    inp.addEventListener("input", function () { hid.value = ""; render(); });
+    inp.addEventListener("input", function () { if (hid) hid.value = ""; render(); });
     inp.addEventListener("focus", render);
     pop.addEventListener("click", function (ev) {
       var o = ev.target.closest(".bi-opt"); if (!o) return;
       var e = D.estudanteById(o.getAttribute("data-id"));
-      if (e) { inp.value = e.nome; hid.value = e.id; pop.hidden = true; if (onPick) onPick(e); }
+      if (e) { inp.value = e.nome; if (hid) hid.value = e.id; pop.hidden = true; if (onPick) onPick(e); }
     });
     document.addEventListener("click", function (ev) { if (inp.parentNode && !inp.parentNode.contains(ev.target)) pop.hidden = true; });
   };
