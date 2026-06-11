@@ -130,26 +130,33 @@
   }
 
   function upsertRow(table, obj) {
+    var op = { kind: "upsert", table: table, obj: obj };
+    if (!navigator.onLine) { enfileirar(op); return; }
     var row = { id: obj.id, dados: obj, atualizado_em: new Date().toISOString() };
-    if (!navigator.onLine) { enfileirar({ kind: "upsert", table: table, obj: obj }); return; }
     sb.from(table).upsert(row)
       .then(function (res) {
         if (!res.error) return;
-        if (ehErroAuth(res.error)) { enfileirar({ kind: "upsert", table: table, obj: obj }); renovarSessao(); } // não perde + renova
-        else fail("Não foi possível guardar online. Verifique a ligação.", res.error);
+        // QUALQUER erro (auth OU servidor) → enfileira, para o registo NUNCA se
+        // perder. A fila volta a tentar e, se o servidor rejeitar de forma
+        // definitiva, fica em "falhas" para revisão (nunca desaparece em silêncio).
+        enfileirar(op);
+        if (ehErroAuth(res.error)) renovarSessao();
+        else fail("Não foi possível guardar online — guardado para nova tentativa.", res.error);
       })
-      .catch(function () { enfileirar({ kind: "upsert", table: table, obj: obj }); }); // falha de rede -> fila
+      .catch(function () { enfileirar(op); }); // falha de rede -> fila
   }
 
   function deleteRow(table, id) {
-    if (!navigator.onLine) { enfileirar({ kind: "delete", table: table, id: id }); return; }
+    var op = { kind: "delete", table: table, id: id };
+    if (!navigator.onLine) { enfileirar(op); return; }
     sb.from(table).delete().eq("id", id)
       .then(function (res) {
         if (!res.error) return;
-        if (ehErroAuth(res.error)) { enfileirar({ kind: "delete", table: table, id: id }); renovarSessao(); }
-        else fail("Não foi possível eliminar online.", res.error);
+        enfileirar(op);
+        if (ehErroAuth(res.error)) renovarSessao();
+        else fail("Não foi possível eliminar online — guardado para nova tentativa.", res.error);
       })
-      .catch(function () { enfileirar({ kind: "delete", table: table, id: id }); });
+      .catch(function () { enfileirar(op); });
   }
 
   var FALHAS_KEY = "midas_outbox_falhas_v1";
@@ -160,29 +167,49 @@
       f.push(op); localStorage.setItem(FALHAS_KEY, JSON.stringify(f));
     } catch (e) {}
   }
+  var _aFazerFlush = false;
   function flushOutbox() {
     if (!navigator.onLine) return Promise.resolve(false);
+    if (_aFazerFlush) return Promise.resolve(false); // mutex: evita flushes concorrentes
     var q = outboxLer();
     if (!q.length) { notificarSync(); return Promise.resolve(true); }
+    _aFazerFlush = true;
     var i = 0, houveFalha = false;
+    function fim(val) { _aFazerFlush = false; notificarSync(); return val; }
+    // Preserva as operações enfileiradas DURANTE o flush: o outbox mantém q nos
+    // primeiros q.length lugares e as novas são acrescentadas no fim (enfileirar
+    // só faz push). Reescreve = resto das antigas + todas as novas.
+    function guardarResto(restoAntigas) {
+      var atual = outboxLer();
+      outboxGravar(restoAntigas.concat(atual.slice(q.length)));
+    }
     function passo() {
       if (i >= q.length) {
-        outboxGravar([]);
+        guardarResto([]); // remove só as processadas; mantém as enfileiradas entretanto
         if (houveFalha) fail("Algumas alterações offline foram rejeitadas pelo servidor (ver consola). Não foram perdidas — ficaram guardadas para revisão.");
-        return Promise.resolve(true);
+        return Promise.resolve(fim(true));
       }
       var op = q[i++];
       var p = op.kind === "delete"
         ? sb.from(op.table).delete().eq("id", op.id)
         : sb.from(op.table).upsert({ id: op.obj.id, dados: op.obj, atualizado_em: new Date().toISOString() });
       return p.then(function (res) {
-        // Erro de servidor (RLS, violação de unicidade…): NÃO se perde — guarda-se
-        // em "falhas" para revisão manual e prossegue, evitando bloquear a fila.
-        if (res && res.error) { houveFalha = true; registarFalha(op, res.error.message || "erro de servidor"); }
+        if (res && res.error) {
+          if (ehErroAuth(res.error)) {
+            // Sessão expirada a meio: para, mantém o resto da fila + as novas, e renova.
+            guardarResto(q.slice(i - 1));
+            renovarSessao();
+            return fim(false);
+          }
+          // Erro de servidor (RLS, violação de unicidade…): NÃO se perde — guarda-se
+          // em "falhas" para revisão manual e prossegue, evitando bloquear a fila.
+          houveFalha = true; registarFalha(op, res.error.message || "erro de servidor");
+        }
         return passo();
       }).catch(function () {
-        // Falha de rede: mantém esta e as seguintes na fila para nova tentativa.
-        outboxGravar(q.slice(i - 1)); return false;
+        // Falha de rede: mantém esta e as seguintes + as novas, para nova tentativa.
+        guardarResto(q.slice(i - 1));
+        return fim(false);
       });
     }
     return passo();
