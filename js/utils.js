@@ -146,9 +146,11 @@
     // diálogo de impressão. Ideal para telemóvel. Usa html2canvas + jsPDF
     // (carregados sob procura). O documento sai igual ao da impressão: o
     // overlay do redesign (data-print="skip") é desativado durante a captura.
-    baixarPDF: function (elId, filename) {
+    baixarPDF: function (elId, filename, opts) {
       var el = document.getElementById(elId);
       if (!el) return Promise.resolve(false);
+      opts = opts || {};
+      var margem = typeof opts.margem === "number" ? opts.margem : 12; // mm
       var H2C = "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js";
       var JPDF = "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js";
       // Desativa o overlay do redesign durante a captura (mesmo look da impressão).
@@ -165,17 +167,18 @@
             var pdf = new jsPDF("p", "mm", "a4");
             var pw = pdf.internal.pageSize.getWidth();
             var ph = pdf.internal.pageSize.getHeight();
-            var margem = 8;
             var imgW = pw - margem * 2;
             var imgH = canvas.height * imgW / canvas.width;
-            var img = canvas.toDataURL("image/jpeg", 0.95);
+            // PNG: texto e tabelas nítidos (melhor que JPEG para documentos).
+            var img = canvas.toDataURL("image/png");
             if (imgH <= ph - margem * 2) {
-              pdf.addImage(img, "JPEG", margem, margem, imgW, imgH);
+              // Cabe numa página: centra verticalmente um pouco no topo.
+              pdf.addImage(img, "PNG", margem, margem, imgW, imgH);
             } else {
               // Documento mais alto que uma página: pagina deslocando a imagem.
               var pageH = ph - margem * 2, pos = 0;
               while (pos < imgH) {
-                pdf.addImage(img, "JPEG", margem, margem - pos, imgW, imgH);
+                pdf.addImage(img, "PNG", margem, margem - pos, imgW, imgH);
                 pos += pageH;
                 if (pos < imgH) pdf.addPage();
               }
