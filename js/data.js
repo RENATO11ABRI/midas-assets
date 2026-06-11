@@ -728,6 +728,54 @@
     totalPagoEstudante: function (estId) {
       return this.pagamentosDeEstudante(estId).reduce(function (s, p) { return s + (Number(p.valorPago) || 0); }, 0);
     },
+    // Último pagamento de um estudante (ou null).
+    ultimoPagamentoDe: function (estId) {
+      var ps = this.pagamentosDeEstudante(estId);
+      if (!ps.length) return null;
+      return ps.slice().sort(function (a, b) { return (a.data || "") < (b.data || "") ? 1 : -1; })[0];
+    },
+    // Ano letivo de um estudante: ano da matrícula (fallback: settings.anoLetivo).
+    _anoLectivoDe: function (est) {
+      var d = (est && est.dataMatricula ? String(est.dataMatricula) : "").slice(0, 4);
+      return d || (this.load().settings.anoLetivo || "");
+    },
+
+    // ---- Turmas (visão CALCULADA: curso + período + ano letivo) -------------
+    // Não é uma entidade nova; agrupa os estudantes existentes.
+    turmas: function () {
+      var self = this;
+      var grupos = {};
+      this.estudantes().forEach(function (e) {
+        if (!e.curso) return;
+        var per = e.periodo || "—";
+        var ano = self._anoLectivoDe(e);
+        var key = e.curso + "|" + per + "|" + ano;
+        if (!grupos[key]) grupos[key] = { id: key, curso: e.curso, periodo: per, anoLectivo: ano, estudantes: [] };
+        grupos[key].estudantes.push(e);
+      });
+      var arr = Object.keys(grupos).map(function (k) {
+        var g = grupos[k];
+        g.total = g.estudantes.length;
+        g.comDivida = g.estudantes.filter(function (e) { return self.saldoDevedor(e) > 0; }).length;
+        g.regularizados = g.total - g.comDivida;
+        g.nome = g.curso + " — " + g.periodo + " — " + g.anoLectivo;
+        return g;
+      });
+      arr.sort(function (a, b) { return a.nome < b.nome ? -1 : 1; });
+      return arr;
+    },
+    turmaById: function (id) { return this.turmas().filter(function (t) { return t.id === id; })[0]; },
+
+    // Pesquisa inteligente de estudantes (nome/1º nome/matrícula/contacto/BI).
+    pesquisarEstudantes: function (q, limite) {
+      var self = this;
+      q = this._normNome(q);
+      if (!q) return [];
+      return this.estudantes().filter(function (e) {
+        var hay = self._normNome((e.nome || "") + " " + (e.matricula || "") + " " + (e.contacto || "") + " " + (e.bi || ""));
+        return hay.indexOf(q) >= 0;
+      }).sort(function (a, b) { return (a.nome || "") < (b.nome || "") ? -1 : 1; }).slice(0, limite || 8);
+    },
 
     // Possíveis duplicados: estudantes com nome semelhante (ignora maiúsculas/
     // acentos), nome contido, >=2 tokens em comum, ou mesmo contacto/BI.
