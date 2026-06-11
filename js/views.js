@@ -1810,5 +1810,169 @@
     });
   };
 
+  /* =======================================================================
+     TURMAS (visão calculada: curso + período + ano letivo)
+     ======================================================================= */
+  V.TURMA_PERIODOS = ["Manhã", "Tarde", "Fim de Semana"];
+  // ---- Componente reutilizável: pesquisa inteligente de estudante ----
+  V.buscaInteligenteHTML = function (id, placeholder, value) {
+    return '<div class="busca-int">' +
+      '<input id="' + id + '" class="busca-int-input" autocomplete="off" placeholder="' +
+        U.esc(placeholder || "Escreva o nome do estudante…") + '" value="' + U.esc(value || "") + '">' +
+      '<input type="hidden" id="' + id + '_id">' +
+      '<div class="busca-int-pop" id="' + id + '_pop" hidden></div></div>';
+  };
+  V.wireBuscaInteligente = function (id, onPick) {
+    var inp = document.getElementById(id), pop = document.getElementById(id + "_pop"), hid = document.getElementById(id + "_id");
+    if (!inp || !pop) return;
+    var render = function () {
+      var res = D.pesquisarEstudantes(inp.value, 8);
+      if (!inp.value.trim() || !res.length) { pop.hidden = true; pop.innerHTML = ""; return; }
+      pop.innerHTML = res.map(function (e) {
+        return '<div class="bi-opt" data-id="' + e.id + '"><strong>' + U.esc(e.nome) + "</strong>" +
+          "<small>" + U.esc(e.curso || "—") + " · " + U.esc(e.periodo || "—") + " · " + U.esc(e.matricula || "") + "</small></div>";
+      }).join("");
+      pop.hidden = false;
+    };
+    inp.addEventListener("input", function () { hid.value = ""; render(); });
+    inp.addEventListener("focus", render);
+    pop.addEventListener("click", function (ev) {
+      var o = ev.target.closest(".bi-opt"); if (!o) return;
+      var e = D.estudanteById(o.getAttribute("data-id"));
+      if (e) { inp.value = e.nome; hid.value = e.id; pop.hidden = true; if (onPick) onPick(e); }
+    });
+    document.addEventListener("click", function (ev) { if (inp.parentNode && !inp.parentNode.contains(ev.target)) pop.hidden = true; });
+  };
+
+  V.turmas = function (params) {
+    if (params && params.turma) return V._turmaDetalhe(params.turma);
+    return C.pageHead("Turmas", "Turmas geradas automaticamente por curso, período e ano letivo.") +
+      '<div class="card mb"><div class="card-head"><h3>Pesquisa rápida de estudante</h3></div>' +
+        V.buscaInteligenteHTML("tuBusca", "Escreva o nome — sugere por curso, período e matrícula…") +
+        '<p class="help" style="margin-top:8px">Selecione um estudante para abrir a ficha.</p></div>' +
+      '<div class="card mb"><div class="toolbar">' +
+        '<div class="search-box"><input id="tuSearch" placeholder="Pesquisar estudante (nome, matrícula, contacto)…"></div>' +
+        '<div class="field"><label>Curso</label><select id="tuCurso"><option value="">Todos</option>' + U.optionList(D.cursos().map(function (c) { return c.nome; })) + "</select></div>" +
+        '<div class="field"><label>Período</label><select id="tuPeriodo"><option value="">Todos</option>' + U.optionList(V.TURMA_PERIODOS) + "</select></div>" +
+      "</div></div><div id=\"tuLista\"></div>";
+  };
+  V.renderTurmasLista = function () {
+    var fc = (document.getElementById("tuCurso") || {}).value || "";
+    var fp = (document.getElementById("tuPeriodo") || {}).value || "";
+    var q = (document.getElementById("tuSearch") || {}).value || "";
+    var nq = q ? D._normNome(q) : "";
+    var list = D.turmas().filter(function (t) {
+      if (fc && t.curso !== fc) return false;
+      if (fp && t.periodo !== fp) return false;
+      if (nq) return t.estudantes.some(function (e) {
+        return D._normNome((e.nome || "") + " " + (e.matricula || "") + " " + (e.contacto || "")).indexOf(nq) >= 0;
+      });
+      return true;
+    });
+    var host = document.getElementById("tuLista");
+    if (!host) return;
+    var nAlunos = list.reduce(function (s, t) { return s + t.total; }, 0);
+    var stats = '<div class="grid stats mb">' +
+      V._stat("Turmas", list.length, { icon: "layers" }) +
+      V._stat("Estudantes", nAlunos, { icon: "users" }) + "</div>";
+    if (!list.length) { host.innerHTML = stats + C.empty("", "Nenhuma turma encontrada."); return; }
+    var cards = list.map(function (t) {
+      return '<div class="card turma-card" data-turma="' + U.esc(t.id) + '">' +
+        '<div class="card-head"><h3>' + U.esc(t.curso) + "</h3></div>" +
+        '<p class="help" style="margin:0 0 10px">' + U.esc(t.periodo) + " · " + U.esc(t.anoLectivo) + "</p>" +
+        '<div class="turma-nums">' +
+          '<span><strong>' + t.total + "</strong> estudantes</span>" +
+          '<span class="crit-ok"><strong>' + t.regularizados + "</strong> regularizados</span>" +
+          '<span class="crit-no"><strong>' + t.comDivida + "</strong> com dívida</span>" +
+        "</div></div>";
+    }).join("");
+    host.innerHTML = stats + '<div class="grid three-col">' + cards + "</div>";
+  };
+  V._turmaDetalhe = function (turmaId) {
+    var t = D.turmaById(turmaId);
+    if (!t) return C.pageHead("Turma", "") + C.empty("", "Turma não encontrada.") +
+      '<button class="btn btn-light" data-go="turmas">‹ Voltar às turmas</button>';
+    V._turmaAtual = turmaId;
+    return C.pageHead(t.curso + " — " + t.periodo + " — " + t.anoLectivo, t.total + " estudante(s)",
+      '<button class="btn btn-light" data-go="turmas">‹ Turmas</button>' +
+      '<button class="btn btn-light" id="tuCsv">Exportar CSV</button>' +
+      '<button class="btn btn-light" id="tuPdf">Imprimir lista</button>' +
+      '<button class="btn btn-light" id="tuConferir">Conferir lista colada</button>') +
+      '<div class="card mb"><div class="grid stats">' +
+        V._stat("Estudantes", t.total, { icon: "users" }) +
+        V._stat("Regularizados", t.regularizados, { icon: "userCheck", accent: "green" }) +
+        V._stat("Com dívida", t.comDivida, { icon: "alert", accent: "danger" }) + "</div></div>" +
+      '<div class="card"><div class="toolbar">' +
+        '<div class="search-box"><input id="tuEstSearch" placeholder="Filtrar por nome / matrícula…"></div>' +
+        '<div class="field"><label>Estado</label><select id="tuEstEstado"><option value="">Todos</option>' + U.optionList(["ativo", "pendente", "concluído", "desistente"]) + "</select></div>" +
+        '<div class="field"><label>Situação</label><select id="tuEstFin"><option value="">Todas</option>' + U.optionList(["Regularizados", "Com dívida"]) + "</select></div>" +
+      '</div><div id="tuEstTable"></div></div>';
+  };
+  V._turmaEstudantesFiltrados = function () {
+    var t = D.turmaById(V._turmaAtual);
+    if (!t) return [];
+    var q = D._normNome((document.getElementById("tuEstSearch") || {}).value || "");
+    var fe = (document.getElementById("tuEstEstado") || {}).value || "";
+    var ff = (document.getElementById("tuEstFin") || {}).value || "";
+    return t.estudantes.filter(function (e) {
+      if (fe && e.estado !== fe) return false;
+      if (ff) { var dv = D.saldoDevedor(e) > 0; if (ff === "Com dívida" && !dv) return false; if (ff === "Regularizados" && dv) return false; }
+      if (q && D._normNome((e.nome || "") + " " + (e.matricula || "") + " " + (e.contacto || "")).indexOf(q) < 0) return false;
+      return true;
+    }).sort(function (a, b) { return (a.nome || "") < (b.nome || "") ? -1 : 1; });
+  };
+  V.renderTurmaEstudantes = function () {
+    var host = document.getElementById("tuEstTable");
+    if (!host) return;
+    var list = V._turmaEstudantesFiltrados();
+    if (!list.length) { host.innerHTML = C.empty("", "Sem estudantes para mostrar."); return; }
+    var rows = list.map(function (e, i) {
+      var pago = D.totalPagoEstudante(e.id), saldo = D.saldoDevedor(e), up = D.ultimoPagamentoDe(e.id);
+      return "<tr><td>" + (i + 1) + "</td>" +
+        "<td><strong>" + U.esc(e.nome) + "</strong></td>" +
+        "<td>" + U.esc(e.matricula || "—") + "</td><td>" + U.esc(e.contacto || "—") + "</td>" +
+        "<td>" + U.esc(e.periodo || "—") + "</td><td>" + C.estadoBadge(e.estado) + "</td>" +
+        "<td class='text-right num'>" + U.moeda(pago) + "</td>" +
+        "<td class='text-right num'>" + (saldo > 0 ? '<span class="crit-no">' + U.moeda(saldo) + "</span>" : "—") + "</td>" +
+        "<td>" + (up ? U.dataPT(up.data) : "—") + "</td>" +
+        '<td><div class="row-actions">' +
+          '<button class="btn btn-light btn-sm" data-est-view="' + e.id + '">Ver</button>' +
+          '<button class="btn btn-light btn-sm" data-est-pay="' + e.id + '">Pagamento</button>' +
+          '<button class="btn btn-light btn-sm" data-est-extrato="' + e.id + '">Extrato</button>' +
+        "</div></td></tr>";
+    }).join("");
+    host.innerHTML = '<div class="table-wrap"><table class="data"><thead><tr>' +
+      "<th>Nº</th><th>Nome</th><th>Matrícula</th><th>Contacto</th><th>Período</th><th>Estado</th>" +
+      '<th class="text-right">Total pago</th><th class="text-right">Em dívida</th><th>Último pag.</th><th>Ações</th>' +
+      "</tr></thead><tbody>" + rows + "</tbody></table></div><p class='help mt'>" + list.length + " estudante(s).</p>";
+  };
+  // §10 — conferir lista de nomes colada (não cria estudantes; só confere)
+  V.conferirListaTurma = function () {
+    C.modal({
+      title: "Conferir lista de nomes",
+      body: '<p class="help" style="margin-top:0">Cole uma lista de nomes (um por linha). O sistema compara com os estudantes ' +
+        "cadastrados — <strong>não cria</strong> nem duplica ninguém.</p>" +
+        '<textarea id="confLista" rows="8" placeholder="Ana Maria\nJoão Pedro\n..."></textarea>' +
+        '<div class="form-actions"><button class="btn btn-primary" id="confBtn">Conferir</button></div>' +
+        '<div id="confRes"></div>',
+      footer: '<button class="btn btn-light" onclick="App.closeModal()">Fechar</button>',
+      onOpen: function () {
+        document.getElementById("confBtn").onclick = function () {
+          var linhas = (document.getElementById("confLista").value || "").split("\n")
+            .map(function (s) { return s.trim(); }).filter(Boolean);
+          var rows = linhas.map(function (nome) {
+            var m = D.pesquisarEstudantes(nome, 1)[0];
+            return "<tr><td>" + U.esc(nome) + "</td><td>" + (m
+              ? '<span class="badge ok">Encontrado</span> ' + U.esc(m.nome) + " · " + U.esc(m.matricula || "")
+              : '<span class="badge danger">Não encontrado</span>') + "</td></tr>";
+          }).join("");
+          document.getElementById("confRes").innerHTML = linhas.length
+            ? '<div class="table-wrap"><table class="data"><thead><tr><th>Nome colado</th><th>Resultado</th></tr></thead><tbody>' + rows + "</tbody></table></div>"
+            : C.empty("", "Cole pelo menos um nome.");
+        };
+      }
+    });
+  };
+
   window.V = V;
 })(window);

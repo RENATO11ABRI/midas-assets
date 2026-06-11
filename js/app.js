@@ -65,6 +65,7 @@
     dashboard: { title: "Dashboard", render: V.dashboard },
     matricula: { title: "Nova Matrícula", render: V.matricula },
     estudantes: { title: "Estudantes", render: V.estudantes, after: afterEstudantes },
+    turmas: { title: "Turmas", render: V.turmas, after: afterTurmas },
     cursos: { title: "Cursos", render: V.cursos, after: afterCursos },
     pagamentos: { title: "Pagamentos", render: V.pagamentos, after: afterPagamentos },
     fecho: { title: "Fecho de Caixa", render: V.fecho, after: afterFecho },
@@ -125,6 +126,40 @@
       var r = V.buildReport("matriculas", "", "");
       openReportPrint(r);
     };
+  }
+
+  function afterTurmas() {
+    if (App.params && App.params.turma) {
+      V.renderTurmaEstudantes();
+      ["tuEstSearch", "tuEstEstado", "tuEstFin"].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener(el.tagName === "INPUT" ? "input" : "change", U.debounce(V.renderTurmaEstudantes, 150));
+      });
+      var cf = document.getElementById("tuConferir"); if (cf) cf.onclick = function () { V.conferirListaTurma(); };
+      var cs = document.getElementById("tuCsv"); if (cs) cs.onclick = exportTurmaCSV;
+      var pd = document.getElementById("tuPdf"); if (pd) pd.onclick = printTurma;
+    } else {
+      V.renderTurmasLista();
+      V.wireBuscaInteligente("tuBusca", function (e) { V.fichaEstudante(e.id); });
+      ["tuSearch", "tuCurso", "tuPeriodo"].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener(el.tagName === "INPUT" ? "input" : "change", U.debounce(V.renderTurmasLista, 150));
+      });
+    }
+  }
+  function exportTurmaCSV() {
+    var t = D.turmaById(V._turmaAtual); if (!t) return;
+    var rows = V._turmaEstudantesFiltrados().map(function (e) {
+      var up = D.ultimoPagamentoDe(e.id);
+      return [e.nome, e.matricula || "", e.contacto || "", e.curso || "", e.periodo || "", e.estado || "",
+        U.num(D.totalPagoEstudante(e.id)), U.num(D.saldoDevedor(e)), up ? U.ymd(up.data) : ""];
+    });
+    U.exportCSV("turma_" + (t.curso + "_" + t.periodo).replace(/\s+/g, "-") + ".csv",
+      ["Nome", "Matrícula", "Contacto", "Curso", "Período", "Estado", "Total pago", "Em dívida", "Último pagamento"], rows);
+  }
+  function printTurma() {
+    var t = D.turmaById(V._turmaAtual); if (!t) return;
+    C.imprimirHTML(C.turmaHTML(t, V._turmaEstudantesFiltrados()), "turmaDoc", "Turma " + t.curso);
   }
 
   function afterCursos() {
@@ -778,7 +813,7 @@
       "[data-curso-edit],[data-curso-del],[data-pag-view],[data-pag-del],[data-lista-add],[data-lista-del]," +
       "[data-em-edit],[data-em-toggle],[data-em-del],[data-lixo-restore]," +
       "[data-fecho-print],[data-fecho-del],[data-estagio-edit],[data-estagio-del]," +
-      "[data-apt-view],[data-est-pag]");
+      "[data-apt-view],[data-est-pag],[data-turma],[data-est-extrato]");
     if (!t) return;
 
     var go = t.getAttribute("data-go");
@@ -791,6 +826,8 @@
       V.renderEstudantesTable();
       return;
     }
+    if ((id = t.getAttribute("data-turma"))) { App.navigate("turmas", { turma: id }); return; }
+    if ((id = t.getAttribute("data-est-extrato"))) { var ex = D.estudanteById(id); if (ex) C.verExtrato(ex); return; }
     if ((id = t.getAttribute("data-est-view"))) { V.fichaEstudante(id); return; }
     if ((id = t.getAttribute("data-est-ficha"))) { var ef = D.estudanteById(id); if (ef) C.viewFichaMatricula(ef); return; }
     if ((id = t.getAttribute("data-est-edit"))) { App.navigate("matricula", { id: id }); return; }

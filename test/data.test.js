@@ -205,3 +205,29 @@ test("aptidão: critérios reconhecem variações (júri/jurado, sala da defesa)
   db.settings.criteriosAptidao = ["exame"];
   assert.strictEqual(D.aptidaoDefesa(db.estudantes[0]).apto, false);  // exame não pago
 });
+
+test("turmas agrupa por curso+período+ano e conta dívidas", function () {
+  const db = D.db();
+  db.cursos = [{ id: "c1", nome: "Enfermagem", valorTotal: 100000 }];
+  db.estudantes = [
+    { id: "e1", nome: "Ana", curso: "Enfermagem", periodo: "Manhã", dataMatricula: "2026-02-01" },
+    { id: "e2", nome: "Bruno", curso: "Enfermagem", periodo: "Manhã", dataMatricula: "2026-03-01" },
+    { id: "e3", nome: "Carlos", curso: "Enfermagem", periodo: "Tarde", dataMatricula: "2026-01-01" }
+  ];
+  db.pagamentos = [{ id: "p1", estudanteId: "e1", valorPago: 100000 }]; // Ana regularizada
+  const ts = D.turmas();
+  assert.strictEqual(ts.length, 2);                       // Manhã-2026 e Tarde-2026
+  const manha = ts.filter(function (t) { return t.periodo === "Manhã"; })[0];
+  assert.strictEqual(manha.total, 2);
+  assert.strictEqual(manha.regularizados, 1);
+  assert.strictEqual(manha.comDivida, 1);
+});
+
+test("pesquisarEstudantes encontra por 1º nome e matrícula", function () {
+  const db = D.db();
+  db.estudantes = [{ id: "e1", nome: "João Manuel", matricula: "M1", curso: "Enf" }, { id: "e2", nome: "Maria", matricula: "M2" }];
+  db.pagamentos = [];
+  assert.strictEqual(D.pesquisarEstudantes("joão").length, 1);
+  assert.strictEqual(D.pesquisarEstudantes("M2").length, 1);
+  assert.strictEqual(D.pesquisarEstudantes("xyz").length, 0);
+});

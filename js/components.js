@@ -359,6 +359,29 @@
   };
 
   // ---- Fecho de caixa (A4) ------------------------------------------------
+  // ---- Lista de turma (A4) ------------------------------------------------
+  C.turmaHTML = function (t, estudantes) {
+    var s = D.db().settings;
+    var linhas = (estudantes && estudantes.length) ? estudantes.map(function (e, i) {
+      var saldo = D.saldoDevedor(e);
+      return "<tr><td>" + (i + 1) + "</td><td>" + U.esc(e.nome) + "</td><td>" + U.esc(e.matricula || "") +
+        "</td><td>" + U.esc(e.contacto || "") + "</td><td>" + U.esc(e.estado || "") +
+        "</td><td style='text-align:right'>" + U.moeda(D.totalPagoEstudante(e.id)) +
+        "</td><td style='text-align:right'>" + (saldo > 0 ? U.moeda(saldo) : "—") + "</td></tr>";
+    }).join("") : "<tr><td colspan='7' style='text-align:center;color:#888'>Sem estudantes.</td></tr>";
+    var n = (estudantes || []).length;
+    var comDiv = (estudantes || []).filter(function (e) { return D.saldoDevedor(e) > 0; }).length;
+    return '<div class="print-sheet" id="turmaDoc">' +
+      '<div class="ps-head"><div><h2>Lista de Turma</h2><div>' + U.esc(t.curso) + " · " + U.esc(t.periodo) + " · " + U.esc(t.anoLectivo) + "</div></div>" +
+        '<div class="org"><img src="' + U.logoURL(true) + '" alt="" style="height:42px"><br><strong>' + U.esc(s.instituicao) + "</strong><br><small>" + U.esc(s.sistema) + "</small></div></div>" +
+      "<table><thead><tr><th>Nº</th><th>Nome</th><th>Matrícula</th><th>Contacto</th><th>Estado</th><th style='text-align:right'>Pago</th><th style='text-align:right'>Em dívida</th></tr></thead><tbody>" +
+        linhas + "</tbody></table>" +
+      '<div class="doc-amount"><span class="k">Total de estudantes</span><span class="v num">' + n + "</span></div>" +
+      '<div class="doc-amount"><span class="k">Regularizados</span><span class="v num">' + (n - comDiv) + "</span></div>" +
+      '<div class="doc-amount"><span class="k">Com dívida</span><span class="v num">' + comDiv + "</span></div>" +
+      C._docSign() + C._docFoot() + "</div>";
+  };
+
   C.fechoHTML = function (fc) {
     var s = D.db().settings;
     var t = fc.totais || {};
