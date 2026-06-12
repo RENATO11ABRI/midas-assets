@@ -200,6 +200,40 @@ test("migrarReferenciasCurso migra estudantes/pagamentos e preserva a dívida", 
   assert.strictEqual(D.saldoDevedor(db.estudantes[0]), 25000); // dívida sobrevive
 });
 
+test("criarPagamento: total = soma dos itens; rejeita data inválida e dia fechado", async function () {
+  const db = D.db();
+  db.estudantes = [{ id: "e1", nome: "Ana", matricula: "M1", curso: "C" }];
+  db.pagamentos = []; db.fechos = [];
+  const pag = await D.criarPagamento(db.estudantes[0], {
+    data: "2026-06-10T10:00:00", formaPagamento: "Dinheiro", funcionario: "Maria",
+    itens: [{ categoria: "Inscrição", emolumento: "Inscrição", valorPago: 10000 }, { categoria: "Propina", emolumento: "Propina", valorPago: 12500 }]
+  });
+  assert.strictEqual(pag.valorPago, 22500);
+  assert.strictEqual(pag.emolumento, "Inscrição + Propina");
+  assert.ok(pag.recibo);
+  await assert.rejects(D.criarPagamento(db.estudantes[0], { data: "31/05/2026", valorPago: 1000 }));
+  db.fechos = [{ id: "f1", data: "2026-06-11", funcionario: "Todos" }];
+  await assert.rejects(D.criarPagamento(db.estudantes[0], { data: "2026-06-11T09:00:00", valorPago: 1000 }));
+});
+
+test("resumoCaixa agrega por forma/emolumento e rateia itens", function () {
+  const db = D.db();
+  db.fechos = [];
+  db.pagamentos = [
+    { id: "p1", data: "2026-06-10T10:00:00", valorPago: 22500, formaPagamento: "Dinheiro", funcionario: "Maria",
+      itens: [{ emolumento: "Inscrição", valorPago: 10000 }, { emolumento: "Propina", valorPago: 12500 }] },
+    { id: "p2", data: "2026-06-10T11:00:00", valorPago: 5000, formaPagamento: "TPA", funcionario: "Maria", emolumento: "Túnica" }
+  ];
+  const r = D.resumoCaixa("2026-06-10", "");
+  assert.strictEqual(r.totalGeral, 27500);
+  assert.strictEqual(r.totais["Dinheiro"], 22500);
+  assert.strictEqual(r.totais["TPA"], 5000);
+  assert.strictEqual(r.porEmol["Inscrição"], 10000);
+  assert.strictEqual(r.porEmol["Propina"], 12500);
+  assert.strictEqual(r.porEmol["Túnica"], 5000);
+  assert.strictEqual(r.recibos.length, 2);
+});
+
 test("saldoDevedor aplica desconto/bolsa do estudante", function () {
   const db = D.db();
   db.cursos = [{ id: "c1", nome: "C", valorTotal: 100000 }];

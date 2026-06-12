@@ -595,6 +595,64 @@
       this.save();
       return lx;
     },
+    // Cria um pagamento (recibo) a partir de um estudante + dados. Devolve uma
+    // Promise<pagamento> (o número do recibo é alocado de forma atómica). Suporta
+    // vários emolumentos por recibo (extra.itens); valida a data e bloqueia dias
+    // já fechados. (Lógica de dinheiro centralizada e testável.)
+    criarPagamento: function (est, extra) {
+      var self = this; extra = extra || {};
+      var data = extra.data || this.now();
+      var dia = String(data).slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dia) || isNaN(new Date(dia + "T00:00:00").getTime())) {
+        return Promise.reject(new Error("Data do pagamento inválida (" + data + "). Use o formato AAAA-MM-DD."));
+      }
+      if (this.diaFechadoPara(data)) {
+        return Promise.reject(new Error("O caixa do dia " + dia + " já está fechado — reabra o fecho desse dia para registar."));
+      }
+      return this.alocarRecibo().then(function (numero) {
+        var itens = (extra.itens && extra.itens.length) ? extra.itens : null;
+        var valorTotal = itens
+          ? itens.reduce(function (s, it) { return s + (Number(it.valorPago) || 0); }, 0)
+          : (Number(extra.valorPago) || 0);
+        var resumoEmol = itens
+          ? (itens.length === 1 ? itens[0].emolumento : itens.map(function (it) { return it.emolumento; }).join(" + "))
+          : (extra.emolumento || "Outros");
+        var pag = {
+          recibo: numero,
+          estudanteId: est.id, estudanteNome: est.nome, matricula: est.matricula,
+          contacto: est.contacto, curso: est.curso, periodo: est.periodo,
+          unidade: est.unidade, tipoCurso: est.tipoCurso, duracao: est.duracao, regime: est.regime,
+          data: data,
+          emolumentoId: itens && itens.length === 1 ? itens[0].emolumentoId : (extra.emolumentoId || ""),
+          emolumento: resumoEmol,
+          categoria: itens ? (itens[0].categoria || "") : (extra.categoria || ""),
+          itens: itens || undefined,
+          mesReferencia: extra.mesReferencia || "",
+          valorPago: valorTotal,
+          formaPagamento: extra.formaPagamento || "",
+          funcionario: extra.funcionario || "",
+          referencia: extra.referencia || "",
+          observacoes: extra.observacoes || ""
+        };
+        return self.savePagamento(pag);
+      });
+    },
+    // Resumo do caixa de um dia (por forma de pagamento, emolumento e funcionário).
+    resumoCaixa: function (ymd, funcionario) {
+      var pags = this.pagamentosDoDia(ymd, funcionario);
+      var totais = {}; DEFAULT_FORMAS.forEach(function (f) { totais[f] = 0; }); totais["Outras"] = 0;
+      var porEmol = {}, porFunc = {}, totalGeral = 0;
+      pags.forEach(function (p) {
+        var v = Number(p.valorPago) || 0; totalGeral += v;
+        if (DEFAULT_FORMAS.indexOf(p.formaPagamento) >= 0) totais[p.formaPagamento] += v; else totais["Outras"] += v;
+        var fn = p.funcionario || "—"; porFunc[fn] = (porFunc[fn] || 0) + v;
+        if (p.itens && p.itens.length) {
+          p.itens.forEach(function (it) { var k = it.emolumento || "Outros"; porEmol[k] = (porEmol[k] || 0) + (Number(it.valorPago) || 0); });
+        } else { var k = p.emolumento || "Outros"; porEmol[k] = (porEmol[k] || 0) + v; }
+      });
+      var recibos = pags.slice().sort(function (a, b) { return (a.data || "") < (b.data || "") ? 1 : -1; });
+      return { recibos: recibos, totais: totais, porEmol: porEmol, porFunc: porFunc, totalGeral: totalGeral };
+    },
 
     // ---- Fecho de caixa ----------------------------------------------------
     fechos: function () { return this.load().fechos || []; },
