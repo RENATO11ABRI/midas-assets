@@ -160,12 +160,12 @@
   }
 
   var FALHAS_KEY = "midas_outbox_falhas_v1";
+  function falhasLer() { try { return JSON.parse(localStorage.getItem(FALHAS_KEY) || "[]"); } catch (e) { return []; } }
+  function falhasGravar(f) { try { localStorage.setItem(FALHAS_KEY, JSON.stringify(f)); } catch (e) {} notificarSync(); }
   function registarFalha(op, motivo) {
-    try {
-      var f = JSON.parse(localStorage.getItem(FALHAS_KEY) || "[]");
-      op.erro = motivo; op.quando = new Date().toISOString();
-      f.push(op); localStorage.setItem(FALHAS_KEY, JSON.stringify(f));
-    } catch (e) {}
+    var f = falhasLer();
+    f.push({ kind: op.kind, table: op.table, obj: op.obj, id: op.id, erro: motivo, quando: new Date().toISOString() });
+    falhasGravar(f);
   }
   var _aFazerFlush = false;
   function flushOutbox() {
@@ -607,6 +607,23 @@
     online: function () { return navigator.onLine; },
     pendentes: function () { return outboxLer().length; },
     sincronizar: function () { return flushOutbox().then(function (ok) { notificarSync(); return ok; }); },
+    // Falhas: operações que o servidor rejeitou (não se perdem; ficam para revisão).
+    nFalhas: function () { return falhasLer().length; },
+    falhas: function () { return falhasLer(); },
+    reprocessarFalhas: function () {
+      var f = falhasLer();
+      if (!f.length) return Promise.resolve(true);
+      var q = outboxLer();
+      f.forEach(function (op) {
+        q.push(op.kind === "delete"
+          ? { kind: "delete", table: op.table, id: op.id }
+          : { kind: "upsert", table: op.table, obj: op.obj });
+      });
+      outboxGravar(q);
+      falhasGravar([]); // saem das falhas; voltam para a fila e tenta-se de novo
+      return flushOutbox().then(function (ok) { notificarSync(); return ok; });
+    },
+    descartarFalhas: function () { falhasGravar([]); return true; },
     _onChange: null,
     aoMudar: function (cb) { this._onChange = cb; }
   };
