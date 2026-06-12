@@ -209,6 +209,7 @@
         '<div class="fieldset-title">Matrícula e pagamento</div>' +
         V._f("dataMatricula", "Data da matrícula", "date", e.dataMatricula || U.hoje(), true) +
         V._fselect("estado", "Estado", ["ativo", "pendente", "desistente", "concluído"], e.estado || "ativo") +
+        V._f("desconto", "Desconto / Bolsa (Kz)", "number", e.desconto) +
         V._f("valorInscricao", "Valor da inscrição (Kz)", "number", e.valorInscricao) +
         V._f("valorMatricula", "Valor da matrícula (Kz)", "number", e.valorMatricula) +
         V._f("valorPago", "Valor pago (Kz)", "number", e.valorPago) +
@@ -483,8 +484,9 @@
           dl("Período", e.periodo) + dl("Duração", e.duracao) +
           dl("Regime", e.regime) + dl("Data da matrícula", U.dataPT(e.dataMatricula)) +
         "</div>" +
-        '<div class="grid stats mb" style="grid-template-columns:repeat(3,1fr)">' +
+        '<div class="grid stats mb" style="grid-template-columns:repeat(' + (Number(e.desconto) > 0 ? 4 : 3) + ',1fr)">' +
           V._stat("Total pago", U.moeda(pago), "") +
+          (Number(e.desconto) > 0 ? V._stat("Bolsa / Desconto", "− " + U.moeda(e.desconto), { accent: "green" }) : "") +
           V._stat("Valor do curso", cursoEmFalta ? "⚠ Curso removido" : (totalCurso ? U.moeda(totalCurso) : "—"), "") +
           V._stat("Saldo em falta", cursoEmFalta ? "⚠ Não calculável" : (totalCurso ? U.moeda(saldo) : "—"), "") +
         "</div>" +
