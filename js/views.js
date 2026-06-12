@@ -64,7 +64,7 @@
         V._stat("Estudantes matriculados", estudantes.length, { icon: "users", accent: "green" }) +
         V._stat("Estudantes ativos", ativos, { icon: "userCheck", accent: "green" }) +
         V._stat("Estudantes concluídos", concluidos, { icon: "cap", accent: "info" }) +
-        V._stat("Estudantes com dívida", comDivida, { icon: "alert", accent: "danger" }) +
+        V._stat("Estudantes com dívida", comDivida, { icon: "alert", accent: "danger", go: "devedores" }) +
       "</div>" +
 
       '<div class="grid stats mt">' +
@@ -143,7 +143,8 @@
   V._stat = function (label, value, opts) {
     opts = (opts && typeof opts === "object") ? opts : {};
     var ico = opts.icon ? '<span class="k-ico">' + V._ico(opts.icon) + "</span>" : "";
-    return '<div class="kpi"><div class="k-top"><span class="k-label">' + U.esc(label) + "</span>" + ico + "</div>" +
+    var clic = opts.go ? ' data-go="' + opts.go + '" style="cursor:pointer" title="Abrir"' : "";
+    return '<div class="kpi"' + clic + '><div class="k-top"><span class="k-label">' + U.esc(label) + "</span>" + ico + "</div>" +
       '<div class="k-val num">' + (typeof value === "number" ? value : U.esc(value)) + "</div>" +
       (opts.sub ? '<div class="k-foot">' + U.esc(opts.sub) + "</div>" : "") + "</div>";
   };
@@ -359,6 +360,72 @@
       '<span class="pag-info">' + ini + "–" + fim + " de " + total + " · página " + pagina + "/" + nPaginas + "</span>" +
       '<button class="btn btn-light btn-sm" data-' + attr + '="seg"' + (pagina >= nPaginas ? " disabled" : "") + ">Seguinte ›</button>" +
       "</div>";
+  };
+
+  /* ---- Devedores (cobrança de propinas em falta) ----------------------- */
+  V.devedores = function () {
+    return C.pageHead("Devedores", "Estudantes com propinas em falta — para acompanhamento e cobrança.") +
+      '<div id="devStats" class="grid stats mb"></div>' +
+      '<div class="card mb"><div class="toolbar">' +
+        '<div class="search-box"><input id="devSearch" placeholder="Pesquisar estudante (nome, matrícula, contacto)…"></div>' +
+        '<div class="field"><label>Curso</label><select id="devCurso"><option value="">Todos</option>' + U.optionList(D.cursos().map(function (c) { return c.nome; })) + "</select></div>" +
+        '<button class="btn btn-light" id="devCsv">Exportar CSV</button>' +
+      "</div></div><div id=\"devTable\"></div>";
+  };
+  V._devedoresFiltrados = function () {
+    var idx = D._totalPagoIndex();
+    var fc = (document.getElementById("devCurso") || {}).value || "";
+    var q = (document.getElementById("devSearch") || {}).value || "";
+    var nq = q ? D._normNome(q) : "";
+    return D.estudantes().map(function (e) { return { e: e, divida: D.saldoDevedor(e, idx) }; })
+      .filter(function (x) {
+        if (x.divida <= 0) return false;
+        if (fc && x.e.curso !== fc) return false;
+        if (nq && D._normNome((x.e.nome || "") + " " + (x.e.matricula || "") + " " + (x.e.contacto || "")).indexOf(nq) < 0) return false;
+        return true;
+      }).sort(function (a, b) { return b.divida - a.divida; });
+  };
+  V.renderDevedores = function () {
+    var list = V._devedoresFiltrados();
+    var totalDiv = U.sum(list, function (x) { return x.divida; });
+    var stats = document.getElementById("devStats");
+    if (stats) stats.innerHTML =
+      V._stat("Devedores", list.length, { icon: "alert", accent: "danger" }) +
+      V._stat("Total em dívida", U.moeda(totalDiv), { icon: "wallet", accent: "gold" });
+    var host = document.getElementById("devTable");
+    if (!host) return;
+    if (!list.length) { host.innerHTML = C.empty("", "Sem devedores com os filtros atuais. 🎉"); return; }
+    var rows = list.map(function (x) {
+      var e = x.e, temWa = !!(e.whatsapp || e.contacto);
+      var ult = D.ultimoPagamentoDe(e.id);
+      return "<tr><td>" + U.esc(e.nome) + "<br><small>" + U.esc(e.matricula || "") + "</small></td>" +
+        "<td>" + U.esc(e.curso || "—") + "</td>" +
+        "<td>" + U.esc(e.contacto || "—") + "</td>" +
+        "<td class='text-right num'><strong class='crit-no'>" + U.moeda(x.divida) + "</strong></td>" +
+        "<td>" + (ult ? U.dataPT(ult.data) : "—") + "</td>" +
+        '<td><div class="row-actions">' +
+          '<button class="btn btn-light btn-sm" data-est-view="' + e.id + '">Ver</button>' +
+          '<button class="btn btn-light btn-sm" data-est-pay="' + e.id + '">Pagamento</button>' +
+          (temWa ? '<button class="btn btn-gold btn-sm" data-est-wa="' + e.id + '">WhatsApp</button>' : "") +
+        "</div></td></tr>";
+    }).join("");
+    host.innerHTML = '<div class="table-wrap"><table class="data"><thead><tr>' +
+      "<th>Estudante</th><th>Curso</th><th>Contacto</th><th class=\"text-right\">Em dívida</th><th>Último pag.</th><th>Ações</th>" +
+      "</tr></thead><tbody>" + rows + "</tbody></table></div>" +
+      '<p class="help mt">' + list.length + " devedor(es) · total em dívida " + U.moeda(totalDiv) + ".</p>";
+  };
+  // Lembrete de pagamento por WhatsApp (reutilizado pela ficha e pelos devedores).
+  V.lembrarWhatsApp = function (estId) {
+    var e = D.estudanteById(estId); if (!e) return;
+    var num = e.whatsapp || e.contacto;
+    if (!num) { C.toast("Sem contacto de WhatsApp para este estudante.", "err"); return; }
+    var s = D.db().settings;
+    var msg = "Olá, " + e.nome + ". Aqui é a Secretaria do " + s.instituicao +
+      ".\n\nConsta no sistema uma pendência no valor de " + U.moeda(D.saldoDevedor(e)) +
+      ".\n\nPedimos que regularize o pagamento para manter a sua situação académica em dia.\n\n" +
+      s.instituicao + " — " + s.sistema + ".";
+    var url = U.whatsappURL(num, msg);
+    if (url) window.open(url, "_blank"); else C.toast("Contacto inválido.", "err");
   };
 
   V.fichaEstudante = function (id) {
