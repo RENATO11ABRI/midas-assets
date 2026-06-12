@@ -270,7 +270,9 @@
       "</div>";
   };
   C.fichaMatriculaHTML = function (est) {
-    var valor = D.totalPagoEstudante(est.id) || est.valorPago || 0;
+    // Só conta dinheiro que tem recibo (totalPagoEstudante). NÃO usar
+    // est.valorPago como fallback: imprimia "valor pago" sem recibo no caixa.
+    var valor = D.totalPagoEstudante(est.id);
     return '<div class="doc-a4" id="fichaMatDoc">' +
       C._fichaVia(est, valor, "Via do Estudante") +
       '<div class="cut-line">cortar aqui</div>' +

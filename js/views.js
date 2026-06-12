@@ -581,17 +581,40 @@
             id: fd.get("id") || undefined,
             nome: nome, tipo: fd.get("tipo"), duracao: fd.get("duracao"),
             periodo: fd.get("periodo"), regime: fd.get("regime"),
-            valorInscricao: U.parseMoeda(fd.get("valorInscricao")),
-            valorMatricula: U.parseMoeda(fd.get("valorMatricula")),
-            valorMensalidade: U.parseMoeda(fd.get("valorMensalidade")),
-            valorEstagio: U.parseMoeda(fd.get("valorEstagio")),
-            valorDefesa: U.parseMoeda(fd.get("valorDefesa")),
-            valorCertificado: U.parseMoeda(fd.get("valorCertificado")),
-            valorTotal: U.parseMoeda(fd.get("valorTotal")),
+            valorInscricao: U.numInput(fd.get("valorInscricao")),
+            valorMatricula: U.numInput(fd.get("valorMatricula")),
+            valorMensalidade: U.numInput(fd.get("valorMensalidade")),
+            valorEstagio: U.numInput(fd.get("valorEstagio")),
+            valorDefesa: U.numInput(fd.get("valorDefesa")),
+            valorCertificado: U.numInput(fd.get("valorCertificado")),
+            valorTotal: U.numInput(fd.get("valorTotal")),
             unidade: fd.get("unidade"), estado: fd.get("estado") || "ativo"
           };
-          D.saveCurso(curso);
-          C.closeModal(); C.toast("Curso guardado.", "ok"); V.renderCursosTable();
+          // Renomear um curso existente: migrar as referências (estudantes e
+          // pagamentos guardam o curso por nome) para a dívida não desaparecer.
+          var antes = curso.id ? D.cursoById(curso.id) : null;
+          var nomeAntigo = antes ? antes.nome : null;
+          var renomeou = nomeAntigo && nomeAntigo !== nome;
+          var gravar = function () {
+            D.saveCurso(curso);
+            if (renomeou) {
+              var n = D.migrarReferenciasCurso(nomeAntigo, nome);
+              C.toast("Curso guardado. " + n + " referência(s) atualizada(s).", "ok");
+            } else {
+              C.toast("Curso guardado.", "ok");
+            }
+            C.closeModal(); V.renderCursosTable();
+          };
+          if (renomeou) {
+            var refs = D.contarReferenciasCurso(nomeAntigo);
+            if (refs.estudantes + refs.pagamentos > 0) {
+              C.confirm("Renomear “" + U.esc(nomeAntigo) + "” para “" + U.esc(nome) + "”? " +
+                refs.estudantes + " estudante(s) e " + refs.pagamentos + " pagamento(s) serão atualizados para o novo nome.",
+                gravar, { yes: "Renomear e atualizar" });
+              return;
+            }
+          }
+          gravar();
         };
       }
     });
@@ -762,7 +785,7 @@
         var emolOpts = V.emolumentoOptions(D.emolumentoPadrao("Propina"));
         function recalcTotal() {
           var t = 0;
-          [].slice.call(itensHost.querySelectorAll(".pay-val")).forEach(function (inp) { t += U.parseMoeda(inp.value); });
+          [].slice.call(itensHost.querySelectorAll(".pay-val")).forEach(function (inp) { t += U.numInput(inp.value); });
           document.getElementById("payTotal").textContent = U.moeda(t);
         }
         function addRow(presetId) {
@@ -794,7 +817,7 @@
           var itens = [];
           [].slice.call(itensHost.querySelectorAll(".pay-item-row")).forEach(function (row) {
             var emo = D.emolumentoById(row.querySelector(".pay-emol").value);
-            var v = U.parseMoeda(row.querySelector(".pay-val").value);
+            var v = U.numInput(row.querySelector(".pay-val").value);
             if (v > 0) itens.push({ emolumentoId: emo ? emo.id : "", emolumento: emo ? emo.nome : "Outros", categoria: emo ? emo.categoria : "Outros", valorPago: v });
           });
           if (!itens.length) { C.toast("Adicione pelo menos um emolumento com valor.", "err"); return; }
@@ -873,6 +896,17 @@
   };
 
   V._criarPagamento = function (est, extra) {
+    var data = extra.data || U.agoraISO();
+    var dia = U.ymd(data);
+    // C6: rejeita datas inválidas (ex.: "31/05/2026" vindo de CSV) antes de
+    // consumir um número de recibo.
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dia) || isNaN(new Date(dia + "T00:00:00").getTime())) {
+      return Promise.reject(new Error("Data do pagamento inválida (" + data + "). Use o formato AAAA-MM-DD."));
+    }
+    // C5: não registar num dia cujo caixa já foi fechado.
+    if (D.diaFechadoPara(data)) {
+      return Promise.reject(new Error("O caixa do dia " + dia + " já está fechado — reabra o fecho desse dia para registar."));
+    }
     return D.alocarRecibo().then(function (numero) {
       // Suporta vários emolumentos por recibo (extra.itens). Mantém valorPago
       // como TOTAL e emolumento como resumo, para Fecho/relatórios continuarem
@@ -889,7 +923,7 @@
         estudanteId: est.id, estudanteNome: est.nome, matricula: est.matricula,
         contacto: est.contacto, curso: est.curso, periodo: est.periodo,
         unidade: est.unidade, tipoCurso: est.tipoCurso, duracao: est.duracao, regime: est.regime,
-        data: extra.data || U.agoraISO(),
+        data: data,
         emolumentoId: itens && itens.length === 1 ? itens[0].emolumentoId : (extra.emolumentoId || ""),
         emolumento: resumoEmol,
         categoria: itens ? (itens[0].categoria || "") : (extra.categoria || ""),
@@ -1163,6 +1197,16 @@
       var campo = tipo === "porCategoria" ? "categoria" : "formaPagamento";
       var by = {};
       D.pagamentos().filter(function (p) { return inRange(p.data); }).forEach(function (p) {
+        // Por categoria, rateia recibos multi-emolumento pelos seus itens (senão
+        // o total do recibo era creditado todo à categoria do 1º item).
+        if (campo === "categoria" && p.itens && p.itens.length) {
+          p.itens.forEach(function (it) {
+            var ki = (it.categoria || it.emolumento) || "—";
+            by[ki] = by[ki] || { count: 0, total: 0 };
+            by[ki].count++; by[ki].total += Number(it.valorPago) || 0;
+          });
+          return;
+        }
         var k = (campo === "categoria" ? (p.categoria || p.emolumento) : p.formaPagamento) || "—";
         by[k] = by[k] || { count: 0, total: 0 };
         by[k].count++; by[k].total += Number(p.valorPago) || 0;
@@ -1240,9 +1284,21 @@
         if (tipo === "certificados") return n.indexOf("certificado") >= 0;
         return n.indexOf("defesa") >= 0 || n.indexOf("júri") >= 0 || n.indexOf("juri") >= 0;
       };
-      var pe = D.pagamentos().filter(function (p) {
-        return inRange(p.data) && (match(p.emolumento) || match(p.categoria));
-      }).sort(U.by("data"));
+      // Rateia recibos multi-emolumento: só o item que casa conta (senão o total
+      // do recibo era somado a estágios/certificados/defesa em duplicado).
+      var pe = [];
+      D.pagamentos().filter(function (p) { return inRange(p.data); }).forEach(function (p) {
+        if (p.itens && p.itens.length) {
+          p.itens.forEach(function (it) {
+            if (match(it.emolumento) || match(it.categoria)) {
+              pe.push({ data: p.data, recibo: p.recibo, estudanteNome: p.estudanteNome, curso: p.curso, emolumento: it.emolumento, valorPago: Number(it.valorPago) || 0 });
+            }
+          });
+        } else if (match(p.emolumento) || match(p.categoria)) {
+          pe.push(p);
+        }
+      });
+      pe.sort(U.by("data"));
       var totPe = U.sum(pe, function (p) { return p.valorPago; });
       var titulos = { estagios: "Relatório de Estágios", certificados: "Relatório de Certificados", defesa: "Relatório de Defesa Final" };
       return {
@@ -1421,7 +1477,7 @@
           var fd = new FormData(document.getElementById("formEmol"));
           var res = D.saveEmolumento({
             id: fd.get("id") || undefined, nome: fd.get("nome"), categoria: fd.get("categoria"),
-            valor: U.parseMoeda(fd.get("valor")), curso: fd.get("curso"), tipoCurso: fd.get("tipoCurso"),
+            valor: U.numInput(fd.get("valor")), curso: fd.get("curso"), tipoCurso: fd.get("tipoCurso"),
             unidade: fd.get("unidade"), estado: fd.get("estado"), observacoes: fd.get("observacoes")
           });
           if (res.error) { C.toast(res.error, "err"); return; }

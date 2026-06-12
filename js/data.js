@@ -481,6 +481,29 @@
       curso.id = this.uid("crs");
       db.cursos.push(curso); this.save(); return curso;
     },
+    // Conta quantos estudantes/pagamentos referenciam um curso por nome (para
+    // avisar antes de renomear).
+    contarReferenciasCurso: function (nome) {
+      var db = this.load();
+      var e = db.estudantes.filter(function (x) { return x.curso === nome; }).length;
+      var p = db.pagamentos.filter(function (x) { return x.curso === nome; }).length;
+      return { estudantes: e, pagamentos: p };
+    },
+    // Migra as referências de curso por NOME (estudantes/pagamentos) de 'antigo'
+    // para 'novo' — senão a dívida desses estudantes "desaparecia" porque
+    // cursoByNome deixava de encontrar o curso. Usa os save* para espelhar.
+    migrarReferenciasCurso: function (antigo, novo) {
+      var self = this, db = this.load();
+      if (!antigo || !novo || antigo === novo) return 0;
+      var n = 0;
+      db.estudantes.slice().forEach(function (e) {
+        if (e.curso === antigo) { e.curso = novo; self.saveEstudante(e); n++; }
+      });
+      db.pagamentos.slice().forEach(function (p) {
+        if (p.curso === antigo) { p.curso = novo; self.savePagamento(p); n++; }
+      });
+      return n;
+    },
     deleteCurso: function (id) {
       var db = this.load();
       db.cursos = db.cursos.filter(function (c) { return c.id !== id; });
@@ -603,6 +626,8 @@
         return diaLocal(f.data) === ymd && (!f.funcionario || f.funcionario === "Todos");
       });
     },
+    // O dia (local) de uma data/timestamp já tem fecho "Todos"?
+    diaFechadoPara: function (data) { return this.caixaDiaFechado(diaLocal(data)); },
     // Devolve o dia MAIS ANTIGO (anterior a hoje) que teve movimentos mas ainda
     // não foi fechado — ou null se estiver tudo em ordem. Usado para bloquear
     // novos movimentos enquanto o caixa do(s) dia(s) anterior(es) não fechar.
