@@ -23,38 +23,43 @@
         r.onerror = function () { rej(r.error); };
       });
     }
+    // Resolve quando a transação faz COMMIT (t.oncomplete), não no momento em
+    // que o pedido é enfileirado — senão um abort/quota passava por "sucesso".
     function comStore(modo, fn) {
       return abrir().then(function (db) {
         return new Promise(function (res, rej) {
           var t = db.transaction(STORE, modo);
-          fn(t.objectStore(STORE), res, rej);
+          var saida;
+          fn(t.objectStore(STORE), function (v) { saida = v; });
+          t.oncomplete = function () { res(saida); };
           t.onerror = function () { rej(t.error); };
+          t.onabort = function () { rej(t.error || new Error("transação IndexedDB abortada")); };
         });
       });
     }
     function listar() {
       if (!temIDB) return Promise.resolve([]);
-      return comStore("readonly", function (st, res, rej) {
+      return comStore("readonly", function (st, ok) {
         var out = [], cur = st.openCursor();
         cur.onsuccess = function (e) {
           var c = e.target.result;
           if (c) { out.push({ id: c.value.id, motivo: c.value.motivo, tamanho: c.value.tamanho }); c.continue(); }
-          else { out.sort(function (a, b) { return a.id < b.id ? 1 : -1; }); res(out); }
+          else { out.sort(function (a, b) { return a.id < b.id ? 1 : -1; }); ok(out); }
         };
-        cur.onerror = function () { rej(cur.error); };
       });
     }
     function obter(id) {
-      return comStore("readonly", function (st, res, rej) {
-        var g = st.get(id); g.onsuccess = function () { res(g.result); }; g.onerror = function () { rej(g.error); };
+      if (!temIDB) return Promise.resolve(null);
+      return comStore("readonly", function (st, ok) {
+        var g = st.get(id); g.onsuccess = function () { ok(g.result); };
       });
     }
-    function apagar(id) { return comStore("readwrite", function (st, res) { st.delete(id); res(true); }); }
+    function apagar(id) { if (!temIDB) return Promise.resolve(false); return comStore("readwrite", function (st, ok) { st.delete(id); ok(true); }); }
     function podar() {
       return listar().then(function (arr) {
         var excesso = arr.slice(MAX);
         if (!excesso.length) return true;
-        return comStore("readwrite", function (st, res) { excesso.forEach(function (s) { st.delete(s.id); }); res(true); });
+        return comStore("readwrite", function (st, ok) { excesso.forEach(function (s) { st.delete(s.id); }); ok(true); });
       });
     }
     function criar(motivo) {
@@ -62,8 +67,8 @@
       var id = new Date().toISOString();
       var json = D.export();
       var snap = { id: id, motivo: motivo || "auto", tamanho: json.length, json: json };
-      return comStore("readwrite", function (st, res) { st.put(snap); res(true); })
-        .then(function () { try { localStorage.setItem(LAST_KEY, id); } catch (e) {} return podar(); })
+      return comStore("readwrite", function (st, ok) { st.put(snap); ok(true); })
+        .then(function () { try { localStorage.setItem(LAST_KEY, id); } catch (e) {} return podar(); }) // só marca depois do commit
         .then(function () { return true; });
     }
     function ultimo() { try { return localStorage.getItem(LAST_KEY) || ""; } catch (e) { return ""; } }
@@ -153,8 +158,10 @@
     navigate: function (route, params) {
       this.params = params || {};
       if (location.hash !== "#" + route) {
+        // Com parâmetros, renderiza já com eles; o hashchange seguinte renderia
+        // 2ª vez SEM params (apagava o detalhe). Marca para o hashchange ignorar.
+        if (params) this._skipHash = "#" + route;
         location.hash = "#" + route; // triggers hashchange -> render
-        // if params provided, render directly (hash same scenario handled below)
         if (params) this.render(route);
       } else {
         this.render(route);
@@ -438,7 +445,7 @@
       var tab = e.target.getAttribute("data-tab");
       if (tab) show(tab);
     });
-    show("inst");
+    show(App.params && App.params.tab ? App.params.tab : "inst");
   }
   function wireInst() {
     var pendingLogo = null;
@@ -1146,7 +1153,7 @@
     window.addEventListener("online", render);
     window.addEventListener("offline", render);
     pill.onclick = function () {
-      if (window.MidasSync.nFalhas && window.MidasSync.nFalhas()) { App.navigate("config"); return; }
+      if (window.MidasSync.nFalhas && window.MidasSync.nFalhas()) { App.navigate("config", { tab: "dados" }); return; }
       window.MidasSync.sincronizar().then(render);
     };
     render();
@@ -1182,6 +1189,9 @@
     if (window.MidasBackup) window.MidasBackup.autoSeNecessario();
 
     window.addEventListener("hashchange", function () {
+      // Ignora o hashchange provocado por uma navigate() com parâmetros (já
+      // renderizada), para não re-renderizar sem os params.
+      if (App._skipHash && App._skipHash === location.hash) { App._skipHash = null; return; }
       App.render((location.hash || "#dashboard").slice(1));
       if (App.current === "matricula") wireMatriculaForm();
     });

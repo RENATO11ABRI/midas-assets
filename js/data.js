@@ -173,6 +173,15 @@
     var d = new Date();
     return ymdLocal(d) + "T" + d.toTimeString().slice(0, 8);
   }
+  // Dia LOCAL (YYYY-MM-DD) de uma data/timestamp. Converte timestamps antigos em
+  // UTC ('…Z') para o dia local de Angola — evita que um pagamento perto da
+  // meia-noite caia no dia errado e bloqueie o fecho de caixa.
+  function diaLocal(s) {
+    s = String(s || "");
+    if (s.length <= 10) return s.slice(0, 10); // já é YYYY-MM-DD
+    var d = new Date(s);
+    return isNaN(d) ? s.slice(0, 10) : ymdLocal(d);
+  }
   // Soma n meses a uma data sem "transbordar": 31/01 + 1 mês = 28/02 (não 03/03).
   function addMeses(base, n) {
     var d = new Date(base.getFullYear(), base.getMonth() + n, 1);
@@ -307,6 +316,11 @@
     },
 
     db: function () { return this.load(); },
+
+    // Verdadeiro quando a cache local entrou em modo protegido (leitura falhada):
+    // a camada Supabase usa isto para NÃO espelhar a cache (sementes) por cima
+    // dos dados bons do servidor.
+    estaProtegido: function () { return _protegido; },
 
     reset: function () {
       _db = defaultDB();
@@ -561,7 +575,7 @@
     // Pagamentos de um dia (YYYY-MM-DD), opcionalmente de um funcionário
     pagamentosDoDia: function (ymd, funcionario) {
       return this.load().pagamentos.filter(function (p) {
-        if ((p.data || "").slice(0, 10) !== ymd) return false;
+        if (diaLocal(p.data) !== ymd) return false;
         if (funcionario && p.funcionario !== funcionario) return false;
         return true;
       });
@@ -586,7 +600,7 @@
     // sem funcionário) gravado para essa data.
     caixaDiaFechado: function (ymd) {
       return (this.load().fechos || []).some(function (f) {
-        return (f.data || "").slice(0, 10) === ymd && (!f.funcionario || f.funcionario === "Todos");
+        return diaLocal(f.data) === ymd && (!f.funcionario || f.funcionario === "Todos");
       });
     },
     // Devolve o dia MAIS ANTIGO (anterior a hoje) que teve movimentos mas ainda
@@ -596,7 +610,7 @@
       var hoje = ymdLocal(new Date());
       var dias = {};
       this.load().pagamentos.forEach(function (p) {
-        var d = (p.data || "").slice(0, 10);
+        var d = diaLocal(p.data);
         if (d && d < hoje) dias[d] = true;
       });
       var self = this;
@@ -878,7 +892,7 @@
     // acentos), nome contido, >=2 tokens em comum, ou mesmo contacto/BI.
     _normNome: function (s) {
       return String(s == null ? "" : s).trim().toLowerCase()
-        .normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ");
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
     },
     estudantesSemelhantes: function (nome, contacto, bi) {
       var norm = this._normNome;

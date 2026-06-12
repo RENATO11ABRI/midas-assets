@@ -129,7 +129,13 @@
     }).catch(function () { _aRenovar = false; fail("A sessão expirou. Inicie sessão novamente para sincronizar."); });
   }
 
+  // Em modo protegido (cache local corrompida -> sementes), NÃO espelhar para o
+  // servidor: evita sobrescrever os dados bons remotos. O servidor é a fonte de
+  // verdade até a cache ser recuperada (reload depois de resolvido).
+  function modoProtegido() { return !!(D.estaProtegido && D.estaProtegido()); }
+
   function upsertRow(table, obj) {
+    if (modoProtegido()) return;
     var op = { kind: "upsert", table: table, obj: obj };
     if (!navigator.onLine) { enfileirar(op); return; }
     var row = { id: obj.id, dados: obj, atualizado_em: new Date().toISOString() };
@@ -147,6 +153,7 @@
   }
 
   function deleteRow(table, id) {
+    if (modoProtegido()) return;
     var op = { kind: "delete", table: table, id: id };
     if (!navigator.onLine) { enfileirar(op); return; }
     sb.from(table).delete().eq("id", id)
@@ -212,7 +219,13 @@
         return fim(false);
       });
     }
-    return passo();
+    // Rede de segurança: qualquer exceção inesperada liberta sempre o mutex,
+    // senão o outbox ficaria trancado até um reload.
+    return Promise.resolve().then(passo).catch(function (e) {
+      _aFazerFlush = false; notificarSync();
+      if (window.console) console.error("flushOutbox: erro inesperado", e);
+      return false;
+    });
   }
 
   function bulkUpsert(table, arr) {
@@ -231,7 +244,7 @@
     // Só admin/directora podem gravar configurações (RLS). Para outros perfis,
     // os contadores de matrícula/recibo são reconstruídos a partir dos dados
     // existentes em cada arranque (ver reconcileSeqs).
-    if (!podeEscreverConfig()) return Promise.resolve();
+    if (modoProtegido() || !podeEscreverConfig()) return Promise.resolve();
     var db = D.db();
     var dados = {
       settings: db.settings,
@@ -279,7 +292,31 @@
         reconcileSeqs(db);
         return Promise.all(seeds);
       })
-      .then(function (r) { flushOutbox().then(notificarSync); return r; }); // envia alterações offline pendentes
+      .then(function (r) {
+        // O hydrate substituiu a cache pelos dados do servidor. Reaplica os
+        // registos ainda pendentes na fila (criados/editados offline) para que
+        // NÃO desapareçam do ecrã até um reload; e envia-os ao servidor.
+        var pendentes = outboxLer();
+        aplicarOpsNaCache(pendentes);
+        flushOutbox().then(notificarSync);
+        return r;
+      });
+  }
+  // Aplica operações da fila (upsert/delete) à cache em memória, por id.
+  function aplicarOpsNaCache(ops) {
+    if (!ops || !ops.length) return;
+    var db = D.db();
+    ops.forEach(function (op) {
+      var arr = db[op.table];
+      if (!Array.isArray(arr)) return;
+      if (op.kind === "delete") {
+        for (var i = 0; i < arr.length; i++) { if (arr[i] && arr[i].id === op.id) { arr.splice(i, 1); break; } }
+      } else if (op.obj) {
+        var achou = false;
+        for (var j = 0; j < arr.length; j++) { if (arr[j] && arr[j].id === op.obj.id) { arr[j] = op.obj; achou = true; break; } }
+        if (!achou) arr.push(op.obj);
+      }
+    });
   }
 
   // Evita números repetidos entre dispositivos: avança os contadores para além
