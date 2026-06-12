@@ -138,6 +138,7 @@
     turmas: { title: "Turmas", render: V.turmas, after: afterTurmas },
     cursos: { title: "Cursos", render: V.cursos, after: afterCursos },
     pagamentos: { title: "Pagamentos", render: V.pagamentos, after: afterPagamentos },
+    devedores: { title: "Devedores", render: V.devedores, after: afterDevedores },
     fecho: { title: "Fecho de Caixa", render: V.fecho, after: afterFecho },
     recibos: { title: "Recibos", render: V.recibos, after: afterRecibos },
     midas: { title: "MIDAS 2026", render: V.midas, after: afterMidas },
@@ -315,6 +316,23 @@
       var f = construirFecho();
       C.toast("A gerar o PDF do fecho…", "ok");
       C.baixarPDFHTML(f.html, "fechoDoc", "Fecho de Caixa " + f.data).then(function () { b.disabled = false; b.textContent = t; });
+    };
+  }
+
+  function afterDevedores() {
+    V.renderDevedores();
+    document.getElementById("devSearch").addEventListener("input", U.debounce(V.renderDevedores, 200));
+    document.getElementById("devCurso").addEventListener("change", V.renderDevedores);
+    document.getElementById("devCsv").onclick = function () {
+      var list = V._devedoresFiltrados();
+      if (!list.length) { C.toast("Sem devedores para exportar.", "err"); return; }
+      U.exportCSV("devedores-" + U.hoje() + ".csv",
+        ["Matrícula", "Nome", "Curso", "Contacto", "Em dívida (Kz)", "Último pagamento"],
+        list.map(function (x) {
+          var ult = D.ultimoPagamentoDe(x.e.id);
+          return [x.e.matricula || "", x.e.nome || "", x.e.curso || "", x.e.contacto || "",
+            U.num(x.divida), ult ? U.ymd(ult.data) : ""];
+        }));
     };
   }
 
@@ -929,7 +947,7 @@
       "[data-em-edit],[data-em-toggle],[data-em-del],[data-lixo-restore]," +
       "[data-fecho-print],[data-fecho-pdf],[data-fecho-del],[data-estagio-edit],[data-estagio-del]," +
       "[data-apt-view],[data-est-pag],[data-pag-pag],[data-rec-pag],[data-turma],[data-est-extrato]," +
-      "[data-bk-dl],[data-bk-restore],[data-bk-del]");
+      "[data-bk-dl],[data-bk-restore],[data-bk-del],[data-est-wa]");
     if (!t) return;
 
     var go = t.getAttribute("data-go");
@@ -980,6 +998,7 @@
     if ((id = t.getAttribute("data-est-ficha"))) { var ef = D.estudanteById(id); if (ef) C.viewFichaMatricula(ef); return; }
     if ((id = t.getAttribute("data-est-edit"))) { App.navigate("matricula", { id: id }); return; }
     if ((id = t.getAttribute("data-est-pay"))) { V.novoPagamento(id); return; }
+    if ((id = t.getAttribute("data-est-wa"))) { V.lembrarWhatsApp(id); return; }
     if ((id = t.getAttribute("data-est-del"))) {
       var est = D.estudanteById(id);
       C.confirm("Eliminar o estudante " + (est ? est.nome : "") + "? Os pagamentos associados serão mantidos.", function () {
