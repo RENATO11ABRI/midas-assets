@@ -6,6 +6,76 @@
   "use strict";
   var U = window.U, C = window.C, D = window.MidasData, V = window.V;
 
+  /* ---- Backups automáticos (snapshots locais em IndexedDB) --------------
+     Guarda cópias completas (D.export) num armazém separado do localStorage
+     (quota grande). Mantém as últimas 7. NÃO substitui a exportação manual
+     nem o servidor — é uma rede de segurança local extra. */
+  window.MidasBackup = (function () {
+    var DBN = "midas_backups", STORE = "snaps", MAX = 7, LAST_KEY = "midas_ultimo_backup";
+    var temIDB = (typeof indexedDB !== "undefined");
+    function abrir() {
+      return new Promise(function (res, rej) {
+        var r = indexedDB.open(DBN, 1);
+        r.onupgradeneeded = function () {
+          if (!r.result.objectStoreNames.contains(STORE)) r.result.createObjectStore(STORE, { keyPath: "id" });
+        };
+        r.onsuccess = function () { res(r.result); };
+        r.onerror = function () { rej(r.error); };
+      });
+    }
+    function comStore(modo, fn) {
+      return abrir().then(function (db) {
+        return new Promise(function (res, rej) {
+          var t = db.transaction(STORE, modo);
+          fn(t.objectStore(STORE), res, rej);
+          t.onerror = function () { rej(t.error); };
+        });
+      });
+    }
+    function listar() {
+      if (!temIDB) return Promise.resolve([]);
+      return comStore("readonly", function (st, res, rej) {
+        var out = [], cur = st.openCursor();
+        cur.onsuccess = function (e) {
+          var c = e.target.result;
+          if (c) { out.push({ id: c.value.id, motivo: c.value.motivo, tamanho: c.value.tamanho }); c.continue(); }
+          else { out.sort(function (a, b) { return a.id < b.id ? 1 : -1; }); res(out); }
+        };
+        cur.onerror = function () { rej(cur.error); };
+      });
+    }
+    function obter(id) {
+      return comStore("readonly", function (st, res, rej) {
+        var g = st.get(id); g.onsuccess = function () { res(g.result); }; g.onerror = function () { rej(g.error); };
+      });
+    }
+    function apagar(id) { return comStore("readwrite", function (st, res) { st.delete(id); res(true); }); }
+    function podar() {
+      return listar().then(function (arr) {
+        var excesso = arr.slice(MAX);
+        if (!excesso.length) return true;
+        return comStore("readwrite", function (st, res) { excesso.forEach(function (s) { st.delete(s.id); }); res(true); });
+      });
+    }
+    function criar(motivo) {
+      if (!temIDB) return Promise.resolve(false);
+      var id = new Date().toISOString();
+      var json = D.export();
+      var snap = { id: id, motivo: motivo || "auto", tamanho: json.length, json: json };
+      return comStore("readwrite", function (st, res) { st.put(snap); res(true); })
+        .then(function () { try { localStorage.setItem(LAST_KEY, id); } catch (e) {} return podar(); })
+        .then(function () { return true; });
+    }
+    function ultimo() { try { return localStorage.getItem(LAST_KEY) || ""; } catch (e) { return ""; } }
+    function autoSeNecessario() {
+      if (!temIDB) return Promise.resolve(false);
+      var last = ultimo();
+      if (last && (Date.now() - new Date(last).getTime()) < 20 * 3600 * 1000) return Promise.resolve(false);
+      return criar("auto").catch(function () { return false; });
+    }
+    return { suportado: temIDB, listar: listar, obter: obter, criar: criar, apagar: apagar, ultimo: ultimo, autoSeNecessario: autoSeNecessario };
+  })();
+
   /* ---- Aparência (temas, cores, modo dia/noite) ------------------------- */
   var TEMAS = {
     "Verde Midas":              { brandTop: "#072720", brandBottom: "#082e37", primary: "#0f4d3a", primaryHover: "#146449", heroMid: "#0b3f4c", heroEnd: "#12647a", accent: "#c9a24b", accentHover: "#a07f2f" },
@@ -645,6 +715,16 @@
         D.reset(); C.toast("Dados repostos.", "ok"); App.navigate("dashboard");
       }, { danger: true, yes: "Repor tudo" });
     };
+    // Backups automáticos (IndexedDB)
+    if (window.MidasBackup && window.MidasBackup.suportado) {
+      V.renderBackups();
+      var ba = document.getElementById("bkAuto");
+      if (ba) ba.onclick = function () {
+        ba.disabled = true;
+        window.MidasBackup.criar("manual").then(function () { ba.disabled = false; C.toast("Backup criado neste dispositivo.", "ok"); V.renderBackups(); })
+          .catch(function () { ba.disabled = false; C.toast("Não foi possível criar o backup.", "err"); });
+      };
+    }
     // Falhas de sincronização (só aparecem quando existem)
     if (window.MidasSync && window.MidasSync.nFalhas && window.MidasSync.nFalhas()) {
       V.renderFalhasSync();
@@ -848,7 +928,8 @@
       "[data-curso-edit],[data-curso-del],[data-pag-view],[data-pag-del],[data-lista-add],[data-lista-del]," +
       "[data-em-edit],[data-em-toggle],[data-em-del],[data-lixo-restore]," +
       "[data-fecho-print],[data-fecho-pdf],[data-fecho-del],[data-estagio-edit],[data-estagio-del]," +
-      "[data-apt-view],[data-est-pag],[data-pag-pag],[data-rec-pag],[data-turma],[data-est-extrato]");
+      "[data-apt-view],[data-est-pag],[data-pag-pag],[data-rec-pag],[data-turma],[data-est-extrato]," +
+      "[data-bk-dl],[data-bk-restore],[data-bk-del]");
     if (!t) return;
 
     var go = t.getAttribute("data-go");
@@ -871,6 +952,26 @@
       if (id === "ant" && V._recState.pagina > 1) V._recState.pagina--;
       else if (id === "seg") V._recState.pagina++;
       V.renderRecibos();
+      return;
+    }
+    if ((id = t.getAttribute("data-bk-dl"))) {
+      window.MidasBackup.obter(id).then(function (s) { if (s) U.downloadText("backup-midas-" + id.slice(0, 10) + ".json", s.json); });
+      return;
+    }
+    if ((id = t.getAttribute("data-bk-restore"))) {
+      C.confirm("Restaurar este backup? Os dados atuais (incluindo no servidor) serão SUBSTITUÍDOS pelos do backup.", function () {
+        window.MidasBackup.obter(id).then(function (s) {
+          if (!s) { C.toast("Backup não encontrado.", "err"); return; }
+          try { D.import(s.json); C.toast("Backup restaurado.", "ok"); App.navigate("dashboard"); }
+          catch (e) { C.toast("Backup inválido.", "err"); }
+        });
+      }, { danger: true, yes: "Restaurar e substituir" });
+      return;
+    }
+    if ((id = t.getAttribute("data-bk-del"))) {
+      C.confirm("Apagar este backup local?", function () {
+        window.MidasBackup.apagar(id).then(function () { C.toast("Backup apagado.", "ok"); V.renderBackups(); });
+      }, { danger: true, yes: "Apagar" });
       return;
     }
     if ((id = t.getAttribute("data-turma"))) { App.navigate("turmas", { turma: id }); return; }
@@ -1058,6 +1159,8 @@
     document.getElementById("menuToggle").addEventListener("click", openNav);
     document.getElementById("overlay").addEventListener("click", closeNav);
     setupSyncPill();
+    // Backup automático local (uma vez por dia), em segundo plano.
+    if (window.MidasBackup) window.MidasBackup.autoSeNecessario();
 
     window.addEventListener("hashchange", function () {
       App.render((location.hash || "#dashboard").slice(1));
