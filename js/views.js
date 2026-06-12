@@ -396,7 +396,7 @@
     if (!host) return;
     if (!list.length) { host.innerHTML = C.empty("", "Sem devedores com os filtros atuais. 🎉"); return; }
     var rows = list.map(function (x) {
-      var e = x.e, temWa = !!(e.whatsapp || e.contacto);
+      var e = x.e, temWa = !!U.whatsappURL(e.whatsapp || e.contacto);
       var ult = D.ultimoPagamentoDe(e.id);
       return "<tr><td>" + U.esc(e.nome) + "<br><small>" + U.esc(e.matricula || "") + "</small></td>" +
         "<td>" + U.esc(e.curso || "—") + "</td>" +
@@ -476,7 +476,7 @@
         '<button class="btn btn-light" onclick="App.closeModal()">Fechar</button>' +
         '<button class="btn btn-light" id="fichaEdit">Editar</button>' +
         '<button class="btn btn-gold" id="fichaPay">Novo pagamento</button>' +
-        (saldo > 0 ? '<button class="btn btn-light" id="fichaWhats">Lembrar no WhatsApp</button>' : "") +
+        (saldo > 0 && U.whatsappURL(e.whatsapp || e.contacto) ? '<button class="btn btn-light" id="fichaWhats">Lembrar no WhatsApp</button>' : "") +
         '<button class="btn btn-light" id="fichaCarne">Mapa de Propinas</button>' +
         '<button class="btn btn-light" id="fichaExtrato">Gerar Extrato</button>' +
         '<button class="btn btn-primary" id="fichaPrint">Imprimir histórico</button>',
@@ -487,16 +487,7 @@
         document.getElementById("fichaCarne").onclick = function () { C.closeModal(); C.verMapaPropinas(e); };
         document.getElementById("fichaPrint").onclick = function () { U.printElement("fichaDoc", "Ficha " + e.nome); };
         var fw = document.getElementById("fichaWhats");
-        if (fw) fw.onclick = function () {
-          var num = e.whatsapp || e.contacto;
-          if (!num) { C.toast("Sem contacto de WhatsApp para este estudante.", "err"); return; }
-          var msg = "Olá, " + e.nome + ". Aqui é a Secretaria do " + U.esc(D.db().settings.instituicao).replace(/&amp;/g, "&") +
-            ".\n\nConsta no sistema uma pendência no valor de " + U.moeda(saldo) +
-            ".\n\nPedimos que regularize o pagamento para manter a sua situação académica em dia.\n\n" +
-            D.db().settings.instituicao + " — " + D.db().settings.sistema + ".";
-          var url = U.whatsappURL(num, msg);
-          if (url) window.open(url, "_blank"); else C.toast("Contacto inválido.", "err");
-        };
+        if (fw) fw.onclick = function () { V.lembrarWhatsApp(id); };
       }
     });
   };
