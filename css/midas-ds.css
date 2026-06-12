@@ -334,7 +334,13 @@ table.data tbody tr:last-child td { border-bottom: 0; }
 .text-right { text-align: right !important; }
 .cell-strong { font-weight: 600; color: var(--ink); }
 .cell-sub { color: var(--muted); font-size: 12px; margin-top: 1px; }
-.row-actions { display: flex; gap: 6px; }
+.row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+/* Em ecrãs táteis (telemóvel/tablet), alvos maiores e mais espaçados —
+   evita tocar em "Eliminar" em vez de "Pagamento" nas ações de cada linha. */
+@media (pointer: coarse) {
+  .btn-sm { height: 40px; padding: 0 14px; }
+  .row-actions { gap: 8px; }
+}
 
 .who { display: flex; align-items: center; gap: 11px; }
 .who .av { width: 32px; height: 32px; border-radius: 9px; flex: 0 0 auto; display: grid; place-items: center;

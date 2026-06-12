@@ -33,9 +33,21 @@
         (opts.footer ? '<div class="modal-foot">' + opts.footer + "</div>" : "") +
       "</div>";
     host.classList.add("open");
+    host.removeAttribute("data-dirty");
     var close = function () { C.closeModal(); };
+    // Marca o modal como "com alterações" assim que o utilizador escreve/altera
+    // algo. Setar .value por código (nos onOpen) não dispara estes eventos, por
+    // isso não há falsos positivos.
+    var body = document.getElementById("modalBody");
+    var marcar = function () { host.setAttribute("data-dirty", "1"); };
+    if (body) { body.addEventListener("input", marcar); body.addEventListener("change", marcar); }
     host.querySelector(".modal-close").onclick = close;
-    host.querySelector(".modal-backdrop").onclick = close;
+    // Clicar fora (backdrop) já não apaga um formulário meio-preenchido sem aviso.
+    host.querySelector(".modal-backdrop").onclick = function () {
+      if (host.getAttribute("data-dirty") === "1" &&
+          !window.confirm("Tem alterações por guardar neste formulário. Fechar mesmo assim?")) return;
+      close();
+    };
     if (typeof opts.onOpen === "function") opts.onOpen(document.getElementById("modalBody"));
     return host;
   };

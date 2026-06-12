@@ -1,0 +1,10 @@
+# Ficheiros que NÃO devem ser publicados no site (continuam no repositório).
+# Evita expor o esquema/políticas da base de dados, documentação interna,
+# testes e o protótipo do redesign (que mostrava credenciais de demonstração).
+supabase
+docs
+test
+redesign
+redesign.html
+README.md
+package.json

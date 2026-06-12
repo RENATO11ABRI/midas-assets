@@ -172,12 +172,14 @@
   }
 
   function afterPagamentos() {
+    V._pagState.pagina = 1;
     V.renderPagamentos();
     document.getElementById("novoPag").onclick = function () { V.novoPagamento(null); };
+    var resetPag = function () { V._pagState.pagina = 1; V.renderPagamentos(); };
     ["pagSearch", "pagFiltroCurso", "pagFiltroEmol", "pagFiltroUnidade", "pagDe", "pagAte"].forEach(function (id) {
       var el = document.getElementById(id);
       el.addEventListener(el.tagName === "INPUT" && el.type !== "date" ? "input" : "change",
-        U.debounce(V.renderPagamentos, 150));
+        U.debounce(resetPag, 150));
     });
     document.getElementById("expPagCsv").onclick = exportPagamentosCSV;
     document.getElementById("expPagPdf").onclick = function () {
@@ -247,13 +249,15 @@
   }
 
   function afterRecibos() {
+    V._recState.pagina = 1;
     V.renderRecibos();
     // Emitir recibo = mesmo fluxo do Registar Pagamento (modal único)
     document.getElementById("recNovo").onclick = function () { V.novoPagamento(null); };
     // Pesquisa / reimpressão
+    var resetRec = function () { V._recState.pagina = 1; V.renderRecibos(); };
     ["recSearch", "recDe", "recAte"].forEach(function (id) {
       var el = document.getElementById(id);
-      el.addEventListener(el.type === "date" ? "change" : "input", U.debounce(V.renderRecibos, 150));
+      el.addEventListener(el.type === "date" ? "change" : "input", U.debounce(resetRec, 150));
     });
   }
 
@@ -829,7 +833,7 @@
       "[data-curso-edit],[data-curso-del],[data-pag-view],[data-pag-del],[data-lista-add],[data-lista-del]," +
       "[data-em-edit],[data-em-toggle],[data-em-del],[data-lixo-restore]," +
       "[data-fecho-print],[data-fecho-pdf],[data-fecho-del],[data-estagio-edit],[data-estagio-del]," +
-      "[data-apt-view],[data-est-pag],[data-turma],[data-est-extrato]");
+      "[data-apt-view],[data-est-pag],[data-pag-pag],[data-rec-pag],[data-turma],[data-est-extrato]");
     if (!t) return;
 
     var go = t.getAttribute("data-go");
@@ -840,6 +844,18 @@
       if (id === "ant" && V._estState.pagina > 1) V._estState.pagina--;
       else if (id === "seg") V._estState.pagina++;
       V.renderEstudantesTable();
+      return;
+    }
+    if ((id = t.getAttribute("data-pag-pag"))) {
+      if (id === "ant" && V._pagState.pagina > 1) V._pagState.pagina--;
+      else if (id === "seg") V._pagState.pagina++;
+      V.renderPagamentos();
+      return;
+    }
+    if ((id = t.getAttribute("data-rec-pag"))) {
+      if (id === "ant" && V._recState.pagina > 1) V._recState.pagina--;
+      else if (id === "seg") V._recState.pagina++;
+      V.renderRecibos();
       return;
     }
     if ((id = t.getAttribute("data-turma"))) { App.navigate("turmas", { turma: id }); return; }

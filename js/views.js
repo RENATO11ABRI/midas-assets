@@ -346,13 +346,18 @@
     });
   };
   V._paginacao = function (res) {
-    var ini = (res.pagina - 1) * res.porPagina + 1;
-    var fim = Math.min(res.total, res.pagina * res.porPagina);
-    if (res.nPaginas <= 1) return '<p class="help mt">' + res.total + " estudante(s).</p>";
+    return V._pagerHTML(res.pagina, res.porPagina, res.total, "est-pag", "estudante(s)");
+  };
+  // Controlo de paginação genérico (reutilizado por estudantes/pagamentos/recibos).
+  V._pagerHTML = function (pagina, porPagina, total, attr, rotulo) {
+    var nPaginas = Math.max(1, Math.ceil(total / porPagina));
+    var ini = (pagina - 1) * porPagina + 1;
+    var fim = Math.min(total, pagina * porPagina);
+    if (nPaginas <= 1) return '<p class="help mt">' + total + " " + (rotulo || "registo(s)") + ".</p>";
     return '<div class="paginacao">' +
-      '<button class="btn btn-light btn-sm" data-est-pag="ant"' + (res.pagina <= 1 ? " disabled" : "") + ">‹ Anterior</button>" +
-      '<span class="pag-info">' + ini + "–" + fim + " de " + res.total + " · página " + res.pagina + "/" + res.nPaginas + "</span>" +
-      '<button class="btn btn-light btn-sm" data-est-pag="seg"' + (res.pagina >= res.nPaginas ? " disabled" : "") + ">Seguinte ›</button>" +
+      '<button class="btn btn-light btn-sm" data-' + attr + '="ant"' + (pagina <= 1 ? " disabled" : "") + ">‹ Anterior</button>" +
+      '<span class="pag-info">' + ini + "–" + fim + " de " + total + " · página " + pagina + "/" + nPaginas + "</span>" +
+      '<button class="btn btn-light btn-sm" data-' + attr + '="seg"' + (pagina >= nPaginas ? " disabled" : "") + ">Seguinte ›</button>" +
       "</div>";
   };
 
@@ -577,6 +582,7 @@
       return true;
     }).sort(U.by("data"));
   };
+  V._pagState = { pagina: 1 };
   V.renderPagamentos = function () {
     var list = V._filtrarPagamentos();
     var hoje = U.hoje(), mes = U.ym(U.agoraISO());
@@ -594,7 +600,12 @@
     if (!list.length) { host.innerHTML = C.empty("", "Nenhum pagamento encontrado."); return; }
     // Pagamentos são append-only para a secretaria: só admin/direção veem "Eliminar".
     var podeEliminar = !window.MidasUsers || ["admin", "directora"].indexOf(D.auth().perfil) >= 0;
-    var rows = list.map(function (p) {
+    // Paginação (a tabela pode ter milhares de linhas — não renderizar tudo).
+    var ppg = 50;
+    var nPg = Math.max(1, Math.ceil(list.length / ppg));
+    V._pagState.pagina = Math.min(nPg, Math.max(1, V._pagState.pagina));
+    var pageList = list.slice((V._pagState.pagina - 1) * ppg, V._pagState.pagina * ppg);
+    var rows = pageList.map(function (p) {
       return "<tr><td>" + U.dataPT(p.data) + "</td>" +
         "<td><strong>" + U.esc(p.recibo) + "</strong></td>" +
         "<td>" + U.esc(p.estudanteNome) + "<br><small>" + U.esc(p.curso || "") + "</small></td>" +
@@ -609,7 +620,7 @@
     host.innerHTML = '<div class="table-wrap"><table class="data"><thead><tr>' +
       "<th>Data</th><th>Recibo</th><th>Estudante / Curso</th><th>Emolumento</th><th>Forma</th>" +
       '<th class="text-right">Valor</th><th>Ações</th></tr></thead><tbody>' + rows +
-      "</tbody></table></div>";
+      "</tbody></table></div>" + V._pagerHTML(V._pagState.pagina, ppg, list.length, "pag-pag", "pagamento(s)");
   };
 
   // Resolve um texto escrito para UM estudante (delega na camada de dados, que
@@ -950,6 +961,7 @@
           '<div class="field"><label>Até</label><input type="date" id="recAte"></div>' +
         '</div><div id="recTable"></div></div>';
   };
+  V._recState = { pagina: 1 };
   V.renderRecibos = function () {
     var q = (document.getElementById("recSearch").value || "").toLowerCase();
     var de = document.getElementById("recDe").value, ate = document.getElementById("recAte").value;
@@ -965,7 +977,11 @@
     }).sort(U.by("data"));
     var host = document.getElementById("recTable");
     if (!list.length) { host.innerHTML = C.empty("", "Nenhum recibo encontrado."); return; }
-    var rows = list.map(function (p) {
+    var ppr = 50;
+    var nPr = Math.max(1, Math.ceil(list.length / ppr));
+    V._recState.pagina = Math.min(nPr, Math.max(1, V._recState.pagina));
+    var pageList = list.slice((V._recState.pagina - 1) * ppr, V._recState.pagina * ppr);
+    var rows = pageList.map(function (p) {
       return "<tr><td><strong>" + U.esc(p.recibo) + "</strong></td>" +
         "<td>" + U.dataPT(p.data) + "</td>" +
         "<td>" + U.esc(p.estudanteNome) + "<br><small>" + U.esc(p.contacto || "") + "</small></td>" +
@@ -977,7 +993,7 @@
     host.innerHTML = '<div class="table-wrap"><table class="data"><thead><tr>' +
       "<th>Nº Recibo</th><th>Data</th><th>Estudante</th><th>Curso</th><th>Emolumento</th>" +
       '<th class="text-right">Valor</th><th></th></tr></thead><tbody>' + rows + "</tbody></table></div>" +
-      '<p class="help mt">' + list.length + " recibo(s).</p>";
+      V._pagerHTML(V._recState.pagina, ppr, list.length, "rec-pag", "recibo(s)");
   };
 
   /* =======================================================================
@@ -1842,7 +1858,18 @@
       if (!ev.target.closest(".bi-chip-x")) return;
       if (hid) hid.value = ""; inp.value = ""; setChip(null); inp.focus();
     });
-    document.addEventListener("click", function (ev) { if (inp.parentNode && !inp.parentNode.contains(ev.target)) pop.hidden = true; });
+    // Fecha o popover ao clicar fora — UM ÚNICO listener global (instalado uma
+    // vez), em vez de um por cada chamada, que se acumulavam (fuga de memória).
+    if (!V._biGlobalWired) {
+      document.addEventListener("click", function (ev) {
+        var pops = document.querySelectorAll(".busca-int-pop");
+        for (var i = 0; i < pops.length; i++) {
+          var wrap = pops[i].parentNode;
+          if (wrap && !wrap.contains(ev.target)) pops[i].hidden = true;
+        }
+      });
+      V._biGlobalWired = true;
+    }
     // Estado inicial: se já vier um estudante ligado (ex.: pagamento aberto a partir da ficha).
     if (hid && hid.value) setChip(D.estudanteById(hid.value));
   };
