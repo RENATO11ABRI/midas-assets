@@ -922,73 +922,14 @@
     return true;
   };
 
-  V._criarPagamento = function (est, extra) {
-    var data = extra.data || U.agoraISO();
-    var dia = U.ymd(data);
-    // C6: rejeita datas inválidas (ex.: "31/05/2026" vindo de CSV) antes de
-    // consumir um número de recibo.
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dia) || isNaN(new Date(dia + "T00:00:00").getTime())) {
-      return Promise.reject(new Error("Data do pagamento inválida (" + data + "). Use o formato AAAA-MM-DD."));
-    }
-    // C5: não registar num dia cujo caixa já foi fechado.
-    if (D.diaFechadoPara(data)) {
-      return Promise.reject(new Error("O caixa do dia " + dia + " já está fechado — reabra o fecho desse dia para registar."));
-    }
-    return D.alocarRecibo().then(function (numero) {
-      // Suporta vários emolumentos por recibo (extra.itens). Mantém valorPago
-      // como TOTAL e emolumento como resumo, para Fecho/relatórios continuarem
-      // a funcionar (que somam valorPago e mostram emolumento).
-      var itens = (extra.itens && extra.itens.length) ? extra.itens : null;
-      var valorTotal = itens
-        ? itens.reduce(function (s, it) { return s + (Number(it.valorPago) || 0); }, 0)
-        : (Number(extra.valorPago) || 0);
-      var resumoEmol = itens
-        ? (itens.length === 1 ? itens[0].emolumento : itens.map(function (it) { return it.emolumento; }).join(" + "))
-        : (extra.emolumento || "Outros");
-      var pag = {
-        recibo: numero,
-        estudanteId: est.id, estudanteNome: est.nome, matricula: est.matricula,
-        contacto: est.contacto, curso: est.curso, periodo: est.periodo,
-        unidade: est.unidade, tipoCurso: est.tipoCurso, duracao: est.duracao, regime: est.regime,
-        data: data,
-        emolumentoId: itens && itens.length === 1 ? itens[0].emolumentoId : (extra.emolumentoId || ""),
-        emolumento: resumoEmol,
-        categoria: itens ? (itens[0].categoria || "") : (extra.categoria || ""),
-        itens: itens || undefined,
-        mesReferencia: extra.mesReferencia || "",
-        valorPago: valorTotal,
-        formaPagamento: extra.formaPagamento || "",
-        funcionario: extra.funcionario || "",
-        referencia: extra.referencia || "",
-        observacoes: extra.observacoes || ""
-      };
-      return D.savePagamento(pag);
-    });
-  };
+  // Delega na camada de dados (lógica de dinheiro centralizada e testável).
+  V._criarPagamento = function (est, extra) { return D.criarPagamento(est, extra); };
 
   /* =======================================================================
      5b. FECHO DE CAIXA
      ======================================================================= */
   V._FORMAS_FECHO = ["Dinheiro", "TPA", "Transferência", "Multicaixa Express"];
-  V._resumoCaixa = function (ymd, funcionario) {
-    var pags = D.pagamentosDoDia(ymd, funcionario);
-    var totais = {};
-    V._FORMAS_FECHO.forEach(function (f) { totais[f] = 0; });
-    totais["Outras"] = 0;
-    var porEmol = {}, porFunc = {};
-    var totalGeral = 0;
-    pags.forEach(function (p) {
-      var v = Number(p.valorPago) || 0; totalGeral += v;
-      var f = p.formaPagamento;
-      if (V._FORMAS_FECHO.indexOf(f) >= 0) totais[f] += v; else totais["Outras"] += v;
-      var fn = p.funcionario || "—"; porFunc[fn] = (porFunc[fn] || 0) + v;
-      // por emolumento (expande os itens quando o recibo tem vários)
-      if (p.itens && p.itens.length) {
-        p.itens.forEach(function (it) { var k = it.emolumento || "Outros"; porEmol[k] = (porEmol[k] || 0) + (Number(it.valorPago) || 0); });
-      } else { var k = p.emolumento || "Outros"; porEmol[k] = (porEmol[k] || 0) + v; }
-    });
-    return { recibos: pags.slice().sort(U.by("data")), totais: totais, porEmol: porEmol, porFunc: porFunc, totalGeral: totalGeral };
-  };
+  V._resumoCaixa = function (ymd, funcionario) { return D.resumoCaixa(ymd, funcionario); };
   // Tabela "chave → valor (moeda)" para os detalhes do fecho.
   V._tabelaTotais = function (titulo, obj) {
     var keys = Object.keys(obj || {}).filter(function (k) { return (obj[k] || 0) !== 0; }).sort();
