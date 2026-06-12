@@ -284,6 +284,13 @@
       if (window.MidasUsers && perfil !== "admin" && perfil !== "directora") {
         C.toast("Apenas o Administrador/Diretora pode fechar o caixa.", "err"); return;
       }
+      var btn = this; btn.disabled = true;
+      // Traz os pagamentos mais recentes do servidor ANTES de fechar, para o
+      // fecho não omitir recibos registados por outra secretária.
+      var pronto = (window.MidasSync && window.MidasSync.rehidratar) ? window.MidasSync.rehidratar(false) : Promise.resolve();
+      pronto.then(function () { btn.disabled = false; gravarFecho(); });
+    };
+    function gravarFecho() {
       var data = document.getElementById("fcData").value || hoje;
       var func = document.getElementById("fcFunc").value || "";
       var resumo = V._resumoCaixa(data, func);

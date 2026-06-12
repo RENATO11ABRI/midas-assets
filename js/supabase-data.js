@@ -639,11 +639,45 @@
     }
   };
 
+  /* ---- Re-hidratação leve das tabelas "quentes" ---------------------
+     Sem realtime, a app só via os dados do servidor no login. Isto refaz o
+     fetch de estudantes/pagamentos/fechos (as tabelas que mudam entre
+     dispositivos), reconcilia contadores e reaplica a fila offline. Evita
+     cobrança dupla e fechos de caixa incompletos. */
+  var _aRehidratar = false;
+  function rehidratarQuentes(recarregar) {
+    if (!navigator.onLine || _aRehidratar || modoProtegido()) return Promise.resolve(false);
+    if (!_perfil || !_perfil.id) return Promise.resolve(false); // só com sessão
+    _aRehidratar = true;
+    var db = D.db();
+    return Promise.all([fetchAll("estudantes"), fetchAll("pagamentos"), fetchAll("fechos")])
+      .then(function (r) {
+        db.estudantes = r[0]; db.pagamentos = r[1]; db.fechos = r[2] || [];
+        reconcileSeqs(db);
+        aplicarOpsNaCache(outboxLer()); // preserva os registos offline pendentes
+        notificarSync();
+        // Re-renderiza a vista atual SÓ se não houver um modal/formulário aberto
+        // (não interromper a secretária a meio de um registo).
+        if (recarregar && window.App && App.refresh) {
+          var mh = document.getElementById("modalHost");
+          var appEl = document.getElementById("app");
+          if ((!mh || !mh.classList.contains("open")) && appEl && !appEl.hidden) {
+            try { App.refresh(); } catch (e) {}
+          }
+        }
+        return true;
+      })
+      .catch(function () { return false; })
+      .then(function (v) { _aRehidratar = false; return v; });
+  }
+
   /* ---- Estado de sincronização / offline ---------------------------- */
   window.MidasSync = {
     online: function () { return navigator.onLine; },
     pendentes: function () { return outboxLer().length; },
     sincronizar: function () { return flushOutbox().then(function (ok) { notificarSync(); return ok; }); },
+    // Atualiza as tabelas quentes a partir do servidor (devolve Promise).
+    rehidratar: function (recarregar) { return rehidratarQuentes(recarregar); },
     // Falhas: operações que o servidor rejeitou (não se perdem; ficam para revisão).
     nFalhas: function () { return falhasLer().length; },
     falhas: function () { return falhasLer(); },
@@ -664,7 +698,16 @@
     _onChange: null,
     aoMudar: function (cb) { this._onChange = cb; }
   };
-  window.addEventListener("online", function () { flushOutbox().then(notificarSync); });
+  window.addEventListener("online", function () { flushOutbox().then(function () { rehidratarQuentes(true); }); });
   window.addEventListener("offline", notificarSync);
+  // Ao voltar ao separador / focar a janela: sincroniza e traz dados frescos.
+  window.addEventListener("focus", function () { flushOutbox().then(function () { rehidratarQuentes(true); }); });
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible") { flushOutbox().then(function () { rehidratarQuentes(true); }); }
+  });
+  // Sondagem periódica (silenciosa) enquanto a app está visível.
+  setInterval(function () {
+    if (document.visibilityState === "visible") rehidratarQuentes(false);
+  }, 90000);
 
 })(window);
