@@ -1516,6 +1516,12 @@
       "</div>" +
       "<p class='help mt'>“Repor catálogo de cursos” substitui apenas a lista de cursos pelo catálogo oficial, mantendo estudantes e pagamentos.</p>" +
       "</div>" +
+      (window.MidasBackup && window.MidasBackup.suportado
+        ? '<div class="card mt"><div class="card-head"><h3>Backups automáticos</h3>' +
+            '<button class="btn btn-primary" id="bkAuto">Criar backup agora</button></div>' +
+            '<p class="help">São guardadas automaticamente cópias completas neste dispositivo (uma por dia, as 7 mais recentes). Para uma cópia fora do dispositivo, use também “Exportar backup (JSON)”.</p>' +
+            '<div id="bkAutoArea"></div></div>'
+        : "") +
       (window.MidasSync && window.MidasSync.nFalhas && window.MidasSync.nFalhas()
         ? '<div class="card mt" id="falhasCard"><div class="card-head"><h3>⚠ Falhas de sincronização</h3>' +
             '<div class="flex" style="gap:8px"><button class="btn btn-primary" id="falhasRetry">Tentar novamente</button>' +
@@ -1527,6 +1533,26 @@
         '<button class="btn btn-light" id="lixoEsvaziar">Esvaziar reciclagem</button></div>' +
         '<p class="help">Estudantes e pagamentos eliminados ficam aqui e podem ser restaurados.</p>' +
         '<div id="lixoArea"></div></div>';
+  };
+  V.renderBackups = function () {
+    var host = document.getElementById("bkAutoArea");
+    if (!host || !window.MidasBackup) return;
+    window.MidasBackup.listar().then(function (arr) {
+      if (!arr || !arr.length) { host.innerHTML = C.empty("", "Ainda sem backups automáticos. É criado um quando abrir a app cada dia."); return; }
+      var rows = arr.map(function (s) {
+        var kb = Math.max(1, Math.round((s.tamanho || 0) / 1024));
+        return "<tr><td>" + U.dataHoraPT(s.id) + "</td>" +
+          "<td>" + U.esc(s.motivo === "manual" ? "Manual" : "Automático") + "</td>" +
+          "<td class='text-right num'>" + kb + " KB</td>" +
+          '<td><div class="row-actions">' +
+            '<button class="btn btn-light btn-sm" data-bk-dl="' + U.esc(s.id) + '">Descarregar</button>' +
+            '<button class="btn btn-light btn-sm" data-bk-restore="' + U.esc(s.id) + '">Restaurar</button>' +
+            '<button class="btn btn-danger btn-sm" data-bk-del="' + U.esc(s.id) + '">Apagar</button>' +
+          "</div></td></tr>";
+      }).join("");
+      host.innerHTML = '<div class="table-wrap"><table class="data"><thead><tr><th>Data/Hora</th><th>Tipo</th><th class="text-right">Tamanho</th><th>Ações</th></tr></thead><tbody>' +
+        rows + "</tbody></table></div>";
+    }).catch(function () { host.innerHTML = C.empty("", "Não foi possível ler os backups locais."); });
   };
   V.renderFalhasSync = function () {
     var host = document.getElementById("falhasArea");
