@@ -200,6 +200,17 @@ test("migrarReferenciasCurso migra estudantes/pagamentos e preserva a dívida", 
   assert.strictEqual(D.saldoDevedor(db.estudantes[0]), 25000); // dívida sobrevive
 });
 
+test("resumoCobranca separa vencido (passado) de futuro", function () {
+  const db = D.db();
+  db.cursos = [{ id: "c1", nome: "C", valorInscricao: 0, valorMatricula: 0, valorMensalidade: 1000, valorTotal: 18000, duracao: "18 meses", valorEstagio: 0, valorDefesa: 0, valorCertificado: 0 }];
+  db.estudantes = [{ id: "e1", nome: "Ana", curso: "C", dataMatricula: "2020-01-10" }];
+  db.pagamentos = [];
+  const r = D.resumoCobranca(db.estudantes[0]);
+  assert.strictEqual(r.total, 18000);
+  assert.strictEqual(r.vencido, 18000); // matrícula em 2020 → tudo vencido
+  assert.strictEqual(r.futuro, 0);
+});
+
 test("lixo: eliminar devolve o item, e restaurar repõe o registo", function () {
   const db = D.db();
   db.estudantes = [{ id: "e1", nome: "Ana" }];

@@ -795,6 +795,19 @@
         totalDivida: itens.reduce(function (s, it) { return s + it.saldo; }, 0)
       };
     },
+    // Separa a dívida de propinas em VENCIDA (já passou o vencimento) e A VENCER,
+    // a partir do mapa de propinas — para a vista de cobrança ser acionável.
+    resumoCobranca: function (est) {
+      var m = this.mapaPropinas(est);
+      var hoje = ymdLocal(new Date());
+      var venc = 0, fut = 0;
+      m.itens.forEach(function (it) {
+        var s = Number(it.saldo) || 0;
+        if (s <= 0) return;
+        if (it.vencimento && it.vencimento < hoje) venc += s; else fut += s;
+      });
+      return { vencido: venc, futuro: fut, total: m.totalDivida };
+    },
 
     // ---- Leads (pré-matrícula / funil) ------------------------------------
     leads: function () { return this.load().leads || []; },
