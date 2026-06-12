@@ -712,6 +712,30 @@
           return frags.some(function (f) { return textos.some(function (t) { return t.indexOf(f) >= 0; }); });
         });
       };
+      // C8: total pago numa categoria (rateia recibos multi-emolumento).
+      var pagoCategoria = function (frags) {
+        var tot = 0;
+        pags.forEach(function (p) {
+          if (p.itens && p.itens.length) {
+            p.itens.forEach(function (it) {
+              if (frags.some(function (f) { return self._normNome((it.categoria || "") + " " + (it.emolumento || "")).indexOf(f) >= 0; })) tot += Number(it.valorPago) || 0;
+            });
+          } else if (frags.some(function (f) { return self._normNome((p.categoria || "") + " " + (p.emolumento || "")).indexOf(f) >= 0; })) {
+            tot += Number(p.valorPago) || 0;
+          }
+        });
+        return tot;
+      };
+      // Valor configurado esperado para a categoria (maior emolumento que casa).
+      var emols = this.load().emolumentos || [];
+      var valorEsperado = function (frags) {
+        var max = 0;
+        emols.forEach(function (em) {
+          var t = self._normNome((em.categoria || "") + " " + (em.nome || ""));
+          if (frags.some(function (f) { return t.indexOf(f) >= 0; })) max = Math.max(max, Number(em.valor) || 0);
+        });
+        return max;
+      };
       var estagioConcluido = this.estagiosDeEstudante(est.id).some(function (e) {
         return self._normNome(e.tipo).indexOf("curricular") >= 0 && self._normNome(e.estado).indexOf("conclu") >= 0;
       });
@@ -719,7 +743,13 @@
         var ok;
         if (c.tipo === "propinas") ok = self.saldoDevedor(est) <= 0;
         else if (c.tipo === "estagio") ok = estagioConcluido;
-        else ok = temAlgum(c.frags || [c.frag]);
+        else {
+          var fr = c.frags || [c.frag];
+          var esp = valorEsperado(fr);
+          // Se há valor configurado, exige o montante pago >= esperado; senão,
+          // basta existir um pagamento dessa categoria (retrocompatível).
+          ok = esp > 0 ? (pagoCategoria(fr) >= esp - 0.005) : temAlgum(fr);
+        }
         return { id: c.id, nome: c.nome, ok: ok };
       });
       var motivos = crit.filter(function (c) { return !c.ok; }).map(function (c) { return c.nome; });
@@ -806,7 +836,11 @@
         if (s <= 0) return;
         if (it.vencimento && it.vencimento < hoje) venc += s; else fut += s;
       });
-      return { vencido: venc, futuro: fut, total: m.totalDivida };
+      // Bolsa/desconto abate primeiro ao vencido e depois ao a-vencer.
+      var desc = Number(est && est.desconto) || 0;
+      var aV = Math.min(desc, venc); venc -= aV; desc -= aV;
+      var aF = Math.min(desc, fut); fut -= aF;
+      return { vencido: venc, futuro: fut, total: Math.max(0, m.totalDivida - (Number(est && est.desconto) || 0)), desconto: Number(est && est.desconto) || 0 };
     },
 
     // ---- Leads (pré-matrícula / funil) ------------------------------------
@@ -839,7 +873,8 @@
       var total = curso ? (Number(curso.valorTotal) || 0) : 0;
       if (!total) return 0;
       var pago = idxPago ? (idxPago[est.id] || 0) : this.totalPagoEstudante(est.id);
-      return Math.max(0, total - pago);
+      var desconto = Number(est && est.desconto) || 0; // bolsa/desconto por estudante
+      return Math.max(0, total - desconto - pago);
     },
     // Índice estudanteId → total pago, num único varrimento dos pagamentos.
     // Transforma cálculos O(estudantes × pagamentos) em O(estudantes + pagamentos).

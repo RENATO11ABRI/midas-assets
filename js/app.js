@@ -858,6 +858,7 @@
           emolumentoId: fd.get("emolumentoId"),
           funcionario: fd.get("funcionario"),
           estado: fd.get("estado") || "ativo",
+          desconto: U.numInput(fd.get("desconto")),
           observacoes: fd.get("observacoes")
         };
         D.saveEstudante(est);

@@ -200,6 +200,28 @@ test("migrarReferenciasCurso migra estudantes/pagamentos e preserva a dívida", 
   assert.strictEqual(D.saldoDevedor(db.estudantes[0]), 25000); // dívida sobrevive
 });
 
+test("saldoDevedor aplica desconto/bolsa do estudante", function () {
+  const db = D.db();
+  db.cursos = [{ id: "c1", nome: "C", valorTotal: 100000 }];
+  db.estudantes = [{ id: "e1", nome: "A", curso: "C", desconto: 20000 }];
+  db.pagamentos = [{ id: "p1", estudanteId: "e1", valorPago: 30000 }];
+  assert.strictEqual(D.saldoDevedor(db.estudantes[0]), 50000); // 100000 - 20000 - 30000
+});
+
+test("aptidaoDefesa: emolumento da defesa exige o valor configurado (C8)", function () {
+  const db = D.db();
+  db.cursos = [{ id: "c1", nome: "C", valorTotal: 0 }];
+  db.emolumentos = [{ id: "em1", nome: "Emolumentos da Defesa", categoria: "Emolumentos da Defesa", valor: 150000, estado: "ativo" }];
+  db.estudantes = [{ id: "e1", nome: "Y", curso: "C", desconto: 0 }];
+  db.estagios = [];
+  db.pagamentos = [{ id: "p1", estudanteId: "e1", categoria: "Emolumentos da Defesa", emolumento: "Emolumentos da Defesa", valorPago: 5000 }];
+  const cParcial = D.aptidaoDefesa(db.estudantes[0]).criterios.filter(function (c) { return c.id === "defesa"; })[0];
+  assert.strictEqual(cParcial.ok, false); // 5000 < 150000
+  db.pagamentos = [{ id: "p2", estudanteId: "e1", categoria: "Emolumentos da Defesa", emolumento: "Emolumentos da Defesa", valorPago: 150000 }];
+  const cTotal = D.aptidaoDefesa(db.estudantes[0]).criterios.filter(function (c) { return c.id === "defesa"; })[0];
+  assert.strictEqual(cTotal.ok, true); // pago o valor completo
+});
+
 test("resumoCobranca separa vencido (passado) de futuro", function () {
   const db = D.db();
   db.cursos = [{ id: "c1", nome: "C", valorInscricao: 0, valorMatricula: 0, valorMensalidade: 1000, valorTotal: 18000, duracao: "18 meses", valorEstagio: 0, valorDefesa: 0, valorCertificado: 0 }];
