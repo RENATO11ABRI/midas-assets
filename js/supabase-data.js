@@ -236,6 +236,10 @@
     });
   }
 
+  // Verdadeiro quando a tabela própria `lixo` existe (depois de correr lixo.sql).
+  // Mantém compatibilidade: enquanto não existir, a reciclagem viaja na config.
+  var _lixoTabela = false;
+
   function podeEscreverConfig() {
     return _perfil.perfil === "admin" || _perfil.perfil === "directora";
   }
@@ -250,8 +254,11 @@
       settings: db.settings,
       periodos: db.periodos, regimes: db.regimes, tiposCurso: db.tiposCurso,
       unidades: db.unidades, formasPagamento: db.formasPagamento,
-      funcionarios: db.funcionarios, lixo: db.lixo
+      funcionarios: db.funcionarios
     };
+    // Enquanto a tabela própria `lixo` não existir, a reciclagem continua a viajar
+    // dentro da config (compatibilidade). Quando existir, sai daqui (tabela própria).
+    if (!_lixoTabela) dados.lixo = db.lixo;
     return sb.from("configuracoes")
       .upsert({ id: 1, dados: dados, atualizado_em: new Date().toISOString() })
       .then(function (res) { if (res.error) console.error("configuracoes", res.error); });
@@ -291,6 +298,16 @@
         }
         reconcileSeqs(db);
         return Promise.all(seeds);
+      })
+      .then(function () {
+        // Tabela própria da reciclagem (se já existir): passa a ser a fonte de
+        // verdade do lixo. Se a tabela ainda não foi criada (lixo.sql não corrido),
+        // o erro é ignorado e mantém-se o lixo vindo da configuração.
+        return sb.from("lixo").select("dados").order("criado_em", { ascending: false }).limit(1000)
+          .then(function (res) {
+            if (!res.error) { _lixoTabela = true; db.lixo = (res.data || []).map(function (x) { return x.dados; }); }
+          })
+          .catch(function () {});
       })
       .then(function (r) {
         // O hydrate substituiu a cache pelos dados do servidor. Reaplica os
@@ -341,7 +358,7 @@
   var base = {};
   ["save", "saveEstudante", "deleteEstudante", "savePagamento", "deletePagamento",
    "saveCurso", "deleteCurso", "saveEmolumento", "deleteEmolumento", "toggleEmolumento",
-   "restaurarLixo", "reporCatalogo", "reset", "import",
+   "restaurarLixo", "esvaziarLixo", "reporCatalogo", "reset", "import",
    "saveFecho", "deleteFecho", "saveEstagio", "deleteEstagio",
    "saveLead", "deleteLead", "queryEstudantes"].forEach(function (m) { base[m] = D[m].bind(D); });
 
@@ -377,10 +394,16 @@
   D.save = function () { base.save(); if (!_suppressConfig) pushConfig(); };
 
   D.saveEstudante = function (est) { var r = quiet(base.saveEstudante, [est]); upsertRow("estudantes", r); return r; };
-  D.deleteEstudante = function (id) { quiet(base.deleteEstudante, [id]); deleteRow("estudantes", id); pushConfig(); };
+  D.deleteEstudante = function (id) {
+    var lx = quiet(base.deleteEstudante, [id]); deleteRow("estudantes", id);
+    if (_lixoTabela) { if (lx) upsertRow("lixo", lx); } else pushConfig();
+  };
 
   D.savePagamento = function (pag) { var r = quiet(base.savePagamento, [pag]); upsertRow("pagamentos", r); return r; };
-  D.deletePagamento = function (id) { quiet(base.deletePagamento, [id]); deleteRow("pagamentos", id); pushConfig(); };
+  D.deletePagamento = function (id) {
+    var lx = quiet(base.deletePagamento, [id]); deleteRow("pagamentos", id);
+    if (_lixoTabela) { if (lx) upsertRow("lixo", lx); } else pushConfig();
+  };
 
   D.saveFecho = function (f) { var r = quiet(base.saveFecho, [f]); upsertRow("fechos", r); return r; };
   D.deleteFecho = function (id) { quiet(base.deleteFecho, [id]); deleteRow("fechos", id); };
@@ -406,8 +429,14 @@
       if (item.tipo === "estudante") upsertRow("estudantes", item.registo);
       else if (item.tipo === "pagamento") upsertRow("pagamentos", item.registo);
     }
-    if (ok) pushConfig(); // a reciclagem (lixo) mudou
+    if (ok) { if (_lixoTabela) deleteRow("lixo", id); else pushConfig(); }
     return ok;
+  };
+  D.esvaziarLixo = function () {
+    var ids = (D.db().lixo || []).map(function (x) { return x.id; });
+    quiet(base.esvaziarLixo, []);
+    if (_lixoTabela) ids.forEach(function (lid) { deleteRow("lixo", lid); });
+    else pushConfig();
   };
 
   // Repor catálogo: substitui todos os cursos no Supabase (mantém estudantes/pagamentos).

@@ -200,6 +200,19 @@ test("migrarReferenciasCurso migra estudantes/pagamentos e preserva a dívida", 
   assert.strictEqual(D.saldoDevedor(db.estudantes[0]), 25000); // dívida sobrevive
 });
 
+test("lixo: eliminar devolve o item, e restaurar repõe o registo", function () {
+  const db = D.db();
+  db.estudantes = [{ id: "e1", nome: "Ana" }];
+  db.pagamentos = []; db.lixo = [];
+  const lx = D.deleteEstudante("e1");
+  assert.ok(lx && lx.tipo === "estudante" && lx.id);  // devolve o item de lixo (p/ espelhar)
+  assert.strictEqual(db.estudantes.length, 0);
+  assert.strictEqual(D.lixo().length, 1);
+  assert.strictEqual(D.restaurarLixo(lx.id), true);
+  assert.strictEqual(db.estudantes.length, 1);
+  assert.strictEqual(D.lixo().length, 0);
+});
+
 test("diaFechadoPara: dia com fecho 'Todos' fica fechado (dia local)", function () {
   const db = D.db();
   db.fechos = [{ id: "f1", data: "2026-06-10", funcionario: "Todos" }];

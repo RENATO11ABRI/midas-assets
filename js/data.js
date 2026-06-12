@@ -427,8 +427,10 @@
     _paraLixo: function (tipo, registo) {
       var db = this.load();
       if (!db.lixo) db.lixo = [];
-      db.lixo.unshift({ id: this.uid("lix"), tipo: tipo, registo: registo, eliminadoEm: this.now() });
+      var item = { id: this.uid("lix"), tipo: tipo, registo: registo, eliminadoEm: this.now() };
+      db.lixo.unshift(item);
       if (db.lixo.length > 200) db.lixo = db.lixo.slice(0, 200);
+      return item;
     },
     restaurarLixo: function (lixoId) {
       var db = this.load();
@@ -563,9 +565,10 @@
     deleteEstudante: function (id) {
       var db = this.load();
       var rec = this.estudanteById(id);
-      if (rec) this._paraLixo("estudante", rec);
+      var lx = rec ? this._paraLixo("estudante", rec) : null;
       db.estudantes = db.estudantes.filter(function (e) { return e.id !== id; });
       this.save();
+      return lx; // item de lixo criado (para a camada Supabase espelhar na tabela)
     },
 
     // ---- Pagamentos / Recibos ---------------------------------------------
@@ -587,9 +590,10 @@
     deletePagamento: function (id) {
       var db = this.load();
       var rec = this.pagamentoById(id);
-      if (rec) this._paraLixo("pagamento", rec);
+      var lx = rec ? this._paraLixo("pagamento", rec) : null;
       db.pagamentos = db.pagamentos.filter(function (p) { return p.id !== id; });
       this.save();
+      return lx;
     },
 
     // ---- Fecho de caixa ----------------------------------------------------
