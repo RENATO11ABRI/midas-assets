@@ -1842,7 +1842,18 @@
       if (!ev.target.closest(".bi-chip-x")) return;
       if (hid) hid.value = ""; inp.value = ""; setChip(null); inp.focus();
     });
-    document.addEventListener("click", function (ev) { if (inp.parentNode && !inp.parentNode.contains(ev.target)) pop.hidden = true; });
+    // Fecha o popover ao clicar fora — UM ÚNICO listener global (instalado uma
+    // vez), em vez de um por cada chamada, que se acumulavam (fuga de memória).
+    if (!V._biGlobalWired) {
+      document.addEventListener("click", function (ev) {
+        var pops = document.querySelectorAll(".busca-int-pop");
+        for (var i = 0; i < pops.length; i++) {
+          var wrap = pops[i].parentNode;
+          if (wrap && !wrap.contains(ev.target)) pops[i].hidden = true;
+        }
+      });
+      V._biGlobalWired = true;
+    }
     // Estado inicial: se já vier um estudante ligado (ex.: pagamento aberto a partir da ficha).
     if (hid && hid.value) setChip(D.estudanteById(hid.value));
   };
