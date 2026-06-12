@@ -364,11 +364,12 @@
 
   /* ---- Devedores (cobrança de propinas em falta) ----------------------- */
   V.devedores = function () {
-    return C.pageHead("Devedores", "Estudantes com propinas em falta — para acompanhamento e cobrança.") +
+    return C.pageHead("Devedores", "Cobrança de propinas — distingue o que já venceu do que ainda está a vencer.") +
       '<div id="devStats" class="grid stats mb"></div>' +
       '<div class="card mb"><div class="toolbar">' +
         '<div class="search-box"><input id="devSearch" placeholder="Pesquisar estudante (nome, matrícula, contacto)…"></div>' +
         '<div class="field"><label>Curso</label><select id="devCurso"><option value="">Todos</option>' + U.optionList(D.cursos().map(function (c) { return c.nome; })) + "</select></div>" +
+        '<label class="check-row" style="align-self:flex-end"><input type="checkbox" id="devVencidas"> Só com propinas vencidas</label>' +
         '<button class="btn btn-light" id="devCsv">Exportar CSV</button>' +
       "</div></div><div id=\"devTable\"></div>";
   };
@@ -376,6 +377,7 @@
     var idx = D._totalPagoIndex();
     var fc = (document.getElementById("devCurso") || {}).value || "";
     var q = (document.getElementById("devSearch") || {}).value || "";
+    var soVencidas = !!(document.getElementById("devVencidas") || {}).checked;
     var nq = q ? D._normNome(q) : "";
     return D.estudantes().map(function (e) { return { e: e, divida: D.saldoDevedor(e, idx) }; })
       .filter(function (x) {
@@ -383,26 +385,34 @@
         if (fc && x.e.curso !== fc) return false;
         if (nq && D._normNome((x.e.nome || "") + " " + (x.e.matricula || "") + " " + (x.e.contacto || "")).indexOf(nq) < 0) return false;
         return true;
-      }).sort(function (a, b) { return b.divida - a.divida; });
+      })
+      .map(function (x) { x.cob = D.resumoCobranca(x.e); return x; }) // vencido vs futuro (só p/ devedores)
+      .filter(function (x) { return !soVencidas || x.cob.vencido > 0; })
+      .sort(function (a, b) { return (b.cob.vencido - a.cob.vencido) || (b.divida - a.divida); });
   };
   V.renderDevedores = function () {
     var list = V._devedoresFiltrados();
-    var totalDiv = U.sum(list, function (x) { return x.divida; });
+    var totVenc = U.sum(list, function (x) { return x.cob.vencido; });
+    var totFut = U.sum(list, function (x) { return x.cob.futuro; });
     var stats = document.getElementById("devStats");
     if (stats) stats.innerHTML =
       V._stat("Devedores", list.length, { icon: "alert", accent: "danger" }) +
-      V._stat("Total em dívida", U.moeda(totalDiv), { icon: "wallet", accent: "gold" });
+      V._stat("Vencido (a cobrar já)", U.moeda(totVenc), { icon: "alert", accent: "danger" }) +
+      V._stat("A vencer", U.moeda(totFut), { icon: "calendar" });
     var host = document.getElementById("devTable");
     if (!host) return;
     if (!list.length) { host.innerHTML = C.empty("", "Sem devedores com os filtros atuais. 🎉"); return; }
+    var hojeMs = Date.now();
     var rows = list.map(function (x) {
       var e = x.e, temWa = !!U.whatsappURL(e.whatsapp || e.contacto);
-      var ult = D.ultimoPagamentoDe(e.id);
+      var lemb = e.ultimoLembrete ? U.dataPT(e.ultimoLembrete) : "—";
+      var recente = e.ultimoLembrete && (hojeMs - new Date(e.ultimoLembrete).getTime()) < 7 * 86400000;
       return "<tr><td>" + U.esc(e.nome) + "<br><small>" + U.esc(e.matricula || "") + "</small></td>" +
         "<td>" + U.esc(e.curso || "—") + "</td>" +
         "<td>" + U.esc(e.contacto || "—") + "</td>" +
-        "<td class='text-right num'><strong class='crit-no'>" + U.moeda(x.divida) + "</strong></td>" +
-        "<td>" + (ult ? U.dataPT(ult.data) : "—") + "</td>" +
+        "<td class='text-right num'>" + (x.cob.vencido > 0 ? "<strong class='crit-no'>" + U.moeda(x.cob.vencido) + "</strong>" : "—") + "</td>" +
+        "<td class='text-right num'>" + (x.cob.futuro > 0 ? U.moeda(x.cob.futuro) : "—") + "</td>" +
+        "<td>" + (recente ? "<span class='badge ok'>" + lemb + "</span>" : lemb) + "</td>" +
         '<td><div class="row-actions">' +
           '<button class="btn btn-light btn-sm" data-est-view="' + e.id + '">Ver</button>' +
           '<button class="btn btn-light btn-sm" data-est-pay="' + e.id + '">Pagamento</button>' +
@@ -410,22 +420,33 @@
         "</div></td></tr>";
     }).join("");
     host.innerHTML = '<div class="table-wrap"><table class="data"><thead><tr>' +
-      "<th>Estudante</th><th>Curso</th><th>Contacto</th><th class=\"text-right\">Em dívida</th><th>Último pag.</th><th>Ações</th>" +
+      "<th>Estudante</th><th>Curso</th><th>Contacto</th><th class=\"text-right\">Vencido</th><th class=\"text-right\">A vencer</th><th>Último lembrete</th><th>Ações</th>" +
       "</tr></thead><tbody>" + rows + "</tbody></table></div>" +
-      '<p class="help mt">' + list.length + " devedor(es) · total em dívida " + U.moeda(totalDiv) + ".</p>";
+      '<p class="help mt">' + list.length + " devedor(es) · vencido " + U.moeda(totVenc) + " · a vencer " + U.moeda(totFut) + ".</p>";
   };
   // Lembrete de pagamento por WhatsApp (reutilizado pela ficha e pelos devedores).
   V.lembrarWhatsApp = function (estId) {
     var e = D.estudanteById(estId); if (!e) return;
     var num = e.whatsapp || e.contacto;
-    if (!num) { C.toast("Sem contacto de WhatsApp para este estudante.", "err"); return; }
+    var url0 = U.whatsappURL(num);
+    if (!url0) { C.toast("Sem contacto de WhatsApp válido para este estudante.", "err"); return; }
     var s = D.db().settings;
+    var cob = D.resumoCobranca(e);
+    var valor = cob.vencido > 0 ? cob.vencido : (cob.total > 0 ? cob.total : D.saldoDevedor(e));
+    var linhaVenc = cob.vencido > 0
+      ? "Encontra-se em atraso o valor de " + U.moeda(cob.vencido) + "."
+      : "Consta no sistema uma pendência de " + U.moeda(valor) + ".";
     var msg = "Olá, " + e.nome + ". Aqui é a Secretaria do " + s.instituicao +
-      ".\n\nConsta no sistema uma pendência no valor de " + U.moeda(D.saldoDevedor(e)) +
-      ".\n\nPedimos que regularize o pagamento para manter a sua situação académica em dia.\n\n" +
+      ".\n\n" + linhaVenc +
+      "\n\nPedimos que regularize o pagamento para manter a sua situação académica em dia.\n\n" +
       s.instituicao + " — " + s.sistema + ".";
     var url = U.whatsappURL(num, msg);
-    if (url) window.open(url, "_blank"); else C.toast("Contacto inválido.", "err");
+    if (!url) { C.toast("Contacto inválido.", "err"); return; }
+    window.open(url, "_blank");
+    // Regista que este estudante já foi lembrado (para não cobrar duas vezes).
+    e.ultimoLembrete = U.agoraISO();
+    D.saveEstudante(e);
+    if (App.current === "devedores") V.renderDevedores();
   };
 
   V.fichaEstudante = function (id) {

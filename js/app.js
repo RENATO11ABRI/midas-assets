@@ -337,15 +337,15 @@
     V.renderDevedores();
     document.getElementById("devSearch").addEventListener("input", U.debounce(V.renderDevedores, 200));
     document.getElementById("devCurso").addEventListener("change", V.renderDevedores);
+    document.getElementById("devVencidas").addEventListener("change", V.renderDevedores);
     document.getElementById("devCsv").onclick = function () {
       var list = V._devedoresFiltrados();
       if (!list.length) { C.toast("Sem devedores para exportar.", "err"); return; }
       U.exportCSV("devedores-" + U.hoje() + ".csv",
-        ["Matrícula", "Nome", "Curso", "Contacto", "Em dívida (Kz)", "Último pagamento"],
+        ["Matrícula", "Nome", "Curso", "Contacto", "Vencido (Kz)", "A vencer (Kz)", "Total em dívida (Kz)", "Último lembrete"],
         list.map(function (x) {
-          var ult = D.ultimoPagamentoDe(x.e.id);
           return [x.e.matricula || "", x.e.nome || "", x.e.curso || "", x.e.contacto || "",
-            U.num(x.divida), ult ? U.ymd(ult.data) : ""];
+            U.num(x.cob.vencido), U.num(x.cob.futuro), U.num(x.divida), x.e.ultimoLembrete ? U.ymd(x.e.ultimoLembrete) : ""];
         }));
     };
   }
