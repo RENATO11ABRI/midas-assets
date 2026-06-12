@@ -17,3 +17,16 @@ jobs:
         run: for f in js/*.js; do node --check "$f"; done
       - name: Correr testes
         run: node --test
+      - name: Garantir bump do cache do service worker
+        if: github.event_name == 'pull_request'
+        run: |
+          base="origin/${{ github.base_ref }}"
+          git fetch origin "${{ github.base_ref }}" --depth=1
+          mudou_app=$(git diff --name-only "$base"...HEAD | grep -E '^(js/|css/|index\.html)' || true)
+          mudou_sw=$(git diff "$base"...HEAD -- sw.js | grep -E '^\+.*var CACHE' || true)
+          if [ -n "$mudou_app" ] && [ -z "$mudou_sw" ]; then
+            echo "::error::Alterou js/css/index.html mas não subiu a versão do cache (var CACHE em sw.js)."
+            echo "$mudou_app"
+            exit 1
+          fi
+          echo "OK — cache do service worker coerente."

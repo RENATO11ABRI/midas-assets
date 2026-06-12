@@ -29,7 +29,10 @@
 
     var ativos = estudantes.filter(function (e) { return e.estado === "ativo"; }).length;
     var concluidos = estudantes.filter(function (e) { return e.estado === "concluído" || e.estado === "concluido"; }).length;
-    var comDivida = estudantes.filter(function (e) { return D.saldoDevedor(e) > 0; }).length;
+    // Índice de pagamentos calculado UMA vez (em vez de varrer todos os pagamentos
+    // por estudante — evita O(estudantes × pagamentos) no dashboard).
+    var idxPg = D._totalPagoIndex();
+    var comDivida = estudantes.filter(function (e) { return D.saldoDevedor(e, idxPg) > 0; }).length;
 
     var recentes = estudantes.slice().sort(U.by("dataMatricula")).slice(0, 6);
     var ultPag = db.pagamentos.slice().sort(U.by("data")).slice(0, 6);
@@ -48,7 +51,7 @@
     var chartForma = Object.keys(mForma).map(function (k) { return { label: k, value: mForma[k] }; }).sort(function (a, b) { return b.value - a.value; });
     var mMatMes = agg(estudantes, function (e) { return U.ym(e.dataMatricula); }, null);
     var chartMatMes = Object.keys(mMatMes).sort().slice(-12).map(function (k) { return { label: U.mesAno(k + "-01"), value: mMatMes[k] }; });
-    var chartDevedores = estudantes.map(function (e) { return { label: e.nome, value: D.saldoDevedor(e) }; })
+    var chartDevedores = estudantes.map(function (e) { return { label: e.nome, value: D.saldoDevedor(e, idxPg) }; })
       .filter(function (x) { return x.value > 0; }).sort(function (a, b) { return b.value - a.value; }).slice(0, 8);
 
     var html =
@@ -323,8 +326,9 @@
     D.queryEstudantes(opts).then(function (res) {
       V._estState.pagina = res.pagina;
       if (!res.total) { host.innerHTML = C.empty("", "Nenhum estudante encontrado."); return; }
+      var idxL = D._totalPagoIndex();
       var rows = res.rows.map(function (e) {
-        var pago = D.totalPagoEstudante(e.id);
+        var pago = idxL[e.id] || 0;
         return "<tr>" +
           "<td><strong>" + U.esc(e.matricula) + "</strong></td>" +
           "<td>" + U.esc(e.nome) + "<br><small>" + U.esc(e.contacto || "") + "</small></td>" +
@@ -1276,19 +1280,21 @@
       };
     }
     if (tipo === "estudantes") {
+      var idxE = D._totalPagoIndex();
       var le = D.estudantes().filter(function (e) { return inRange(e.dataMatricula); }).sort(U.by("dataMatricula"));
       return {
         titulo: "Relatório de Estudantes", sub: rangeTxt,
         headers: ["Matrícula", "Nome", "Curso", "Período", "Unidade", "Estado", "Total pago"],
         rows: le.map(function (e) {
-          return [U.esc(e.matricula), U.esc(e.nome), U.esc(e.curso), U.esc(e.periodo || ""), U.esc(e.unidade || ""), U.esc(e.estado), U.num(D.totalPagoEstudante(e.id))];
+          return [U.esc(e.matricula), U.esc(e.nome), U.esc(e.curso), U.esc(e.periodo || ""), U.esc(e.unidade || ""), U.esc(e.estado), U.num(idxE[e.id] || 0)];
         }),
         totals: ["", "", "", "", "", "Total", le.length + " estudante(s)"]
       };
     }
     if (tipo === "dividas") {
+      var idxD = D._totalPagoIndex();
       var devedores = D.estudantes().map(function (e) {
-        return { e: e, pago: D.totalPagoEstudante(e.id), divida: D.saldoDevedor(e) };
+        return { e: e, pago: idxD[e.id] || 0, divida: D.saldoDevedor(e, idxD) };
       }).filter(function (x) { return x.divida > 0; }).sort(function (a, b) { return b.divida - a.divida; });
       var totDiv = U.sum(devedores, function (x) { return x.divida; });
       return {
@@ -1933,7 +1939,9 @@
       if (fc && e.curso !== fc) return false;
       if (q && (e.nome + " " + e.matricula).toLowerCase().indexOf(q) < 0) return false;
       return true;
-    }).map(function (e) { return { e: e, r: D.aptidaoDefesa(e), saldo: D.saldoDevedor(e), eg: V._estagioCurricular(e.id) }; });
+    });
+    var idxA = D._totalPagoIndex();
+    avals = avals.map(function (e) { return { e: e, r: D.aptidaoDefesa(e), saldo: D.saldoDevedor(e, idxA), eg: V._estagioCurricular(e.id) }; });
     if (fe) avals = avals.filter(function (a) { return fe === "Apto" ? a.r.apto : !a.r.apto; });
     var aptos = avals.filter(function (a) { return a.r.apto; }).length;
     var pct = avals.length ? Math.round((aptos / avals.length) * 100) : 0;
@@ -2130,9 +2138,10 @@
     var q = D._normNome((document.getElementById("tuEstSearch") || {}).value || "");
     var fe = (document.getElementById("tuEstEstado") || {}).value || "";
     var ff = (document.getElementById("tuEstFin") || {}).value || "";
+    var idxT = D._totalPagoIndex();
     return t.estudantes.filter(function (e) {
       if (fe && e.estado !== fe) return false;
-      if (ff) { var dv = D.saldoDevedor(e) > 0; if (ff === "Com dívida" && !dv) return false; if (ff === "Regularizados" && dv) return false; }
+      if (ff) { var dv = D.saldoDevedor(e, idxT) > 0; if (ff === "Com dívida" && !dv) return false; if (ff === "Regularizados" && dv) return false; }
       if (q && D._normNome((e.nome || "") + " " + (e.matricula || "") + " " + (e.contacto || "")).indexOf(q) < 0) return false;
       return true;
     }).sort(function (a, b) { return (a.nome || "") < (b.nome || "") ? -1 : 1; });
@@ -2142,8 +2151,9 @@
     if (!host) return;
     var list = V._turmaEstudantesFiltrados();
     if (!list.length) { host.innerHTML = C.empty("", "Sem estudantes para mostrar."); return; }
+    var idxTR = D._totalPagoIndex();
     var rows = list.map(function (e, i) {
-      var pago = D.totalPagoEstudante(e.id), saldo = D.saldoDevedor(e), up = D.ultimoPagamentoDe(e.id);
+      var pago = idxTR[e.id] || 0, saldo = D.saldoDevedor(e, idxTR), up = D.ultimoPagamentoDe(e.id);
       return "<tr><td>" + (i + 1) + "</td>" +
         "<td><strong>" + U.esc(e.nome) + "</strong></td>" +
         "<td>" + U.esc(e.matricula || "—") + "</td><td>" + U.esc(e.contacto || "—") + "</td>" +
