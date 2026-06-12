@@ -1516,10 +1516,33 @@
       "</div>" +
       "<p class='help mt'>“Repor catálogo de cursos” substitui apenas a lista de cursos pelo catálogo oficial, mantendo estudantes e pagamentos.</p>" +
       "</div>" +
+      (window.MidasSync && window.MidasSync.nFalhas && window.MidasSync.nFalhas()
+        ? '<div class="card mt" id="falhasCard"><div class="card-head"><h3>⚠ Falhas de sincronização</h3>' +
+            '<div class="flex" style="gap:8px"><button class="btn btn-primary" id="falhasRetry">Tentar novamente</button>' +
+            '<button class="btn btn-light" id="falhasClear">Descartar</button></div></div>' +
+            '<p class="help">Estas alterações não foram aceites pelo servidor (ex.: número de recibo repetido). NÃO se perderam. Tente novamente quando tiver boa ligação; se persistirem, descarte e registe de novo.</p>' +
+            '<div id="falhasArea"></div></div>'
+        : "") +
       '<div class="card mt"><div class="card-head"><h3>Reciclagem (recuperação de eliminados)</h3>' +
         '<button class="btn btn-light" id="lixoEsvaziar">Esvaziar reciclagem</button></div>' +
         '<p class="help">Estudantes e pagamentos eliminados ficam aqui e podem ser restaurados.</p>' +
         '<div id="lixoArea"></div></div>';
+  };
+  V.renderFalhasSync = function () {
+    var host = document.getElementById("falhasArea");
+    if (!host || !window.MidasSync || !window.MidasSync.falhas) return;
+    var f = window.MidasSync.falhas();
+    if (!f.length) { host.innerHTML = C.empty("", "Sem falhas pendentes."); return; }
+    var accao = { upsert: "Gravar", delete: "Eliminar" };
+    var rows = f.map(function (op) {
+      var o = op.obj || {};
+      var ref = o.recibo || o.matricula || o.nome || o.id || op.id || "";
+      return "<tr><td>" + U.dataHoraPT(op.quando) + "</td><td>" + U.esc(accao[op.kind] || op.kind) + "</td>" +
+        "<td>" + U.esc(op.table || "") + "</td><td><small>" + U.esc(String(ref)) + "</small></td>" +
+        "<td><small>" + U.esc(op.erro || "") + "</small></td></tr>";
+    }).join("");
+    host.innerHTML = '<div class="table-wrap"><table class="data"><thead><tr><th>Quando</th><th>Ação</th><th>Módulo</th><th>Registo</th><th>Motivo</th></tr></thead><tbody>' +
+      rows + "</tbody></table></div>";
   };
   V.renderLixo = function () {
     var host = document.getElementById("lixoArea");

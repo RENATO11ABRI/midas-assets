@@ -645,6 +645,21 @@
         D.reset(); C.toast("Dados repostos.", "ok"); App.navigate("dashboard");
       }, { danger: true, yes: "Repor tudo" });
     };
+    // Falhas de sincronização (só aparecem quando existem)
+    if (window.MidasSync && window.MidasSync.nFalhas && window.MidasSync.nFalhas()) {
+      V.renderFalhasSync();
+      var fr = document.getElementById("falhasRetry");
+      if (fr) fr.onclick = function () {
+        C.toast("A reenviar para o servidor…", "ok");
+        window.MidasSync.reprocessarFalhas().then(function () { App.refresh(); });
+      };
+      var fc = document.getElementById("falhasClear");
+      if (fc) fc.onclick = function () {
+        C.confirm("Descartar a lista de falhas? As alterações rejeitadas saem desta lista. Os dados já guardados não são afetados.", function () {
+          window.MidasSync.descartarFalhas(); C.toast("Falhas descartadas.", "ok"); App.refresh();
+        }, { danger: true, yes: "Descartar" });
+      };
+    }
     V.renderLixo();
     document.getElementById("lixoEsvaziar").onclick = function () {
       C.confirm("Esvaziar a reciclagem? Os registos eliminados não poderão ser recuperados.", function () {
@@ -1000,15 +1015,20 @@
     function render() {
       var online = window.MidasSync.online();
       var n = window.MidasSync.pendentes();
+      var nf = window.MidasSync.nFalhas ? window.MidasSync.nFalhas() : 0;
       pill.hidden = false;
-      if (!online) { pill.className = "sync-pill off"; pill.textContent = "● Offline" + (n ? " · " + n + " por enviar" : ""); }
+      if (nf) { pill.className = "sync-pill off"; pill.textContent = "⚠ " + nf + " falha(s) — ver Configurações › Dados"; pill.title = "Alterações rejeitadas pelo servidor. Abra Configurações › Dados para rever."; }
+      else if (!online) { pill.className = "sync-pill off"; pill.textContent = "● Offline" + (n ? " · " + n + " por enviar" : ""); }
       else if (n) { pill.className = "sync-pill pend"; pill.textContent = "↻ A sincronizar " + n + "…"; }
       else { pill.className = "sync-pill ok"; pill.textContent = "● Online"; }
     }
     window.MidasSync.aoMudar(render);
     window.addEventListener("online", render);
     window.addEventListener("offline", render);
-    pill.onclick = function () { window.MidasSync.sincronizar().then(render); };
+    pill.onclick = function () {
+      if (window.MidasSync.nFalhas && window.MidasSync.nFalhas()) { App.navigate("config"); return; }
+      window.MidasSync.sincronizar().then(render);
+    };
     render();
   }
 
