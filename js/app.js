@@ -844,9 +844,9 @@
           curso: curso, unidade: fd.get("unidade"), periodo: fd.get("periodo"),
           tipoCurso: fd.get("tipoCurso"), duracao: fd.get("duracao"), regime: fd.get("regime"),
           dataMatricula: fd.get("dataMatricula") || U.hoje(),
-          valorInscricao: U.parseMoeda(fd.get("valorInscricao")),
-          valorMatricula: U.parseMoeda(fd.get("valorMatricula")),
-          valorPago: U.parseMoeda(fd.get("valorPago")),
+          valorInscricao: U.numInput(fd.get("valorInscricao")),
+          valorMatricula: U.numInput(fd.get("valorMatricula")),
+          valorPago: U.numInput(fd.get("valorPago")),
           formaPagamento: fd.get("formaPagamento"),
           emolumentoId: fd.get("emolumentoId"),
           funcionario: fd.get("funcionario"),
@@ -1028,7 +1028,11 @@
       if (window.MidasUsers && ["admin", "directora"].indexOf(D.auth().perfil) < 0) {
         C.toast("Apenas o administrador ou a direção podem eliminar um pagamento.", "err"); return;
       }
-      C.confirm("Eliminar este pagamento/recibo? Poderá recuperá-lo na Reciclagem (Configurações → Dados).", function () {
+      var pDel = D.pagamentoById(id);
+      var aviso = (pDel && D.diaFechadoPara(pDel.data))
+        ? "⚠ ATENÇÃO: o caixa do dia deste recibo já foi FECHADO. Eliminar fará o fecho assinado divergir do sistema. "
+        : "";
+      C.confirm(aviso + "Eliminar este pagamento/recibo? Poderá recuperá-lo na Reciclagem (Configurações → Dados).", function () {
         D.deletePagamento(id); C.toast("Pagamento movido para a reciclagem.", "ok");
         if (App.current === "pagamentos") V.renderPagamentos();
         else if (App.current === "recibos") V.renderRecibos();

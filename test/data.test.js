@@ -169,11 +169,42 @@ test("_mesesDuracao aceita singular/plural e acento", function () {
   assert.strictEqual(D._mesesDuracao("4 semanas"), 0);
 });
 
-test("parseMoeda interpreta formato pt e símbolos", function () {
-  assert.strictEqual(U.parseMoeda("1.000,50"), 1000.5);
+test("parseMoeda interpreta pt, inglês e simples sem corromper", function () {
+  assert.strictEqual(U.parseMoeda("1.000,50"), 1000.5); // pt
+  assert.strictEqual(U.parseMoeda("1,000.50"), 1000.5); // inglês
+  assert.strictEqual(U.parseMoeda("1500.50"), 1500.5);  // só ponto decimal
+  assert.strictEqual(U.parseMoeda("1500,5"), 1500.5);   // só vírgula decimal
+  assert.strictEqual(U.parseMoeda("1.000"), 1000);      // ponto = milhares
+  assert.strictEqual(U.parseMoeda("1.000.000"), 1000000);
   assert.strictEqual(U.parseMoeda("Kz 2 500"), 2500);
   assert.strictEqual(U.parseMoeda(""), 0);
   assert.strictEqual(U.parseMoeda(null), 0);
+});
+
+test("numInput lê campos type=number com ponto decimal (sem milhares)", function () {
+  assert.strictEqual(U.numInput("1500.5"), 1500.5);  // antes parseMoeda dava 15005
+  assert.strictEqual(U.numInput("12500"), 12500);
+  assert.strictEqual(U.numInput(""), 0);
+  assert.strictEqual(U.numInput("abc"), 0);
+});
+
+test("migrarReferenciasCurso migra estudantes/pagamentos e preserva a dívida", function () {
+  const db = D.db();
+  db.cursos = [{ id: "c1", nome: "Flebotomia Avançada", valorTotal: 35000 }]; // já renomeado
+  db.estudantes = [{ id: "e1", nome: "Ana", curso: "Flebotomia" }];
+  db.pagamentos = [{ id: "p1", estudanteId: "e1", curso: "Flebotomia", valorPago: 10000 }];
+  const n = D.migrarReferenciasCurso("Flebotomia", "Flebotomia Avançada");
+  assert.strictEqual(n, 2); // 1 estudante + 1 pagamento
+  assert.strictEqual(db.estudantes[0].curso, "Flebotomia Avançada");
+  assert.strictEqual(db.pagamentos[0].curso, "Flebotomia Avançada");
+  assert.strictEqual(D.saldoDevedor(db.estudantes[0]), 25000); // dívida sobrevive
+});
+
+test("diaFechadoPara: dia com fecho 'Todos' fica fechado (dia local)", function () {
+  const db = D.db();
+  db.fechos = [{ id: "f1", data: "2026-06-10", funcionario: "Todos" }];
+  assert.strictEqual(D.diaFechadoPara("2026-06-10T15:00:00"), true);
+  assert.strictEqual(D.diaFechadoPara("2026-06-11T09:00:00"), false);
 });
 
 test("esc escapa HTML", function () {

@@ -30,9 +30,31 @@
       var n = Number(v) || 0;
       return n.toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     },
+    // Lê um valor de um campo <input type="number">, cujo .value é SEMPRE
+    // canónico com ponto decimal ("1500.5"). Nunca usar parseMoeda aqui (trataria
+    // o ponto como milhares e multiplicaria o valor por 10/100).
+    numInput: function (v) {
+      var n = parseFloat(v);
+      return isNaN(n) ? 0 : n;
+    },
+    // Interpreta um valor monetário de TEXTO livre (ex.: importação CSV), tolerando
+    // formato pt ("1.000,50"), inglês ("1,000.50") e simples ("1500.50"/"1500,5").
     parseMoeda: function (v) {
       if (v === null || v === undefined || v === "") return 0;
-      var s = String(v).replace(/[^\d.,-]/g, "").replace(/\./g, "").replace(",", ".");
+      var s = String(v).replace(/[^\d.,-]/g, "");
+      if (s.indexOf(",") >= 0 && s.indexOf(".") >= 0) {
+        // Ambos os separadores: o ÚLTIMO é o decimal.
+        if (s.lastIndexOf(",") > s.lastIndexOf(".")) s = s.replace(/\./g, "").replace(",", ".");
+        else s = s.replace(/,/g, "");
+      } else if (s.indexOf(",") >= 0) {
+        s = s.replace(/,/g, "."); // só vírgula = decimal
+      } else if (s.indexOf(".") >= 0) {
+        // Só ponto: decidir milhares vs decimal. Grupos de 3 dígitos = milhares.
+        var partes = s.split(".");
+        var ult = partes[partes.length - 1];
+        if (partes.length > 2 || ult.length === 3) s = partes.join(""); // 1.000 / 1.000.000
+        // caso contrário (1500.50 / 1500.5) fica como decimal
+      }
       var n = parseFloat(s);
       return isNaN(n) ? 0 : n;
     },
