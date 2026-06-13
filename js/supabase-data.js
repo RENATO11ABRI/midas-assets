@@ -91,7 +91,7 @@
     function pagina(de) {
       return sb.from(table).select("dados").order("criado_em", { ascending: true }).range(de, de + PAG - 1)
         .then(function (res) {
-          if (res.error) { fail("Falha ao carregar " + table + ".", res.error); return acc.map(function (r) { return r.dados; }); }
+          if (res.error) { var e = new Error(res.error.message || "Falha ao carregar " + table); e.supa = res.error; throw e; }
           var lote = res.data || [];
           acc = acc.concat(lote);
           if (lote.length === PAG) return pagina(de + PAG); // pode haver mais
@@ -99,6 +99,25 @@
         });
     }
     return pagina(0);
+  }
+  // Renovação de sessão partilhada (evita 7 refresh em paralelo).
+  var _refreshPromise = null;
+  function refrescarSessao() {
+    if (!_refreshPromise) {
+      _refreshPromise = sb.auth.refreshSession().then(function (res) {
+        _refreshPromise = null; return !!(res && !res.error);
+      }, function () { _refreshPromise = null; return false; });
+    }
+    return _refreshPromise;
+  }
+  // Leitura tolerante a token expirado: tenta renovar a sessão UMA vez e repete.
+  // Se a renovação falhar, propaga o erro (NUNCA devolve vazio — para não
+  // esvaziar a cache/ecrã e parecer que os dados foram apagados).
+  function fetchAllSeguro(table) {
+    return fetchAll(table).catch(function (e) {
+      if (!ehErroAuth(e.supa || e)) throw e;
+      return refrescarSessao().then(function (ok) { if (!ok) throw e; return fetchAll(table); });
+    });
   }
 
   /* ---- Fila de sincronização offline (outbox) ----------------------- */
@@ -265,9 +284,19 @@
   }
 
   /* ---- Hidratação da cache a partir do Supabase ---------------------- */
+  function lerConfig() {
+    return sb.from("configuracoes").select("dados").eq("id", 1).maybeSingle().then(function (res) {
+      if (res.error) {
+        var e = new Error(res.error.message); e.supa = res.error;
+        if (ehErroAuth(res.error)) return refrescarSessao().then(function (ok) { if (!ok) throw e; return lerConfig(); });
+        throw e;
+      }
+      return res;
+    });
+  }
   function hydrate() {
     var db = D.db();
-    return sb.from("configuracoes").select("dados").eq("id", 1).maybeSingle()
+    return lerConfig()
       .then(function (res) {
         if (res.data && res.data.dados) {
           var d = res.data.dados;
@@ -279,8 +308,8 @@
         return pushConfig(); // primeiro arranque: grava as predefinições
       })
       .then(function () { return Promise.all([
-        fetchAll("cursos"), fetchAll("emolumentos"),
-        fetchAll("estudantes"), fetchAll("pagamentos"), fetchAll("fechos"), fetchAll("estagios"), fetchAll("leads")
+        fetchAllSeguro("cursos"), fetchAllSeguro("emolumentos"),
+        fetchAllSeguro("estudantes"), fetchAllSeguro("pagamentos"), fetchAllSeguro("fechos"), fetchAllSeguro("estagios"), fetchAllSeguro("leads")
       ]); })
       .then(function (r) {
         db.cursos = r[0]; db.emolumentos = r[1];
@@ -679,7 +708,9 @@
     if (!_perfil || !_perfil.id) return Promise.resolve(false); // só com sessão
     _aRehidratar = true;
     var db = D.db();
-    return Promise.all([fetchAll("estudantes"), fetchAll("pagamentos"), fetchAll("fechos")])
+    // fetchAllSeguro: se falhar (token expirado e sem renovação), LANÇA — assim
+    // os db.* NÃO são substituídos por vazio (a cache/ecrã ficam intactos).
+    return Promise.all([fetchAllSeguro("estudantes"), fetchAllSeguro("pagamentos"), fetchAllSeguro("fechos")])
       .then(function (r) {
         db.estudantes = r[0]; db.pagamentos = r[1]; db.fechos = r[2] || [];
         reconcileSeqs(db);
@@ -696,7 +727,12 @@
         }
         return true;
       })
-      .catch(function () { return false; })
+      .catch(function (e) {
+        // Falha de leitura (ex.: sessão expirada sem renovação possível): NÃO
+        // toca na cache. Avisa o utilizador para reentrar, sem fingir 'sem dados'.
+        if (ehErroAuth(e && (e.supa || e))) toast("A sua sessão expirou. Termine sessão e entre de novo para sincronizar (os dados estão guardados).", "err");
+        return false;
+      })
       .then(function (v) { _aRehidratar = false; return v; });
   }
 
