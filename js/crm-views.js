@@ -57,8 +57,8 @@
 
     var importBox =
       '<div class="card mb"><div class="card-head"><h3>Colar leads aqui</h3>' +
-        '<span class="help">Cole números, nome + número ou texto do WhatsApp/formulário. O sistema lê os dados automaticamente.</span></div>' +
-      '<textarea id="crmPaste" class="crm-paste" placeholder="Exemplos:&#10;923456789&#10;João Manuel — 926000111&#10;Nome: Maria Pedro / Contacto: 931222333 / Curso: Enfermagem / Período: Manhã"></textarea>' +
+        '<span class="help">Cole números, nome + número, texto do WhatsApp (com emojis) ou da pré-inscrição. O sistema lê nome, telefone, curso e período automaticamente.</span></div>' +
+      '<textarea id="crmPaste" class="crm-paste" placeholder="Exemplos aceites:&#10;923456789&#10;João Manuel — 926000111&#10;&#10;👤 Nome: Maria Pedro&#10;📱 Contacto: +244 931222333&#10;🎯 Curso: Enfermagem&#10;⏰ Período: Manhã"></textarea>' +
       '<div class="toolbar crm-import-bar">' +
         '<select id="crmImpOrigem" class="crm-sel">' + origemOpts + "</select>" +
         '<select id="crmImpResp" class="crm-sel">' + respOpts + "</select>" +
@@ -490,7 +490,8 @@
     var prefill = {
       nome: (l.nome && l.nome !== "Sem nome") ? l.nome : "",
       contacto: l.telefone || "", whatsapp: l.telefone || "",
-      curso: l.curso || "", periodo: l.periodo || "", unidade: l.unidade || ""
+      curso: l.curso || "", periodo: l.periodo || "", unidade: l.unidade || "",
+      regime: l.modalidade || ""
     };
     App.navigate("matricula", { prefill: prefill, leadId: id });
     C.toast("Confira os dados e gere a matrícula para concluir a conversão.", "ok");

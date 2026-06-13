@@ -821,19 +821,37 @@
       return contido ? contido.nome : "";
     },
 
+    // Limpa uma linha colada do WhatsApp: remove emojis/símbolos e marcação
+    // simples (*negrito*, _itálico_) para não sujar os dados lidos.
+    _limparLinhaCRM: function (l) {
+      l = String(l == null ? "" : l);
+      // emojis/setas/dingbats/símbolos no plano 0 (setas, relógio, check, bullet, VS16)
+      l = l.replace(/[•←-⇿⌀-➿⬀-⯿️]/g, " ");
+      // emojis nos planos suplementares (👤 📱 🎯 📅 🎓 …)
+      try { l = l.replace(/[\u{1F000}-\u{1FAFF}]/gu, " "); } catch (e) {}
+      l = l.replace(/[*_~`]+/g, "");           // marcação do WhatsApp
+      return l.replace(/\s+/g, " ").trim();
+    },
+    // Linhas de cabeçalho/título a ignorar (não são dados do lead).
+    _ehCabecalhoCRM: function (l) {
+      return /(pr[eé]\s*[-]?\s*inscri|inscri[cç][aã]o|grupo\s+midas|ficha\s+de|formul[aá]rio)/i.test(l);
+    },
+
     // Lê texto livre colado e devolve uma lista de leads { nome, telefone, … }.
     // Suporta: só número; nome + número; blocos com rótulos (Nome:/Contacto:…);
-    // e várias linhas (um lead por linha).
+    // texto do WhatsApp com emojis; e várias linhas (um lead por linha).
     parsearLeads: function (texto) {
       var self = this;
       texto = String(texto == null ? "" : texto).replace(/\r\n?/g, "\n");
       if (!texto.trim()) return [];
-      var rotulo = /(nome|contacto|telefone|whats\s*app|whatsapp|n[uú]mero|numero|tel|curso|per[ií]odo|periodo|unidade|origem|observa)\s*[:\-]/i;
+      var rotulo = /(nome|contacto|telefone|whats\s*app|whatsapp|n[uú]mero|numero|tel|curso|per[ií]odo|periodo|modalidade|regime|unidade|origem|observa)\s*[:\-]/i;
       // Divide em blocos por linhas em branco
       var blocos = texto.split(/\n\s*\n/).map(function (b) { return b.trim(); }).filter(Boolean);
       var leads = [];
       blocos.forEach(function (bloco) {
-        var linhas = bloco.split("\n").map(function (l) { return l.trim(); }).filter(Boolean);
+        var linhas = bloco.split("\n")
+          .map(function (l) { return self._limparLinhaCRM(l); })
+          .filter(Boolean);
         var temRotulos = linhas.some(function (l) { return rotulo.test(l); });
         if (temRotulos) {
           var lead = self._parseBlocoRotulado(linhas);
@@ -849,21 +867,23 @@
       return leads;
     },
     _parseBlocoRotulado: function (linhas) {
-      var self = this, lead = { nome: "", telefone: "", curso: "", periodo: "", unidade: "", origem: "", observacoes: "" };
+      var self = this, lead = { nome: "", telefone: "", curso: "", periodo: "", unidade: "", origem: "", modalidade: "", observacoes: "" };
       var extras = [];
       linhas.forEach(function (l) {
         var m = l.match(/^([^:\-]+)\s*[:\-]\s*(.+)$/);
-        if (!m) { extras.push(l); return; }
+        if (!m) { if (!self._ehCabecalhoCRM(l)) extras.push(l); return; }
         var chave = self._normNome(m[1]), val = m[2].trim();
         if (/\bnome\b/.test(chave)) lead.nome = val;
         else if (/contacto|telefone|whats|numero|^tel\b|n.mero/.test(chave)) lead.telefone = self.normalizarTelefone(val) || lead.telefone;
         else if (/curso/.test(chave)) lead.curso = self._matchCurso(val) || val;
         else if (/periodo/.test(chave)) lead.periodo = self._matchPeriodo(val) || val;
+        else if (/modalidade|regime/.test(chave)) lead.modalidade = val;
         else if (/unidade/.test(chave)) lead.unidade = val;
         else if (/origem/.test(chave)) lead.origem = val;
         else if (/observa/.test(chave)) lead.observacoes = val;
-        else extras.push(l);
+        else if (!self._ehCabecalhoCRM(l)) extras.push(l);
       });
+      if (lead.modalidade) extras.push("Modalidade: " + lead.modalidade);
       if (extras.length) lead.observacoes = (lead.observacoes ? lead.observacoes + " · " : "") + extras.join(" · ");
       if (!lead.telefone) return null; // sem número não há como contactar/deduplicar
       if (!lead.nome) lead.nome = "Sem nome";

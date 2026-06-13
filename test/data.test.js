@@ -320,3 +320,25 @@ test("mudarEstadoLead regista a transição no histórico", function () {
   assert.strictEqual(depois.historico[0].estadoNovo, "Interessado");
   assert.strictEqual(depois.historico[0].estadoAnterior, "Novo Lead");
 });
+
+test("parsearLeads lê texto do WhatsApp com emojis, título e Modalidade", function () {
+  var txt =
+    "🎓 *Pré-inscrição — Grupo Midas Angola*\n\n" +
+    "👤 Nome: Domingas Famoroso Francisco \n" +
+    "📱 Contacto: +244 926606535\n" +
+    "🎯 Curso: Recepcionista Hospitalar\n" +
+    "⏰ Período: Manhã\n" +
+    "📅 Modalidade: Fins de semana (Sáb, Dom)";
+  var r = D.parsearLeads(txt);
+  assert.strictEqual(r.length, 1);
+  var l = r[0];
+  assert.strictEqual(l.nome, "Domingas Famoroso Francisco");
+  assert.strictEqual(l.telefone, "+244926606535");
+  assert.strictEqual(l.curso, "Recepcionista Hospitalar");
+  assert.strictEqual(l.periodo, "Manhã");
+  // o título institucional não polui o nome nem as observações
+  assert.ok(l.nome.indexOf("Pré-inscrição") < 0);
+  assert.ok((l.observacoes || "").indexOf("Grupo Midas") < 0);
+  // a modalidade fica registada nas observações
+  assert.ok((l.observacoes || "").indexOf("Modalidade") >= 0);
+});
