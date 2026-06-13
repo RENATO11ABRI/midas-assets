@@ -79,6 +79,7 @@
     if (table === "emolumentos" || table === "configuracoes") return ["admin", "directora"].indexOf(p) >= 0;
     if (table === "estudantes") return ["admin", "directora", "secretaria"].indexOf(p) >= 0;
     if (table === "pagamentos") return ["admin", "directora", "secretaria", "financeiro"].indexOf(p) >= 0;
+    if (table === "leads" || table === "mensagens") return ["admin", "directora", "secretaria", "coordenador"].indexOf(p) >= 0;
     return false;
   }
 
@@ -233,11 +234,11 @@
       })
       .then(function () { return Promise.all([
         fetchAll("cursos"), fetchAll("emolumentos"),
-        fetchAll("estudantes"), fetchAll("pagamentos"), fetchAll("fechos"), fetchAll("estagios"), fetchAll("leads")
+        fetchAll("estudantes"), fetchAll("pagamentos"), fetchAll("fechos"), fetchAll("estagios"), fetchAll("leads"), fetchAll("mensagens")
       ]); })
       .then(function (r) {
         db.cursos = r[0]; db.emolumentos = r[1];
-        db.estudantes = r[2]; db.pagamentos = r[3]; db.fechos = r[4] || []; db.estagios = r[5] || []; db.leads = r[6] || [];
+        db.estudantes = r[2]; db.pagamentos = r[3]; db.fechos = r[4] || []; db.estagios = r[5] || []; db.leads = r[6] || []; db.mensagens = r[7] || [];
         var seeds = [];
         // Só semeia se o perfil tiver permissão de escrita (evita erros de RLS
         // para quem não é admin/directora). Os dados ficam na cache de qualquer forma.
@@ -248,6 +249,11 @@
         if (!db.emolumentos.length && D._seedEmolumentos) {
           db.emolumentos = D._seedEmolumentos();
           if (podeEscrever("emolumentos")) seeds.push(bulkUpsert("emolumentos", db.emolumentos));
+        }
+        if (!db.mensagens.length && D._seedMensagens) {
+          db.mensagens = D._seedMensagens();
+          db._msgSeeded = true;
+          if (podeEscrever("mensagens")) seeds.push(bulkUpsert("mensagens", db.mensagens));
         }
         reconcileSeqs(db);
         return Promise.all(seeds);
@@ -279,7 +285,7 @@
    "saveCurso", "deleteCurso", "saveEmolumento", "deleteEmolumento", "toggleEmolumento",
    "restaurarLixo", "reporCatalogo", "reset", "import",
    "saveFecho", "deleteFecho", "saveEstagio", "deleteEstagio",
-   "saveLead", "deleteLead", "queryEstudantes"].forEach(function (m) { base[m] = D[m].bind(D); });
+   "saveLead", "deleteLead", "saveMensagem", "deleteMensagem", "queryEstudantes"].forEach(function (m) { base[m] = D[m].bind(D); });
 
   /* ---- Escala: consultas paginadas no servidor (opt-in) -------------- */
   // Ativa-se com MIDAS_CONFIG.escala = true E ligação online. Quando inativa,
@@ -326,6 +332,9 @@
 
   D.saveLead = function (l) { var r = quiet(base.saveLead, [l]); upsertRow("leads", r); return r; };
   D.deleteLead = function (id) { quiet(base.deleteLead, [id]); deleteRow("leads", id); };
+
+  D.saveMensagem = function (m) { var r = quiet(base.saveMensagem, [m]); if (r && r.mensagem) upsertRow("mensagens", r.mensagem); return r; };
+  D.deleteMensagem = function (id) { quiet(base.deleteMensagem, [id]); deleteRow("mensagens", id); };
 
   D.saveCurso = function (c) { var r = quiet(base.saveCurso, [c]); upsertRow("cursos", r); return r; };
   D.deleteCurso = function (id) { quiet(base.deleteCurso, [id]); deleteRow("cursos", id); };

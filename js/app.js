@@ -71,6 +71,7 @@
     fecho: { title: "Fecho de Caixa", render: V.fecho, after: afterFecho },
     recibos: { title: "Recibos", render: V.recibos, after: afterRecibos },
     midas: { title: "MIDAS 2026", render: V.midas, after: afterMidas },
+    crm: { title: "CRM WhatsApp", render: V.crm, after: afterCrm },
     relatorios: { title: "Relatórios", render: V.relatorios, after: afterRelatorios },
     config: { title: "Configurações", render: V.config, after: afterConfig }
   };
@@ -108,13 +109,30 @@
       if (ROUTES[route].after) ROUTES[route].after();
       closeNav();
       // reset params after render so they don't leak
-      if (route !== "matricula") this.params = {};
+      if (route !== "matricula") { this.params = {}; this._convertLeadId = null; }
     },
 
     closeModal: function () { C.closeModal(); }
   };
 
   /* ---- After-render wiring per route ------------------------------------ */
+  function afterCrm() {
+    var tab = V._crmState.tab || "leads";
+    if (tab === "leads") {
+      V.renderCrmLeads();
+      ["crmBusca", "crmFEstado", "crmFCurso", "crmFPeriodo", "crmFResp", "crmFOrigem"].forEach(function (idf) {
+        var el = document.getElementById(idf);
+        if (!el) return;
+        var fn = function () { V.renderCrmLeads(); };
+        el.addEventListener(el.tagName === "SELECT" ? "change" : "input", idf === "crmBusca" ? U.debounce(fn, 200) : fn);
+      });
+      var imp = document.getElementById("crmImpBtn"); if (imp) imp.onclick = V.crmImportar;
+      var prev = document.getElementById("crmImpPreview"); if (prev) prev.onclick = V.crmPreviewImport;
+      var exp = document.getElementById("crmExpCsv"); if (exp) exp.onclick = V.exportarLeadsCSV;
+    } else if (tab === "mensagens") {
+      V.renderCrmMensagens();
+    }
+  }
   function afterEstudantes() {
     var reset = function () { V._estState.pagina = 1; V.renderEstudantesTable(); };
     reset();
@@ -715,6 +733,19 @@
         };
         D.saveEstudante(est);
 
+        // Conversão de lead → matrícula: liga e marca o lead como Matriculado.
+        if (!editing && App._convertLeadId) {
+          var lid = App._convertLeadId; App._convertLeadId = null;
+          var lead = D.leadById(lid);
+          if (lead) {
+            lead.matriculaId = est.id;
+            D.mudarEstadoLead(lid, "Matriculado", {
+              funcionario: est.funcionario || "",
+              observacao: "Convertido em matrícula " + est.matricula
+            });
+          }
+        }
+
         var valorPago = est.valorPago;
         var gerar = document.getElementById("gerarRecibo") && document.getElementById("gerarRecibo").checked;
         var msg = editing ? "Alterações guardadas." : "Matrícula " + est.matricula + " gerada.";
@@ -813,13 +844,47 @@
       "[data-curso-edit],[data-curso-del],[data-pag-view],[data-pag-del],[data-lista-add],[data-lista-del]," +
       "[data-em-edit],[data-em-toggle],[data-em-del],[data-lixo-restore]," +
       "[data-fecho-print],[data-fecho-del],[data-estagio-edit],[data-estagio-del]," +
-      "[data-apt-view],[data-est-pag],[data-turma],[data-est-extrato]");
+      "[data-apt-view],[data-est-pag],[data-turma],[data-est-extrato]," +
+      "[data-crm-tab],[data-crm-funil],[data-lead-wa],[data-lead-ficha]," +
+      "[data-lead-convert],[data-lead-del],[data-msg-new],[data-msg-edit],[data-msg-del],[data-wa-marca]");
     if (!t) return;
 
     var go = t.getAttribute("data-go");
     if (go) { App.navigate(go); return; }
 
     var id;
+    // ---- CRM WhatsApp ----
+    var crmTab = t.getAttribute("data-crm-tab");
+    if (crmTab) { V._crmState.tab = crmTab; App.refresh(); return; }
+    var crmFunil = t.getAttribute("data-crm-funil");
+    if (crmFunil) {
+      V._crmState.tab = "leads"; App.refresh();
+      var fe = document.getElementById("crmFEstado");
+      if (fe) { fe.value = crmFunil; V.renderCrmLeads(); }
+      return;
+    }
+    if ((id = t.getAttribute("data-lead-wa"))) { V.enviarWhatsappLead(id); return; }
+    if ((id = t.getAttribute("data-lead-ficha"))) { V.fichaLead(id); return; }
+    if ((id = t.getAttribute("data-lead-convert"))) { V.converterLead(id); return; }
+    if ((id = t.getAttribute("data-lead-del"))) {
+      var ld = D.leadById(id);
+      C.confirm("Eliminar o lead " + (ld ? ld.nome : "") + "?", function () {
+        D.deleteLead(id); C.toast("Lead eliminado.", "ok");
+        if (App.current === "crm") V.renderCrmLeads();
+      }, { danger: true, yes: "Eliminar" });
+      return;
+    }
+    if (t.hasAttribute("data-msg-new")) { V.editarMensagem(); return; }
+    if ((id = t.getAttribute("data-msg-edit"))) { V.editarMensagem(id); return; }
+    if ((id = t.getAttribute("data-msg-del"))) {
+      var mm = D.mensagemById(id);
+      C.confirm("Eliminar a mensagem " + (mm ? '"' + mm.titulo + '"' : "") + "?", function () {
+        D.deleteMensagem(id); C.toast("Mensagem eliminada.", "ok"); V.renderCrmMensagens();
+      }, { danger: true, yes: "Eliminar" });
+      return;
+    }
+    var waMarca = t.getAttribute("data-wa-marca");
+    if (waMarca) { V._crmMarcar(waMarca); return; }
     if ((id = t.getAttribute("data-est-pag"))) {
       if (id === "ant" && V._estState.pagina > 1) V._estState.pagina--;
       else if (id === "seg") V._estState.pagina++;

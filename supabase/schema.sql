@@ -303,6 +303,29 @@ drop trigger if exists aud_leads on public.leads;
 create trigger aud_leads after insert or update or delete on public.leads
   for each row execute function public.fn_auditoria();
 
+-- ----------------------------------------------------------------------------
+-- 11) MENSAGENS-MODELO (biblioteca do CRM WhatsApp)
+--     Modelos de texto com variáveis {nome} {curso} {periodo} {telefone}.
+--     Geridos pela equipa comercial; sem envio automático (apenas wa.me).
+-- ----------------------------------------------------------------------------
+create table if not exists public.mensagens (
+  id            text primary key,
+  dados         jsonb not null,
+  criado_por    uuid default auth.uid(),
+  criado_em     timestamptz not null default now(),
+  atualizado_em timestamptz not null default now()
+);
+alter table public.mensagens enable row level security;
+drop policy if exists p_msg_read on public.mensagens;
+drop policy if exists p_msg_write on public.mensagens;
+create policy p_msg_read  on public.mensagens for select using (auth.uid() is not null);
+create policy p_msg_write on public.mensagens for all
+  using (public.meu_perfil() in ('admin','directora','secretaria','coordenador'))
+  with check (public.meu_perfil() in ('admin','directora','secretaria','coordenador'));
+drop trigger if exists aud_mensagens on public.mensagens;
+create trigger aud_mensagens after insert or update or delete on public.mensagens
+  for each row execute function public.fn_auditoria();
+
 -- ============================================================================
 -- FIM. A aplicação preenche configurações/cursos/emolumentos no primeiro arranque.
 -- ============================================================================

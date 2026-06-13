@@ -168,7 +168,8 @@
   V.matricula = function (params) {
     var db = D.db();
     var editing = params && params.id ? D.estudanteById(params.id) : null;
-    var e = editing || {};
+    // Conversão de lead → matrícula: pré-preenche os campos sem criar nada.
+    var e = editing || (params && params.prefill ? params.prefill : {});
     var nextMat = editing ? e.matricula : D.peekMatricula();
 
     var cursoOpts = '<option value="">— Selecione o curso —</option>' +

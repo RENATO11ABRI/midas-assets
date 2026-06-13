@@ -250,3 +250,73 @@ test("_totalPagoIndex soma por estudante e saldoDevedor usa o índice", function
   assert.strictEqual(D.saldoDevedor(db.estudantes[0], idx), 50000);
   assert.strictEqual(D.saldoDevedor(db.estudantes[1], idx), 0);
 });
+
+/* ====================== CRM WhatsApp ====================== */
+test("normalizarTelefone produz o formato canónico de Angola", function () {
+  assert.strictEqual(D.normalizarTelefone("923456789"), "+244923456789");
+  assert.strictEqual(D.normalizarTelefone("+244923456789"), "+244923456789");
+  assert.strictEqual(D.normalizarTelefone("244923456789"), "+244923456789");
+  assert.strictEqual(D.normalizarTelefone("00244 923 456 789"), "+244923456789");
+  assert.strictEqual(D.normalizarTelefone("(+244) 923-456-789"), "+244923456789");
+  assert.strictEqual(D.normalizarTelefone("12345"), ""); // incompleto
+  assert.strictEqual(D.telefoneWhats("923456789"), "244923456789");
+});
+
+test("parsearLeads lê só número, nome + número e várias linhas", function () {
+  var um = D.parsearLeads("923456789");
+  assert.strictEqual(um.length, 1);
+  assert.strictEqual(um[0].telefone, "+244923456789");
+  assert.strictEqual(um[0].nome, "Sem nome");
+
+  var nomeNum = D.parsearLeads("João Manuel — 923456789");
+  assert.strictEqual(nomeNum[0].nome, "João Manuel");
+  assert.strictEqual(nomeNum[0].telefone, "+244923456789");
+
+  var varios = D.parsearLeads("João Manuel 923456789 Enfermagem Manhã\nMaria Pedro 926000111 Farmácia Tarde");
+  assert.strictEqual(varios.length, 2);
+  assert.strictEqual(varios[0].periodo, "Manhã");
+  assert.strictEqual(varios[1].telefone, "+244926000111");
+});
+
+test("parsearLeads lê bloco com rótulos (Nome:/Contacto:/Curso:/Período:)", function () {
+  var txt = "Nome: Maria Pedro\nContacto: 926000111\nCurso: Enfermagem\nPeríodo: Manhã";
+  var r = D.parsearLeads(txt);
+  assert.strictEqual(r.length, 1);
+  assert.strictEqual(r[0].nome, "Maria Pedro");
+  assert.strictEqual(r[0].telefone, "+244926000111");
+  assert.strictEqual(r[0].periodo, "Manhã");
+});
+
+test("importarLeads cria e deduplica por telefone", function () {
+  var db = D.db(); db.leads = [];
+  var r1 = D.importarLeads("Carlos 931222333\nAna 931000222");
+  assert.strictEqual(r1.criados, 2);
+  assert.strictEqual(D.leads().length, 2);
+  // mesmo número noutro formato -> atualiza, não duplica
+  var r2 = D.importarLeads("Carlos Domingos +244931222333 Farmácia");
+  assert.strictEqual(r2.criados, 0);
+  assert.strictEqual(r2.atualizados, 1);
+  assert.strictEqual(D.leads().length, 2);
+  assert.strictEqual(D.leadByTelefone("931222333").curso, "Farmácia");
+});
+
+test("aplicarVariaveis substitui {nome} {curso} {periodo} {telefone}", function () {
+  var lead = { nome: "Ana", curso: "Enfermagem", periodo: "Manhã", telefone: "+244923000000" };
+  assert.strictEqual(
+    D.aplicarVariaveis("Olá {nome}, sobre {curso} ({periodo})", lead),
+    "Olá Ana, sobre Enfermagem (Manhã)");
+  // variável em falta fica detetada
+  var faltam = D.variaveisEmFalta("Olá {nome}, curso {curso}", { nome: "Ana" });
+  assert.ok(faltam.indexOf("{curso}") >= 0);
+});
+
+test("mudarEstadoLead regista a transição no histórico", function () {
+  var db = D.db(); db.leads = [];
+  D.importarLeads("Teste 924000000");
+  var lead = D.leadByTelefone("924000000");
+  D.mudarEstadoLead(lead.id, "Interessado", { funcionario: "Secretaria" });
+  var depois = D.leadById(lead.id);
+  assert.strictEqual(depois.estado, "Interessado");
+  assert.strictEqual(depois.historico[0].estadoNovo, "Interessado");
+  assert.strictEqual(depois.historico[0].estadoAnterior, "Novo Lead");
+});

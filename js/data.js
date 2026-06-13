@@ -103,6 +103,36 @@
     ];
   }
 
+  // Data/hora ISO (a app não importa U em data.js; helper local).
+  function U_now() { return new Date().toISOString(); }
+
+  // Biblioteca inicial de mensagens do CRM (editável em CRM WhatsApp → Mensagens).
+  function seedMensagens() {
+    var base = [
+      ["Primeiro contacto", "Boas-vindas",
+        "Olá {nome}, fala o Grupo Midas Angola. Obrigado pelo seu interesse no curso de {curso}. Posso enviar-lhe toda a informação?"],
+      ["Tabela de preços", "Valores do curso",
+        "Olá {nome}. Sobre o curso de {curso} ({periodo}): com gosto partilho os valores de inscrição, matrícula e propina. Quando lhe é mais cómodo conversarmos?"],
+      ["Documentos necessários", "Documentos para matrícula",
+        "Olá {nome}. Para a matrícula no curso de {curso} precisamos de: cópia do BI, 2 fotografias tipo passe e o comprovativo de pagamento. Quer que reserve já a sua vaga?"],
+      ["Localização", "Como chegar",
+        "Olá {nome}. O Grupo Midas Angola fica em Luanda. Posso enviar-lhe a localização exata e combinar uma visita ao curso de {curso}?"],
+      ["Promoção", "Condição especial",
+        "Olá {nome}. Temos uma condição especial de inscrição para o curso de {curso} no período da {periodo}. As vagas são limitadas — quer aproveitar?"],
+      ["Agendar visita", "Marcar visita",
+        "Olá {nome}. Gostaria de o(a) receber para conhecer as instalações e o curso de {curso}. Prefere durante a {periodo}? Que dia lhe fica melhor?"],
+      ["Lembrar matrícula", "Lembrete de matrícula",
+        "Olá {nome}. As matrículas para o curso de {curso} estão a fechar. Quer que garanta já a sua vaga antes de esgotar?"],
+      ["Recuperar lead antigo", "Voltar a contactar",
+        "Olá {nome}. Há algum tempo demonstrou interesse no curso de {curso}. As inscrições estão abertas novamente — posso ajudar a retomar?"],
+      ["Confirmação de pré-matrícula", "Pré-matrícula confirmada",
+        "Olá {nome}. A sua pré-matrícula no curso de {curso} ({periodo}) está registada. Para concluir, falta apenas o pagamento. Quer que o(a) acompanhe no processo?"]
+    ];
+    return base.map(function (m, i) {
+      return { id: "msg_seed_" + (i + 1), categoria: m[0], titulo: m[1], corpo: m[2], ativo: true, criadoEm: U_now() };
+    });
+  }
+
   function defaultDB() {
     return {
       settings: {
@@ -158,6 +188,7 @@
       fechos: [],
       estagios: [],
       leads: [],
+      mensagens: [],
       lixo: []
     };
   }
@@ -714,6 +745,342 @@
       this.save();
     },
 
+    /* ========================================================================
+       CRM WhatsApp — leads manuais, biblioteca de mensagens e funil comercial.
+       Sem integração externa: tudo é colado/clicado pela equipa.
+       ====================================================================== */
+    // Estados do funil (ordem = avanço comercial). "Perdido" é terminal lateral.
+    ESTADOS_LEAD: [
+      "Novo Lead", "Contactado", "Interessado", "Visita Agendada",
+      "Visitou a Instituição", "Negociação", "Pré-Matrícula", "Matriculado", "Perdido"
+    ],
+    ORIGENS_LEAD: [
+      "WhatsApp", "Facebook", "Instagram", "TikTok", "Site",
+      "Indicação", "Google", "Feiras", "Outros"
+    ],
+    estadosLead: function () { return this.ESTADOS_LEAD.slice(); },
+    origensLead: function () { return this.ORIGENS_LEAD.slice(); },
+
+    // Normaliza um número para o formato canónico de Angola: +244XXXXXXXXX.
+    // Aceita 923..., +244923..., 244923..., 00244923..., com espaços/traços.
+    // Devolve "" se o número não tiver 9 dígitos nacionais (incompleto).
+    normalizarTelefone: function (raw) {
+      var d = String(raw == null ? "" : raw).replace(/\D/g, "");
+      if (!d) return "";
+      d = d.replace(/^00/, "");        // prefixo internacional 00
+      d = d.replace(/^244/, "");        // indicativo de Angola
+      if (d.length > 9) d = d.slice(-9); // fica com os 9 dígitos nacionais
+      if (d.length !== 9) return "";     // número incompleto/ inválido
+      return "+244" + d;
+    },
+    // Versão para o link wa.me (só dígitos com indicativo, sem "+").
+    telefoneWhats: function (raw) {
+      var n = this.normalizarTelefone(raw);
+      return n ? n.replace(/\D/g, "") : "";
+    },
+    leads: function () { return this.load().leads || []; },
+    leadById: function (id) {
+      return this.leads().filter(function (l) { return l.id === id; })[0] || null;
+    },
+    // Procura um lead pelo telefone normalizado (chave de deduplicação).
+    leadByTelefone: function (tel) {
+      var n = this.normalizarTelefone(tel);
+      if (!n) return null;
+      return this.leads().filter(function (l) { return l.telefone === n; })[0] || null;
+    },
+
+    // Tenta casar um texto livre com um período conhecido (Manhã/Tarde/…).
+    _matchPeriodo: function (txt) {
+      var n = this._normNome(txt);
+      if (!n) return "";
+      var periodos = this.load().periodos || [];
+      // procura por palavra-chave dentro do texto
+      var chaves = { "manha": "Manhã", "tarde": "Tarde", "noite": "Noite",
+        "fim de semana": "Fim de Semana", "fds": "Fim de Semana",
+        "pos laboral": "Pós-laboral", "pos-laboral": "Pós-laboral" };
+      for (var k in chaves) { if (n.indexOf(k) >= 0) {
+        // devolve o valor da lista de períodos se existir (respeita o cadastro)
+        var alvo = chaves[k], self = this;
+        var match = periodos.filter(function (p) { return self._normNome(p) === self._normNome(alvo); })[0];
+        return match || alvo;
+      } }
+      return "";
+    },
+    // Tenta casar um texto com um curso existente (nome canónico).
+    _matchCurso: function (txt) {
+      var n = this._normNome(txt);
+      if (!n || n.length < 3) return "";
+      var self = this;
+      var cursos = this.cursos ? this.cursos() : (this.load().cursos || []);
+      var exato = cursos.filter(function (c) { return self._normNome(c.nome) === n; })[0];
+      if (exato) return exato.nome;
+      var contido = cursos.filter(function (c) {
+        var cn = self._normNome(c.nome);
+        return cn.indexOf(n) >= 0 || n.indexOf(cn) >= 0;
+      })[0];
+      return contido ? contido.nome : "";
+    },
+
+    // Lê texto livre colado e devolve uma lista de leads { nome, telefone, … }.
+    // Suporta: só número; nome + número; blocos com rótulos (Nome:/Contacto:…);
+    // e várias linhas (um lead por linha).
+    parsearLeads: function (texto) {
+      var self = this;
+      texto = String(texto == null ? "" : texto).replace(/\r\n?/g, "\n");
+      if (!texto.trim()) return [];
+      var rotulo = /(nome|contacto|telefone|whats\s*app|whatsapp|n[uú]mero|numero|tel|curso|per[ií]odo|periodo|unidade|origem|observa)\s*[:\-]/i;
+      // Divide em blocos por linhas em branco
+      var blocos = texto.split(/\n\s*\n/).map(function (b) { return b.trim(); }).filter(Boolean);
+      var leads = [];
+      blocos.forEach(function (bloco) {
+        var linhas = bloco.split("\n").map(function (l) { return l.trim(); }).filter(Boolean);
+        var temRotulos = linhas.some(function (l) { return rotulo.test(l); });
+        if (temRotulos) {
+          var lead = self._parseBlocoRotulado(linhas);
+          if (lead) leads.push(lead);
+        } else {
+          // uma linha = um lead
+          linhas.forEach(function (l) {
+            var lead = self._parseLinha(l);
+            if (lead) leads.push(lead);
+          });
+        }
+      });
+      return leads;
+    },
+    _parseBlocoRotulado: function (linhas) {
+      var self = this, lead = { nome: "", telefone: "", curso: "", periodo: "", unidade: "", origem: "", observacoes: "" };
+      var extras = [];
+      linhas.forEach(function (l) {
+        var m = l.match(/^([^:\-]+)\s*[:\-]\s*(.+)$/);
+        if (!m) { extras.push(l); return; }
+        var chave = self._normNome(m[1]), val = m[2].trim();
+        if (/\bnome\b/.test(chave)) lead.nome = val;
+        else if (/contacto|telefone|whats|numero|^tel\b|n.mero/.test(chave)) lead.telefone = self.normalizarTelefone(val) || lead.telefone;
+        else if (/curso/.test(chave)) lead.curso = self._matchCurso(val) || val;
+        else if (/periodo/.test(chave)) lead.periodo = self._matchPeriodo(val) || val;
+        else if (/unidade/.test(chave)) lead.unidade = val;
+        else if (/origem/.test(chave)) lead.origem = val;
+        else if (/observa/.test(chave)) lead.observacoes = val;
+        else extras.push(l);
+      });
+      if (extras.length) lead.observacoes = (lead.observacoes ? lead.observacoes + " · " : "") + extras.join(" · ");
+      if (!lead.telefone) return null; // sem número não há como contactar/deduplicar
+      if (!lead.nome) lead.nome = "Sem nome";
+      return lead;
+    },
+    _parseLinha: function (linha) {
+      var self = this;
+      // extrai o primeiro número de telefone da linha
+      var m = linha.match(/(\+?\d[\d\s\-().]{7,})/);
+      var tel = m ? self.normalizarTelefone(m[0]) : "";
+      if (!tel) return null;
+      var antes = m ? linha.slice(0, m.index) : "";
+      var depois = m ? linha.slice(m.index + m[0].length) : "";
+      var nome = antes.replace(/[—–\-:•|,]+\s*$/, "").trim();
+      // resto (depois do número): tenta período + curso
+      var resto = depois.replace(/^[—–\-:•|,]+/, "").trim();
+      var periodo = self._matchPeriodo(resto);
+      var curso = "";
+      if (resto) {
+        // remove a parte do período do texto para isolar o curso
+        var semPeriodo = resto;
+        if (periodo) {
+          semPeriodo = resto.replace(new RegExp("(manh[aã]|tarde|noite|fim\\s*de\\s*semana|fds|p[oó]s[\\s-]?laboral)", "ig"), "").trim();
+        }
+        curso = self._matchCurso(semPeriodo) || semPeriodo.replace(/[—–\-:•|,]+/g, " ").trim();
+      }
+      return {
+        nome: nome || "Sem nome", telefone: tel,
+        curso: curso || "", periodo: periodo || "", unidade: "", origem: "", observacoes: ""
+      };
+    },
+
+    // Importa leads de texto colado. Deduplica por telefone normalizado:
+    // novo → cria; existente → atualiza campos vazios + guarda observação no histórico.
+    importarLeads: function (texto, opts) {
+      opts = opts || {};
+      var origem = opts.origem || "", responsavel = opts.responsavel || "", autor = opts.autor || responsavel;
+      var parsed = this.parsearLeads(texto);
+      var res = { total: parsed.length, criados: 0, atualizados: 0, ignorados: 0, leads: [] };
+      var self = this;
+      parsed.forEach(function (p) {
+        if (!p.telefone) { res.ignorados++; return; }
+        var existente = self.leadByTelefone(p.telefone);
+        if (existente) {
+          var mudou = false;
+          ["nome", "curso", "periodo", "unidade"].forEach(function (k) {
+            if (p[k] && (!existente[k] || existente[k] === "Sem nome")) { existente[k] = p[k]; mudou = true; }
+          });
+          if (p.observacoes) { existente.observacoes = (existente.observacoes ? existente.observacoes + " · " : "") + p.observacoes; mudou = true; }
+          self._pushHistorico(existente, {
+            tipo: "Importação", observacao: "Reimportado" + (mudou ? " (dados atualizados)" : " (sem novidades)"),
+            funcionario: autor
+          });
+          existente.atualizadoEm = U_now();
+          self.saveLead(existente);
+          res.atualizados++;
+          res.leads.push(existente);
+        } else {
+          var lead = {
+            nome: p.nome || "Sem nome", telefone: p.telefone,
+            curso: p.curso || "", periodo: p.periodo || "", unidade: p.unidade || "",
+            origem: p.origem || origem || "", estado: "Novo Lead",
+            responsavel: responsavel || "", observacoes: p.observacoes || "",
+            criadoEm: U_now(), atualizadoEm: U_now(), ultimoContacto: "",
+            matriculaId: "", historico: []
+          };
+          self._pushHistorico(lead, { tipo: "Criação", observacao: "Lead importado", funcionario: autor });
+          self.saveLead(lead);
+          res.criados++;
+          res.leads.push(lead);
+        }
+      });
+      return res;
+    },
+
+    // Acrescenta uma entrada ao histórico do lead (não grava — usar com saveLead).
+    _pushHistorico: function (lead, entry) {
+      if (!lead.historico) lead.historico = [];
+      lead.historico.unshift({
+        data: U_now(),
+        funcionario: entry.funcionario || "",
+        tipo: entry.tipo || "Nota",
+        mensagem: entry.mensagem || "",
+        observacao: entry.observacao || "",
+        estadoAnterior: entry.estadoAnterior || "",
+        estadoNovo: entry.estadoNovo || ""
+      });
+      return lead;
+    },
+    // Regista uma interação no histórico e grava.
+    registarInteracao: function (id, entry) {
+      var lead = this.leadById(id);
+      if (!lead) return null;
+      this._pushHistorico(lead, entry || {});
+      lead.ultimoContacto = U_now();
+      lead.atualizadoEm = U_now();
+      return this.saveLead(lead);
+    },
+    // Altera o estado do lead, registando a transição no histórico.
+    mudarEstadoLead: function (id, novoEstado, opts) {
+      opts = opts || {};
+      var lead = this.leadById(id);
+      if (!lead) return null;
+      var anterior = lead.estado || "";
+      if (anterior === novoEstado && !opts.forcar) return lead;
+      lead.estado = novoEstado;
+      lead.atualizadoEm = U_now();
+      this._pushHistorico(lead, {
+        tipo: "Mudança de estado", funcionario: opts.funcionario || "",
+        observacao: opts.observacao || "", mensagem: opts.mensagem || "",
+        estadoAnterior: anterior, estadoNovo: novoEstado
+      });
+      if (novoEstado === "Contactado" || opts.contacto) lead.ultimoContacto = U_now();
+      return this.saveLead(lead);
+    },
+
+    // ---- Biblioteca de mensagens (modelos com variáveis) -------------------
+    CATEGORIAS_MENSAGEM: [
+      "Primeiro contacto", "Tabela de preços", "Documentos necessários",
+      "Localização", "Promoção", "Agendar visita", "Lembrar matrícula",
+      "Recuperar lead antigo", "Confirmação de pré-matrícula"
+    ],
+    categoriasMensagem: function () { return this.CATEGORIAS_MENSAGEM.slice(); },
+    mensagens: function () {
+      var db = this.load();
+      if (!db.mensagens) db.mensagens = [];
+      if (!db.mensagens.length && !db._msgSeeded) {
+        db.mensagens = seedMensagens();
+        db._msgSeeded = true;
+        this.save();
+      }
+      return db.mensagens;
+    },
+    mensagemById: function (id) {
+      return this.mensagens().filter(function (m) { return m.id === id; })[0] || null;
+    },
+    mensagensPorCategoria: function (cat) {
+      return this.mensagens().filter(function (m) {
+        return m.ativo !== false && (!cat || m.categoria === cat);
+      });
+    },
+    saveMensagem: function (msg) {
+      var db = this.load();
+      if (!db.mensagens) db.mensagens = [];
+      var titulo = (msg.titulo || "").trim();
+      if (!titulo) return { error: "Indique um título para a mensagem." };
+      if (!(msg.corpo || "").trim()) return { error: "Escreva o corpo da mensagem." };
+      if (msg.id) {
+        for (var i = 0; i < db.mensagens.length; i++) {
+          if (db.mensagens[i].id === msg.id) { db.mensagens[i] = msg; this.save(); return { mensagem: msg }; }
+        }
+      }
+      msg.id = this.uid("msg");
+      if (msg.ativo == null) msg.ativo = true;
+      db.mensagens.push(msg); this.save();
+      return { mensagem: msg };
+    },
+    deleteMensagem: function (id) {
+      var db = this.load();
+      db.mensagens = (db.mensagens || []).filter(function (m) { return m.id !== id; });
+      this.save();
+    },
+
+    // Substitui variáveis {nome} {curso} {periodo} {telefone} pelos dados do lead.
+    aplicarVariaveis: function (texto, lead) {
+      lead = lead || {};
+      var mapa = {
+        nome: (lead.nome && lead.nome !== "Sem nome") ? lead.nome : "",
+        curso: lead.curso || "", periodo: lead.periodo || "",
+        telefone: lead.telefone || "", unidade: lead.unidade || "",
+        responsavel: lead.responsavel || ""
+      };
+      return String(texto == null ? "" : texto).replace(/\{(\w+)\}/g, function (todo, chave) {
+        var k = chave.toLowerCase();
+        return Object.prototype.hasOwnProperty.call(mapa, k) ? mapa[k] : todo;
+      });
+    },
+    // Lista as variáveis ainda por preencher num texto já com substituições.
+    variaveisEmFalta: function (texto, lead) {
+      var faltam = [];
+      var aplicado = this.aplicarVariaveis(texto, lead);
+      var m = aplicado.match(/\{(\w+)\}/g);
+      if (m) faltam = m.map(function (x) { return x; });
+      // variáveis conhecidas que ficaram vazias por falta de dado no lead
+      ["nome", "curso", "periodo"].forEach(function (k) {
+        if (/\{/.test(texto) && new RegExp("\\{" + k + "\\}").test(texto) && !(lead && lead[k] && lead[k] !== "Sem nome")) {
+          if (faltam.indexOf("{" + k + "}") < 0) faltam.push("{" + k + "}");
+        }
+      });
+      return faltam;
+    },
+
+    // ---- Estatísticas do funil (Dashboard CRM) -----------------------------
+    crmStats: function () {
+      var leads = this.leads();
+      var porEstado = {};
+      this.ESTADOS_LEAD.forEach(function (e) { porEstado[e] = 0; });
+      var porCurso = {}, porOrigem = {};
+      var mes = (U_now() || "").slice(0, 7), matriculadosMes = 0;
+      leads.forEach(function (l) {
+        porEstado[l.estado || "Novo Lead"] = (porEstado[l.estado || "Novo Lead"] || 0) + 1;
+        if (l.curso) porCurso[l.curso] = (porCurso[l.curso] || 0) + 1;
+        var org = l.origem || "—"; porOrigem[org] = (porOrigem[org] || 0) + 1;
+        if (l.estado === "Matriculado" && (l.atualizadoEm || "").slice(0, 7) === mes) matriculadosMes++;
+      });
+      var total = leads.length;
+      var matriculados = porEstado["Matriculado"] || 0;
+      var cursoTop = Object.keys(porCurso).sort(function (a, b) { return porCurso[b] - porCurso[a]; })[0] || "—";
+      return {
+        total: total, porEstado: porEstado, porCurso: porCurso, porOrigem: porOrigem,
+        matriculados: matriculados, matriculadosMes: matriculadosMes,
+        perdidos: porEstado["Perdido"] || 0,
+        conversao: total ? Math.round((matriculados / total) * 100) : 0,
+        cursoTop: cursoTop
+      };
+    },
+
     // ---- Aggregations ------------------------------------------------------
     // Saldo em dívida de um estudante (valor do curso - total pago)
     // saldoDevedor(est[, idxPago]): se idxPago (mapa estudanteId→totalPago,
@@ -821,6 +1188,7 @@
   // Expostos para a camada Supabase poder semear uma base vazia
   MidasData._seedCursos = seedCursos;
   MidasData._seedEmolumentos = seedEmolumentos;
+  MidasData._seedMensagens = seedMensagens;
 
   // Boot
   MidasData.load();

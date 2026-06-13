@@ -17,6 +17,7 @@ exportação em PDF/CSV.
 | **Pagamentos** | Registo, filtros (curso, emolumento, data), totais por dia/mês, exportação |
 | **Recibos** | Gerador com design institucional, numeração sequencial, pesquisa, imprimir/PDF |
 | **Relatórios** | Matrículas, pagamentos, receitas mensais, por curso/funcionário/período/unidade |
+| **CRM WhatsApp** | Gestão manual de leads: caixa para **colar contactos** (lê nome/número/curso/período), deduplicação por telefone, funil comercial, biblioteca de mensagens com variáveis, **abrir WhatsApp com mensagem pronta** (sem envio automático), histórico de contactos e conversão em matrícula |
 | **Configurações** | Dados institucionais, numeração, listas (períodos, unidades, emolumentos, funcionários…), backup |
 
 ## 🌐 Site online
@@ -79,6 +80,7 @@ js/data.js          Camada de dados (localStorage) + cursos iniciais
 js/utils.js         Formatação, datas, impressão A4, CSV
 js/components.js    Toasts, modais, recibo e folha de relatório
 js/views.js         Todas as páginas/seções
+js/crm-views.js     Módulo CRM WhatsApp (leads, funil, mensagens)
 js/app.js           Router, eventos e ligações
 ```
 
