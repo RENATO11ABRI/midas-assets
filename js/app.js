@@ -743,9 +743,15 @@
       }, { yes: "Repor catálogo" });
     };
     document.getElementById("bkReset").onclick = function () {
-      C.confirm("Repor dados de fábrica? Todos os estudantes, pagamentos e cursos serão apagados.", function () {
-        D.reset(); C.toast("Dados repostos.", "ok"); App.navigate("dashboard");
-      }, { danger: true, yes: "Repor tudo" });
+      var nota = window.MidasSync
+        ? "Limpa apenas a cópia LOCAL deste dispositivo. Os dados no servidor NÃO são apagados (voltam a aparecer)."
+        : "Apaga todos os estudantes, pagamentos e cursos deste dispositivo.";
+      C.confirm("Repor dados de fábrica? " + nota, function () {
+        D.reset(); C.toast("Cache local reposta.", "ok");
+        // Em modo Supabase, recarrega do servidor para os dados reaparecerem.
+        if (window.MidasSync && window.MidasSync.rehidratar) window.MidasSync.rehidratar(true).then(function () { App.navigate("dashboard"); });
+        else App.navigate("dashboard");
+      }, { danger: true, yes: "Repor cache local" });
     };
     // Backups automáticos (IndexedDB)
     if (window.MidasBackup && window.MidasBackup.suportado) {

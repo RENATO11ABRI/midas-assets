@@ -234,6 +234,15 @@ test("resumoCaixa agrega por forma/emolumento e rateia itens", function () {
   assert.strictEqual(r.recibos.length, 2);
 });
 
+test("import valida a forma do backup (não aceita vazio/malformado)", function () {
+  const guardado = D.export();
+  assert.throws(function () { D.import("{}"); });               // sem arrays
+  assert.throws(function () { D.import('{"estudantes":[]}'); }); // falta pagamentos
+  const r = D.import(JSON.stringify({ estudantes: [], pagamentos: [], settings: { anoLetivo: "2026" } }));
+  assert.ok(Array.isArray(r.estudantes));                       // bem-formado passa
+  D.import(guardado);                                           // restaura estado p/ outros testes
+});
+
 test("saldoDevedor aplica desconto/bolsa do estudante", function () {
   const db = D.db();
   db.cursos = [{ id: "c1", nome: "C", valorTotal: 100000 }];
