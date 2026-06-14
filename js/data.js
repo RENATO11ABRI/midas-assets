@@ -334,6 +334,11 @@
 
     import: function (json) {
       var data = JSON.parse(json);
+      // Valida a forma do backup ANTES de o aceitar — um ficheiro vazio/errado
+      // não pode passar (em modo Supabase desencadearia o apagar do servidor).
+      if (!data || typeof data !== "object" || !Array.isArray(data.estudantes) || !Array.isArray(data.pagamentos)) {
+        throw new Error("Ficheiro de backup inválido (faltam 'estudantes'/'pagamentos').");
+      }
       _db = data; this.save(); return _db;
     },
 

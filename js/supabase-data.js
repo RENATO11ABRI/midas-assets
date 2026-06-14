@@ -483,6 +483,14 @@
   // (base.reset/base.import já gravam a configuração via save()->pushConfig).
   function ressincronizarEntidades(db) {
     if (!podeEscreverConfig()) { toast("Sem permissão para sincronizar os dados online.", "err"); return; }
+    // GUARDA CRÍTICA: nunca apagar TUDO no servidor para subir uma base vazia.
+    // Protege contra reset/import com a cache esvaziada (ex.: sessão expirada) ou
+    // ficheiro de backup vazio/corrompido — a causa de perda total de dados.
+    var nEst = (db.estudantes || []).length, nPag = (db.pagamentos || []).length;
+    if (nEst === 0 && nPag === 0) {
+      fail("Operação cancelada: a base a sincronizar está VAZIA. Para não apagar os dados do servidor, nada foi alterado online.");
+      return;
+    }
     Promise.all([
       sb.from("estudantes").delete().neq("id", ""),
       sb.from("pagamentos").delete().neq("id", ""),
@@ -496,7 +504,10 @@
     }).catch(function (e) { fail("Falha ao sincronizar online.", e); });
   }
 
-  D.reset = function () { var db = base.reset(); ressincronizarEntidades(db); return db; };
+  // "Repor dados de fábrica" é LOCAL (limpa só a cache deste dispositivo). NÃO
+  // apaga o servidor — senão um reset acidental destruía a base de todos. Ao
+  // recarregar, o hydrate traz os dados de volta do servidor.
+  D.reset = function () { return base.reset(); };
   D.import = function (json) { var db = base.import(json); ressincronizarEntidades(db); return db; };
 
   // Numeração atómica via RPC (evita números repetidos entre dispositivos).
