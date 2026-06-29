@@ -59,16 +59,25 @@
 
   C.confirm = function (message, onYes, opts) {
     opts = opts || {};
+    var rt = opts.requireText; // ex.: "APAGAR" — exige digitar para confirmar
     C.modal({
       title: opts.title || "Confirmar",
-      body: '<p style="margin:0">' + U.esc(message) + "</p>",
+      body: '<p style="margin:0">' + U.esc(message) + "</p>" +
+        (rt ? '<label class="help" style="display:block;margin-top:10px">Para confirmar, escreva <strong>' + U.esc(rt) + '</strong>:</label>' +
+              '<input id="cfText" autocomplete="off" style="width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;margin-top:4px">' : ""),
       footer:
         '<button class="btn btn-light" id="cfNo">Cancelar</button>' +
-        '<button class="btn ' + (opts.danger ? "btn-danger" : "btn-primary") + '" id="cfYes">' +
+        '<button class="btn ' + (opts.danger ? "btn-danger" : "btn-primary") + '" id="cfYes"' + (rt ? " disabled" : "") + ">" +
         U.esc(opts.yes || "Confirmar") + "</button>",
       onOpen: function () {
         document.getElementById("cfNo").onclick = C.closeModal;
-        document.getElementById("cfYes").onclick = function () { C.closeModal(); onYes(); };
+        var yes = document.getElementById("cfYes");
+        if (rt) {
+          var inp = document.getElementById("cfText");
+          inp.addEventListener("input", function () { yes.disabled = inp.value.trim().toUpperCase() !== rt.toUpperCase(); });
+          inp.focus();
+        }
+        yes.onclick = function () { if (yes.disabled) return; C.closeModal(); onYes(); };
       }
     });
   };

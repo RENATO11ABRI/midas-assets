@@ -57,13 +57,21 @@
     function apagar(id) { if (!temIDB) return Promise.resolve(false); return comStore("readwrite", function (st, ok) { st.delete(id); ok(true); }); }
     function podar() {
       return listar().then(function (arr) {
-        var excesso = arr.slice(MAX);
+        // Nunca apagar o snapshot mais recente NÃO-vazio (rede de segurança).
+        var ultimoBom = null;
+        for (var i = 0; i < arr.length; i++) { if ((arr[i].tamanho || 0) > 600) { ultimoBom = arr[i].id; break; } }
+        var excesso = arr.slice(MAX).filter(function (s) { return s.id !== ultimoBom; });
         if (!excesso.length) return true;
         return comStore("readwrite", function (st, ok) { excesso.forEach(function (s) { st.delete(s.id); }); ok(true); });
       });
     }
     function criar(motivo) {
       if (!temIDB) return Promise.resolve(false);
+      var d = D.db();
+      var vazio = !(d.estudantes && d.estudantes.length) && !(d.pagamentos && d.pagamentos.length);
+      // Não gravar snapshots AUTOMÁTICOS vazios (ex.: cache esvaziada por sessão
+      // expirada) — evitaria o "backup vazio" e a poda dos bons.
+      if (vazio && (motivo || "auto") === "auto") return Promise.resolve(false);
       var id = new Date().toISOString();
       var json = D.export();
       var snap = { id: id, motivo: motivo || "auto", tamanho: json.length, json: json };
@@ -730,10 +738,10 @@
       var file = e.target.files[0]; if (!file) return;
       var reader = new FileReader();
       reader.onload = function () {
-        C.confirm("Importar este backup? Os dados atuais (incluindo no servidor) serão SUBSTITUÍDOS pelos do ficheiro.", function () {
+        C.confirm("Importar este backup? Os dados do ficheiro são MESCLADOS com o servidor (adiciona/atualiza; não apaga).", function () {
           try { D.import(reader.result); C.toast("Backup importado.", "ok"); App.refresh(); }
-          catch (err) { C.toast("Ficheiro inválido.", "err"); }
-        }, { danger: true, yes: "Importar e substituir" });
+          catch (err) { C.toast("Ficheiro de backup inválido.", "err"); }
+        }, { danger: true, yes: "Importar e mesclar", requireText: "IMPORTAR" });
       };
       reader.readAsText(file);
     };
@@ -782,7 +790,7 @@
     document.getElementById("lixoEsvaziar").onclick = function () {
       C.confirm("Esvaziar a reciclagem? Os registos eliminados não poderão ser recuperados.", function () {
         D.esvaziarLixo(); C.toast("Reciclagem esvaziada.", "ok"); V.renderLixo();
-      }, { danger: true, yes: "Esvaziar" });
+      }, { danger: true, yes: "Esvaziar", requireText: "APAGAR" });
     };
   }
 
@@ -998,13 +1006,13 @@
       return;
     }
     if ((id = t.getAttribute("data-bk-restore"))) {
-      C.confirm("Restaurar este backup? Os dados atuais (incluindo no servidor) serão SUBSTITUÍDOS pelos do backup.", function () {
+      C.confirm("Restaurar este backup? Os dados do backup são MESCLADOS com o servidor (adiciona/atualiza; não apaga).", function () {
         window.MidasBackup.obter(id).then(function (s) {
           if (!s) { C.toast("Backup não encontrado.", "err"); return; }
           try { D.import(s.json); C.toast("Backup restaurado.", "ok"); App.navigate("dashboard"); }
           catch (e) { C.toast("Backup inválido.", "err"); }
         });
-      }, { danger: true, yes: "Restaurar e substituir" });
+      }, { danger: true, yes: "Restaurar e mesclar", requireText: "RESTAURAR" });
       return;
     }
     if ((id = t.getAttribute("data-bk-del"))) {
