@@ -472,10 +472,9 @@
   // base.reporCatalogo() grava localmente e faz pushConfig (catalogoVersao).
   D.reporCatalogo = function () {
     var cs = base.reporCatalogo();
-    sb.from("cursos").delete().neq("id", "").then(function (res) {
-      if (res.error) { fail("Falha ao repor o catálogo online.", res.error); return; }
-      bulkUpsert("cursos", cs);
-    });
+    // SÓ UPSERT — adiciona/atualiza os cursos oficiais sem apagar os existentes
+    // (apagar todos órfanava as dívidas dos estudantes nesses cursos).
+    bulkUpsert("cursos", cs);
     return cs;
   };
 
@@ -483,25 +482,17 @@
   // (base.reset/base.import já gravam a configuração via save()->pushConfig).
   function ressincronizarEntidades(db) {
     if (!podeEscreverConfig()) { toast("Sem permissão para sincronizar os dados online.", "err"); return; }
-    // GUARDA CRÍTICA: nunca apagar TUDO no servidor para subir uma base vazia.
-    // Protege contra reset/import com a cache esvaziada (ex.: sessão expirada) ou
-    // ficheiro de backup vazio/corrompido — a causa de perda total de dados.
-    var nEst = (db.estudantes || []).length, nPag = (db.pagamentos || []).length;
-    if (nEst === 0 && nPag === 0) {
-      fail("Operação cancelada: a base a sincronizar está VAZIA. Para não apagar os dados do servidor, nada foi alterado online.");
-      return;
-    }
+    // SÓ UPSERT — NUNCA apaga. Importar/restaurar passa a MESCLAR (adiciona/atualiza)
+    // e nunca pode perder dados do servidor. (O delete-all + reinsert era a raiz da
+    // perda total: bastava a cache estar vazia/parcial.) Para remover registos,
+    // use a eliminação normal (com reciclagem).
     Promise.all([
-      sb.from("estudantes").delete().neq("id", ""),
-      sb.from("pagamentos").delete().neq("id", ""),
-      sb.from("cursos").delete().neq("id", ""),
-      sb.from("emolumentos").delete().neq("id", "")
-    ]).then(function () {
-      bulkUpsert("cursos", db.cursos || []);
-      bulkUpsert("emolumentos", db.emolumentos || []);
-      bulkUpsert("estudantes", db.estudantes || []);
-      bulkUpsert("pagamentos", db.pagamentos || []);
-    }).catch(function (e) { fail("Falha ao sincronizar online.", e); });
+      bulkUpsert("cursos", db.cursos || []),
+      bulkUpsert("emolumentos", db.emolumentos || []),
+      bulkUpsert("estudantes", db.estudantes || []),
+      bulkUpsert("pagamentos", db.pagamentos || [])
+    ]).then(function () { toast("Dados sincronizados (mesclados) com o servidor.", "ok"); })
+      .catch(function (e) { fail("Falha ao sincronizar online.", e); });
   }
 
   // "Repor dados de fábrica" é LOCAL (limpa só a cache deste dispositivo). NÃO
@@ -564,6 +555,7 @@
   function loadPerfil() {
     return sb.from("perfis").select("nome,perfil,ativo").eq("id", _user.id).maybeSingle()
       .then(function (res) {
+        _perfil.id = _user.id; // necessário p/ as guardas (rehidratarQuentes, etc.)
         if (res.data) {
           _perfil.nome = res.data.nome || _user.email;
           _perfil.perfil = res.data.perfil || "secretaria";
@@ -723,6 +715,14 @@
     // os db.* NÃO são substituídos por vazio (a cache/ecrã ficam intactos).
     return Promise.all([fetchAllSeguro("estudantes"), fetchAllSeguro("pagamentos"), fetchAllSeguro("fechos")])
       .then(function (r) {
+        // Guarda anti-anomalia: NUNCA substituir uma cache não-vazia por VAZIO
+        // (resposta de 0 linhas por RLS/sessão em vez de erro esvaziaria o ecrã).
+        var suspeito = ((db.estudantes && db.estudantes.length) && (!r[0] || !r[0].length)) ||
+                       ((db.pagamentos && db.pagamentos.length) && (!r[1] || !r[1].length));
+        if (suspeito) {
+          if (toast) toast("Atualização ignorada: o servidor devolveu 0 registos (possível sessão/permissão). Os dados no ecrã foram mantidos.", "err");
+          return false;
+        }
         db.estudantes = r[0]; db.pagamentos = r[1]; db.fechos = r[2] || [];
         reconcileSeqs(db);
         aplicarOpsNaCache(outboxLer()); // preserva os registos offline pendentes
