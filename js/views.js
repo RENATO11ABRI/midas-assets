@@ -1598,7 +1598,7 @@
         '<button class="btn btn-light" id="bkCatalogo">Repor catálogo de cursos oficial</button>' +
         '<button class="btn btn-danger" id="bkReset">Repor dados de fábrica</button>' +
       "</div>" +
-      "<p class='help mt'>“Repor catálogo de cursos” substitui apenas a lista de cursos pelo catálogo oficial, mantendo estudantes e pagamentos.</p>" +
+      "<p class='help mt'>“Repor catálogo de cursos” adiciona/atualiza os cursos oficiais (não apaga cursos personalizados nem estudantes/pagamentos).</p>" +
       "</div>" +
       (window.MidasBackup && window.MidasBackup.suportado
         ? '<div class="card mt"><div class="card-head"><h3>Backups automáticos</h3>' +
