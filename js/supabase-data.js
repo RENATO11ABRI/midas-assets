@@ -706,6 +706,7 @@
      dispositivos), reconcilia contadores e reaplica a fila offline. Evita
      cobrança dupla e fechos de caixa incompletos. */
   var _aRehidratar = false;
+  var _avisoAnomalia = false; // aviso da guarda anti-anomalia mostrado (1x por episódio)
   function rehidratarQuentes(recarregar) {
     if (!navigator.onLine || _aRehidratar || modoProtegido()) return Promise.resolve(false);
     if (!_perfil || !_perfil.id) return Promise.resolve(false); // só com sessão
@@ -720,9 +721,12 @@
         var suspeito = ((db.estudantes && db.estudantes.length) && (!r[0] || !r[0].length)) ||
                        ((db.pagamentos && db.pagamentos.length) && (!r[1] || !r[1].length));
         if (suspeito) {
-          if (toast) toast("Atualização ignorada: o servidor devolveu 0 registos (possível sessão/permissão). Os dados no ecrã foram mantidos.", "err");
+          // Avisa UMA vez por sessão (a sondagem corre a cada 90s — sem isto,
+          // o mesmo aviso repetia-se indefinidamente).
+          if (!_avisoAnomalia) { _avisoAnomalia = true; toast("Atualização ignorada: o servidor devolveu 0 registos (possível sessão/permissão). Os dados no ecrã foram mantidos.", "err"); }
           return false;
         }
+        _avisoAnomalia = false; // recuperou: volta a poder avisar no futuro
         db.estudantes = r[0]; db.pagamentos = r[1]; db.fechos = r[2] || [];
         reconcileSeqs(db);
         aplicarOpsNaCache(outboxLer()); // preserva os registos offline pendentes

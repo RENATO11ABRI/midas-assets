@@ -746,7 +746,7 @@
       reader.readAsText(file);
     };
     document.getElementById("bkCatalogo").onclick = function () {
-      C.confirm("Repor o catálogo de cursos oficial? Os estudantes e pagamentos são mantidos.", function () {
+      C.confirm("Repor o catálogo de cursos oficial? Adiciona/atualiza os cursos oficiais — não apaga cursos personalizados nem estudantes/pagamentos.", function () {
         D.reporCatalogo(); C.toast("Catálogo de cursos atualizado.", "ok"); App.refresh();
       }, { yes: "Repor catálogo" });
     };
