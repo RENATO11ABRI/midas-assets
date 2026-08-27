@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Grupo Midas Angola — Do Zero ao Emprego | Cursos Técnicos de Saúde</title>
+  <meta name="description" content="Cursos técnicos de Enfermagem, Análises Clínicas e Farmácia em Luanda. Polos no Zango, Cazenga e Viana. Vagas abertas 2026 — faça a sua pré-matrícula." />
+  <meta name="theme-color" content="#0f5132" />
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
+  <link rel="apple-touch-icon" href="assets/logo.svg" />
+
+  <!-- Open Graph / partilha em WhatsApp e Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Grupo Midas Angola — Do Zero ao Emprego" />
+  <meta property="og:description" content="Cursos técnicos de Enfermagem, Análises Clínicas e Farmácia. Polos no Zango, Cazenga e Viana. Vagas abertas 2026." />
+  <meta property="og:locale" content="pt_AO" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" />
+
+  <style>
+    /* ==========================================================================
+       Página vitrine (pública) — Grupo Midas Angola
+       Marca: verde #0f5132 / #0c2c20  ·  dourado #d4af37  ·  slogan "Do Zero ao Emprego"
+       Autónoma (CSS embutido), rápida e responsiva (mobile-first).
+       ========================================================================== */
+    :root{
+      --green:#0f5132; --green-d:#0c2c20; --green-l:#157347;
+      --gold:#d4af37; --gold-d:#b8902f;
+      --ink:#0b1220; --muted:#5b6675; --line:#e6e9ef; --bg:#f6f8fb; --card:#ffffff;
+      --shadow:0 12px 34px rgba(12,44,34,.10);
+      --radius:16px;
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg);line-height:1.55}
+    img{max-width:100%;display:block}
+    a{color:inherit;text-decoration:none}
+    .wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+    .btn{display:inline-flex;align-items:center;gap:8px;padding:13px 22px;border-radius:999px;font-weight:700;font-size:1rem;cursor:pointer;border:2px solid transparent;transition:transform .12s ease, box-shadow .12s ease;white-space:nowrap}
+    .btn:hover{transform:translateY(-2px)}
+    .btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold-d));color:#3a2c05;box-shadow:0 8px 22px rgba(212,175,55,.35)}
+    .btn-green{background:var(--green);color:#fff}
+    .btn-ghost{background:transparent;color:#fff;border-color:rgba(255,255,255,.55)}
+    .btn-ghost:hover{background:rgba(255,255,255,.12)}
+    .btn-wa{background:#25D366;color:#04310f}
+    .eyebrow{display:inline-block;font-weight:800;letter-spacing:.12em;text-transform:uppercase;font-size:.74rem;color:var(--gold-d)}
+    .sec{padding:64px 0}
+    .sec h2{font-size:clamp(1.6rem,4vw,2.3rem);margin:.3rem 0 .5rem;font-weight:900;letter-spacing:-.02em}
+    .sec .lead{color:var(--muted);max-width:640px;margin:0 auto;text-align:center;font-size:1.05rem}
+    .center{text-align:center}
+
+    /* ---- Barra de anúncio ---- */
+    .topstrip{background:var(--green-d);color:#e7f3ec;text-align:center;font-size:.9rem;font-weight:600;padding:8px 14px}
+    .topstrip b{color:var(--gold)}
+
+    /* ---- Cabeçalho ---- */
+    header.site{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+    .navbar{display:flex;align-items:center;gap:16px;height:66px}
+    .brand{display:flex;align-items:center;gap:11px;font-weight:800}
+    .brand img{height:42px;width:42px}
+    .brand small{display:block;font-weight:600;color:var(--muted);font-size:.72rem;letter-spacing:.04em}
+    .navlinks{margin-left:auto;display:flex;gap:26px;align-items:center}
+    .navlinks a{font-weight:600;color:#2a3646;font-size:.95rem}
+    .navlinks a:hover{color:var(--green)}
+    .nav-cta{display:flex;gap:10px;align-items:center}
+    @media (max-width:860px){ .navlinks .link{display:none} }
+
+    /* ---- Hero ---- */
+    .hero{position:relative;color:#fff;background:linear-gradient(140deg,var(--green) 0%,var(--green-d) 70%);overflow:hidden}
+    .hero::after{content:"";position:absolute;inset:0;background:
+      radial-gradient(circle at 85% 15%, rgba(212,175,55,.22), transparent 42%),
+      radial-gradient(circle at 10% 90%, rgba(21,115,71,.5), transparent 45%);pointer-events:none}
+    .hero-grid{position:relative;display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center;padding:70px 0 78px}
+    .hero h1{font-size:clamp(2rem,5.4vw,3.3rem);line-height:1.06;margin:.4rem 0 .6rem;font-weight:900;letter-spacing:-.025em}
+    .hero h1 .hl{color:var(--gold)}
+    .hero p.sub{font-size:1.12rem;color:#dbeee4;max-width:520px;margin:0 0 26px}
+    .hero-cta{display:flex;flex-wrap:wrap;gap:12px}
+    .hero-stats{display:flex;gap:26px;margin-top:34px;flex-wrap:wrap}
+    .hero-stats .st b{display:block;font-size:1.7rem;font-weight:900;color:var(--gold)}
+    .hero-stats .st span{font-size:.85rem;color:#cfe4d8}
+    /* cartão-foto do hero (substituir por foto real) */
+    .hero-photo{border-radius:22px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.14);aspect-ratio:4/3;background:
+      repeating-linear-gradient(45deg,#0e3c2b,#0e3c2b 14px,#10442f 14px,#10442f 28px);display:flex;align-items:center;justify-content:center;color:#7fb79c;font-weight:700;text-align:center;padding:20px}
+    @media (max-width:860px){ .hero-grid{grid-template-columns:1fr;padding:48px 0 54px} .hero-photo{display:none} }
+
+    /* ---- Cursos em destaque ---- */
+    .feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:38px}
+    @media (max-width:860px){ .feat-grid{grid-template-columns:1fr} }
+    .fcard{position:relative;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column;transition:transform .14s ease}
+    .fcard:hover{transform:translateY(-4px)}
+    .fcard .ph{aspect-ratio:16/10;background:linear-gradient(135deg,#12492f,#0c2c20);display:flex;align-items:center;justify-content:center}
+    .fcard .ph svg{width:74px;height:74px;stroke:var(--gold);fill:none;stroke-width:1.6;opacity:.95}
+    .fcard .body{padding:20px 20px 22px}
+    .fcard .tag{position:absolute;top:14px;left:14px;background:var(--gold);color:#3a2c05;font-weight:800;font-size:.72rem;padding:5px 11px;border-radius:999px;letter-spacing:.03em}
+    .fcard h3{margin:.1rem 0 .35rem;font-size:1.22rem;font-weight:800}
+    .fcard p{margin:0 0 16px;color:var(--muted);font-size:.94rem}
+    .fcard .go{font-weight:700;color:var(--green);display:inline-flex;align-items:center;gap:6px}
+
+    /* ---- Lista de cursos ---- */
+    .courses{background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+    .clist{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-top:34px}
+    .cpill{display:flex;align-items:center;gap:11px;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:13px 15px;font-weight:600}
+    .cpill .dot{width:9px;height:9px;border-radius:50%;background:var(--gold);flex:none}
+
+    /* ---- Diferenciais ---- */
+    .why-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:38px}
+    @media (max-width:860px){ .why-grid{grid-template-columns:1fr 1fr} }
+    @media (max-width:520px){ .why-grid{grid-template-columns:1fr} }
+    .why{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow)}
+    .why .ic{width:46px;height:46px;border-radius:12px;background:#e8f3ec;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+    .why .ic svg{width:24px;height:24px;stroke:var(--green);fill:none;stroke-width:1.8}
+    .why h3{margin:0 0 6px;font-size:1.05rem}
+    .why p{margin:0;color:var(--muted);font-size:.92rem}
+
+    /* ---- Localizações ---- */
+    .locs{background:linear-gradient(180deg,#0c2c20,#0f3626);color:#eaf4ee}
+    .locs h2{color:#fff}
+    .locs .lead{color:#bcd6c8}
+    .loc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:38px}
+    @media (max-width:860px){ .loc-grid{grid-template-columns:1fr} }
+    .loc{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:var(--radius);padding:24px;position:relative}
+    .loc.new{border-color:var(--gold)}
+    .loc .badge{position:absolute;top:-11px;left:20px;background:var(--gold);color:#3a2c05;font-weight:800;font-size:.7rem;padding:4px 11px;border-radius:999px;letter-spacing:.05em}
+    .loc h3{margin:.2rem 0 4px;font-size:1.25rem;color:#fff;display:flex;align-items:center;gap:8px}
+    .loc h3 svg{width:20px;height:20px;stroke:var(--gold);fill:none;stroke-width:1.8}
+    .loc address{font-style:normal;color:#cfe4d8;font-size:.95rem;margin:8px 0 16px}
+    .loc a.map{display:inline-flex;align-items:center;gap:7px;font-weight:700;color:var(--gold)}
+
+    /* ---- Galeria ---- */
+    .gal-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:34px}
+    @media (max-width:860px){ .gal-grid{grid-template-columns:1fr 1fr} }
+    .gitem{aspect-ratio:1/1;border-radius:14px;border:1px dashed var(--line);background:
+      repeating-linear-gradient(45deg,#eef2f7,#eef2f7 12px,#e6ebf2 12px,#e6ebf2 24px);display:flex;align-items:center;justify-content:center;color:#93a1b3;font-weight:700;font-size:.82rem;text-align:center;padding:12px}
+
+    /* ---- CTA final ---- */
+    .cta{background:linear-gradient(135deg,var(--gold),var(--gold-d));color:#3a2c05;text-align:center}
+    .cta h2{color:#3a2c05}
+    .cta .lead{color:#5a4712}
+    .cta .btn-green{margin-top:24px}
+
+    /* ---- Rodapé ---- */
+    footer.site{background:var(--green-d);color:#bcd6c8;padding:44px 0 30px}
+    .foot-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:30px}
+    @media (max-width:720px){ .foot-grid{grid-template-columns:1fr} }
+    footer.site h4{color:#fff;margin:0 0 12px;font-size:1rem}
+    footer.site a{color:#bcd6c8;display:block;margin-bottom:7px;font-size:.92rem}
+    footer.site a:hover{color:var(--gold)}
+    .foot-brand{display:flex;align-items:center;gap:11px;margin-bottom:12px}
+    .foot-brand img{height:40px}
+    .copy{border-top:1px solid rgba(255,255,255,.12);margin-top:30px;padding-top:18px;text-align:center;font-size:.85rem;color:#8fb3a1}
+
+    /* ---- Botão flutuante WhatsApp ---- */
+    .wa-float{position:fixed;right:18px;bottom:18px;z-index:60;background:#25D366;color:#04310f;width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px rgba(37,211,102,.45)}
+    .wa-float svg{width:30px;height:30px;fill:#04310f}
+
+    /* nota interna de placeholder */
+    .note{background:#fff7e6;border:1px dashed var(--gold-d);color:#7a5a10;border-radius:12px;padding:10px 14px;font-size:.85rem;margin-top:14px;text-align:center}
+  </style>
+</head>
+<body>
+
+  <!-- ===== Barra de anúncio ===== -->
+  <div class="topstrip">🎓 <b>Matrículas abertas 2026</b> — Enfermagem · Análises Clínicas · Farmácia. Vagas limitadas!</div>
+
+  <!-- ===== Cabeçalho ===== -->
+  <header class="site">
+    <div class="wrap navbar">
+      <a class="brand" href="#top">
+        <img src="assets/logo.svg" alt="Grupo Midas Angola" />
+        <span>Grupo Midas Angola<small>Do Zero ao Emprego</small></span>
+      </a>
+      <nav class="navlinks">
+        <a class="link" href="#cursos">Cursos</a>
+        <a class="link" href="#porque">Porquê Midas</a>
+        <a class="link" href="#polos">Localizações</a>
+        <a class="link" href="#galeria">Galeria</a>
+        <div class="nav-cta">
+          <a class="btn btn-gold" href="inscricao.html">Pré-matrícula</a>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ===== Hero ===== -->
+  <section class="hero" id="top">
+    <div class="wrap hero-grid">
+      <div>
+        <span class="eyebrow" style="color:var(--gold)">Instituição de Ensino Técnico · Luanda</span>
+        <h1>Forme-se para o emprego na área da <span class="hl">Saúde</span></h1>
+        <p class="sub">Cursos técnicos de <strong>Enfermagem</strong>, <strong>Análises Clínicas</strong> e <strong>Farmácia</strong> — com formação prática e professores da área. Comece do zero e saia preparado para o mercado.</p>
+        <div class="hero-cta">
+          <a class="btn btn-gold" href="inscricao.html">Fazer pré-matrícula 2026</a>
+          <a class="btn btn-ghost" href="#WHATSAPP_LINK" data-wa>Falar no WhatsApp</a>
+        </div>
+        <div class="hero-stats">
+          <div class="st"><b>3</b><span>Polos em Luanda</span></div>
+          <div class="st"><b>+10</b><span>Cursos técnicos</span></div>
+          <div class="st"><b>2026</b><span>Vagas abertas</span></div>
+        </div>
+      </div>
+      <div class="hero-photo">📷 Foto da escola / alunos<br>(substituir aqui)</div>
+    </div>
+  </section>
+
+  <!-- ===== Cursos em destaque ===== -->
+  <section class="sec wrap" id="destaque">
+    <div class="center">
+      <span class="eyebrow">Mais procurados</span>
+      <h2>Cursos em destaque para 2026</h2>
+      <p class="lead">As áreas com maior procura e empregabilidade — inscrições abertas nos três polos.</p>
+    </div>
+    <div class="feat-grid">
+      <article class="fcard">
+        <span class="tag">Vagas abertas</span>
+        <div class="ph"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.5-9A5 5 0 0 1 12 6a5 5 0 0 1 9.5 6c-2.5 4.5-9.5 9-9.5 9z"/><path d="M12 8v6M9 11h6"/></svg></div>
+        <div class="body">
+          <h3>Enfermagem</h3>
+          <p>Cuidados ao doente, técnicas de enfermagem e prática clínica. A base para trabalhar em hospitais, clínicas e centros de saúde.</p>
+          <a class="go" href="inscricao.html">Inscrever-me →</a>
+        </div>
+      </article>
+      <article class="fcard">
+        <span class="tag">Vagas abertas</span>
+        <div class="ph"><svg viewBox="0 0 24 24"><path d="M9 3h6M10 3v6.5L5.5 18a2.5 2.5 0 0 0 2.2 3.7h8.6A2.5 2.5 0 0 0 18.5 18L14 9.5V3"/><path d="M8 15h8"/></svg></div>
+        <div class="body">
+          <h3>Análises Clínicas</h3>
+          <p>Laboratório, recolha e análise de amostras. Prepare-se para trabalhar em laboratórios clínicos e de diagnóstico.</p>
+          <a class="go" href="inscricao.html">Inscrever-me →</a>
+        </div>
+      </article>
+      <article class="fcard">
+        <span class="tag">Vagas abertas</span>
+        <div class="ph"><svg viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M9 4h6v4H9zM12 12v4M10 14h4"/></svg></div>
+        <div class="body">
+          <h3>Farmácia</h3>
+          <p>Medicamentos, atendimento e gestão farmacêutica. Uma profissão procurada em farmácias e postos de venda.</p>
+          <a class="go" href="inscricao.html">Inscrever-me →</a>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ===== Lista completa de cursos ===== -->
+  <section class="courses sec" id="cursos">
+    <div class="wrap center">
+      <span class="eyebrow">Oferta formativa</span>
+      <h2>Todos os cursos</h2>
+      <p class="lead">Formação técnica com certificação. Fale connosco para saber datas, propinas e horários (manhã, tarde, noite e fim de semana).</p>
+      <div class="clist" style="text-align:left">
+        <div class="cpill"><span class="dot"></span> Enfermagem</div>
+        <div class="cpill"><span class="dot"></span> Análises Clínicas</div>
+        <div class="cpill"><span class="dot"></span> Farmácia</div>
+        <div class="cpill"><span class="dot"></span> Fisioterapia</div>
+        <div class="cpill"><span class="dot"></span> Saúde Comunitária</div>
+        <div class="cpill"><span class="dot"></span> Gestão / Contabilidade</div>
+        <div class="cpill"><span class="dot"></span> Informática</div>
+        <div class="cpill"><span class="dot"></span> Outros — consulte-nos</div>
+      </div>
+      <p class="note">Nota interna: confirme a lista final de cursos e adaptamos esta secção.</p>
+    </div>
+  </section>
+
+  <!-- ===== Porquê Midas ===== -->
+  <section class="sec wrap" id="porque">
+    <div class="center">
+      <span class="eyebrow">Porquê estudar na Midas</span>
+      <h2>Do zero ao emprego</h2>
+      <p class="lead">O nosso foco é preparar-lhe para trabalhar — com prática, acompanhamento e horários que cabem na sua vida.</p>
+    </div>
+    <div class="why-grid">
+      <div class="why">
+        <div class="ic"><svg viewBox="0 0 24 24"><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1 3 3 6 3s6-2 6-3v-5"/></svg></div>
+        <h3>Formação prática</h3>
+        <p>Aulas com componente prática para sair preparado para o terreno.</p>
+      </div>
+      <div class="why">
+        <div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></div>
+        <h3>Professores da área</h3>
+        <p>Formadores com experiência real no sector da saúde.</p>
+      </div>
+      <div class="why">
+        <div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+        <h3>Horários flexíveis</h3>
+        <p>Manhã, tarde, noite e fim de semana — estude ao seu ritmo.</p>
+      </div>
+      <div class="why">
+        <div class="ic"><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"/></svg></div>
+        <h3>3 polos em Luanda</h3>
+        <p>Zango, Cazenga e Viana — escolha o mais perto de si.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Localizações ===== -->
+  <section class="locs sec" id="polos">
+    <div class="wrap center">
+      <span class="eyebrow" style="color:var(--gold)">Onde estamos</span>
+      <h2>Os nossos polos</h2>
+      <p class="lead">Estamos mais perto de si. Agora também em Viana, além do Zango e do Cazenga.</p>
+    </div>
+    <div class="wrap loc-grid">
+      <div class="loc new">
+        <span class="badge">NOVO</span>
+        <h3><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> Viana</h3>
+        <address>Casa da Juventude, KK-5000 (depois do asfalto). Passando a Universidade Kangonjo, entrada da fábrica de blocos.</address>
+        <a class="map" href="https://www.google.com/maps/search/?api=1&query=Casa+da+Juventude+Viana+Luanda" target="_blank" rel="noopener">Ver no mapa →</a>
+      </div>
+      <div class="loc">
+        <h3><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> Zango</h3>
+        <address>Zango, Luanda.<br><span style="opacity:.7">Endereço detalhado — a preencher.</span></address>
+        <a class="map" href="https://www.google.com/maps/search/?api=1&query=Zango+Luanda" target="_blank" rel="noopener">Ver no mapa →</a>
+      </div>
+      <div class="loc">
+        <h3><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> Cazenga</h3>
+        <address>Cazenga, Luanda.<br><span style="opacity:.7">Endereço detalhado — a preencher.</span></address>
+        <a class="map" href="https://www.google.com/maps/search/?api=1&query=Cazenga+Luanda" target="_blank" rel="noopener">Ver no mapa →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Galeria ===== -->
+  <section class="sec wrap" id="galeria">
+    <div class="center">
+      <span class="eyebrow">Galeria</span>
+      <h2>Conheça a Midas por dentro</h2>
+      <p class="lead">Instalações, salas, laboratórios e o dia a dia dos nossos alunos.</p>
+    </div>
+    <div class="gal-grid">
+      <div class="gitem">📷 Sala de aula</div>
+      <div class="gitem">📷 Laboratório</div>
+      <div class="gitem">📷 Alunos em prática</div>
+      <div class="gitem">📷 Fachada — Viana</div>
+      <div class="gitem">📷 Fachada — Zango</div>
+      <div class="gitem">📷 Fachada — Cazenga</div>
+      <div class="gitem">📷 Formatura</div>
+      <div class="gitem">📷 Evento / turma</div>
+    </div>
+    <p class="note">Envie as fotos reais (escola, salas, polos, alunos) e eu coloco-as aqui em alta qualidade.</p>
+  </section>
+
+  <!-- ===== CTA final ===== -->
+  <section class="cta sec">
+    <div class="wrap center">
+      <span class="eyebrow" style="color:#7a5a10">Vagas limitadas</span>
+      <h2>Garanta já a sua vaga para 2026</h2>
+      <p class="lead">Faça a pré-matrícula em 2 minutos. A nossa equipa entra em contacto consigo.</p>
+      <a class="btn btn-green" href="inscricao.html">Fazer pré-matrícula agora</a>
+    </div>
+  </section>
+
+  <!-- ===== Rodapé ===== -->
+  <footer class="site">
+    <div class="wrap foot-grid">
+      <div>
+        <div class="foot-brand">
+          <img src="assets/logo.svg" alt="Grupo Midas Angola" />
+          <strong style="color:#fff">Grupo Midas Angola</strong>
+        </div>
+        <p style="max-width:320px;color:#9fc0af">Instituição de ensino técnico em Luanda. Do Zero ao Emprego.</p>
+      </div>
+      <div>
+        <h4>Cursos</h4>
+        <a href="#cursos">Enfermagem</a>
+        <a href="#cursos">Análises Clínicas</a>
+        <a href="#cursos">Farmácia</a>
+        <a href="#cursos">Ver todos</a>
+      </div>
+      <div>
+        <h4>Contactos</h4>
+        <a href="#WHATSAPP_LINK" data-wa>WhatsApp: [preencher]</a>
+        <a href="tel:">Telefone: [preencher]</a>
+        <a href="#polos">Polos: Zango · Cazenga · Viana</a>
+        <a href="inscricao.html">Pré-matrícula online</a>
+      </div>
+    </div>
+    <div class="wrap copy">© 2026 Grupo Midas Angola · Todos os direitos reservados</div>
+  </footer>
+
+  <!-- Botão flutuante WhatsApp -->
+  <a class="wa-float" href="#WHATSAPP_LINK" data-wa aria-label="Falar no WhatsApp">
+    <svg viewBox="0 0 24 24"><path d="M20.5 3.5A11.9 11.9 0 0 0 12 0C5.4 0 .1 5.3.1 11.9c0 2.1.6 4.1 1.6 5.9L0 24l6.3-1.7c1.7.9 3.6 1.4 5.7 1.4 6.6 0 11.9-5.3 11.9-11.9 0-3.2-1.2-6.2-3.4-8.3zM12 21.8c-1.8 0-3.6-.5-5.1-1.4l-.4-.2-3.7 1 1-3.6-.2-.4a9.8 9.8 0 0 1-1.5-5.3C2.1 6.5 6.5 2.1 12 2.1c2.6 0 5.1 1 6.9 2.9a9.7 9.7 0 0 1 2.9 6.9c0 5.5-4.4 9.9-9.8 9.9zm5.4-7.4c-.3-.1-1.8-.9-2-1-.3-.1-.5-.1-.7.1-.2.3-.7 1-.9 1.2-.2.2-.3.2-.6.1-1.8-.9-3-1.6-4.2-3.6-.3-.5.3-.5.8-1.6.1-.2 0-.4 0-.5-.1-.1-.7-1.6-.9-2.2-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.2.2 2.1 3.3 5.2 4.6 2 .8 2.7.9 3.7.8.6-.1 1.8-.7 2.1-1.5.3-.7.3-1.4.2-1.5-.1-.2-.3-.2-.6-.4z"/></svg>
+  </a>
+
+  <script>
+    /* Preenche os links de WhatsApp a partir de um número central.
+       ↓↓↓ Troque o número (formato internacional, sem +, sem espaços) ↓↓↓ */
+    (function(){
+      var WHATSAPP = ""; // ex.: "244923000000"  ·  deixe vazio até ter o número oficial
+      var MSG = encodeURIComponent("Olá! Tenho interesse nos cursos da Midas (2026). Podem dar-me mais informações?");
+      var links = document.querySelectorAll('[data-wa]');
+      if (WHATSAPP) {
+        var href = "https://wa.me/" + WHATSAPP + "?text=" + MSG;
+        links.forEach(function(a){ a.setAttribute("href", href); a.setAttribute("target","_blank"); a.setAttribute("rel","noopener"); });
+      } else {
+        // Sem número ainda: encaminha para a pré-matrícula em vez de link partido.
+        links.forEach(function(a){ a.setAttribute("href","inscricao.html"); });
+      }
+    })();
+  </script>
+</body>
+</html>
