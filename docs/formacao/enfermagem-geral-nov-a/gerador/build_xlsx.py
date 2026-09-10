@@ -187,5 +187,118 @@ s.cell(row=10,column=6,value="Total").font=Font(bold=True)
 s.cell(row=10,column=7,value="=SUM(G2:G9)").font=Font(bold=True)
 s.freeze_panes="A2"
 
+
+# ---------------- SÁBADOS ----------------
+SB=d["sabados"]
+sb=wb.create_sheet("Sábados")
+sb.merge_cells("A1:I1")
+c=sb["A1"]; c.value=(f"Gestão de Enfermagem e Projecto Tecnológico — {SB['n']} sábados, "
+                     f"{SB['ini']} a {SB['fim']}, {SB['horas']:.0f} h · {SB['prof']}")
+c.font=Font(name="Cambria",bold=True,size=13,color=NAVY); sb.row_dimensions[1].height=24
+head(sb,["N.º","Data","Dia","Horário","Bloco","Disciplina","Unidade temática","Tema da sessão","Tipo","Duração (min)"],
+     row=2,widths=[6,11,10,13,18,11,34,62,16,13])
+COR2={"GEN":"FFE4DDF4","PT":"FFDDEAF4","—":"FFF5F5F5"}
+r=3
+for b in SB["blocos"]:
+    n,data,dia,hor,tp,disc,uni,tema,prof,tipo,dur=b
+    for j,v in enumerate([n,data,dia,hor,tp,disc,uni,tema,tipo,dur],1):
+        cc=sb.cell(row=r,column=j,value=v); cc.border=BD; cc.font=Font(name="Calibri",size=9.5)
+        cc.alignment=Alignment(vertical="top",wrap_text=(j in (7,8)),
+                               horizontal="center" if j in (1,9,10) else "left")
+        if j==6: cc.font=Font(name="Calibri",size=9.5,bold=True)
+        cc.fill=PatternFill("solid",start_color=COR2.get(disc,"FFFFFFFF"))
+    r+=1
+SB_LAST=r-1
+sb.freeze_panes="A3"; sb.auto_filter.ref=f"A2:J{SB_LAST}"
+CS=f"Sábados!$F$3:$F${SB_LAST}"; DS=f"Sábados!$J$3:$J${SB_LAST}"; TS=f"Sábados!$I$3:$I${SB_LAST}"
+sb.cell(row=SB_LAST+2,column=6,value="GEN").font=Font(bold=True)
+sb.cell(row=SB_LAST+2,column=8,value=f'=SUMIF({CS},"GEN",{DS})/60').number_format='0.0'
+sb.cell(row=SB_LAST+3,column=6,value="PT").font=Font(bold=True)
+sb.cell(row=SB_LAST+3,column=8,value=f'=SUMIF({CS},"PT",{DS})/60').number_format='0.0'
+sb.cell(row=SB_LAST+4,column=6,value="TOTAL").font=Font(bold=True)
+sb.cell(row=SB_LAST+4,column=8,value=f"=H{SB_LAST+2}+H{SB_LAST+3}").font=Font(bold=True)
+sb.cell(row=SB_LAST+4,column=8).number_format='0.0'
+
+# ---------------- ESTÁGIOS E DEFESA ----------------
+es=wb.create_sheet("Estágios e defesa")
+es.column_dimensions["A"].width=28
+for col in "BC": es.column_dimensions[col].width=46
+es["A1"]="Estágios, pré-defesas e defesa de fim de curso"
+es["A1"].font=Font(name="Cambria",bold=True,size=13,color=NAVY); es.merge_cells("A1:C1")
+campos=[("Designação","nome"),("Local","local"),("Apresentação","apresentacao"),("Início","ini"),
+        ("Termo","fim"),("Duração","duracao"),("Dias","dias"),("Horas por dia","horas_dia"),
+        ("Carga horária","carga"),("Supervisão pela escola","supervisor"),("Tutoria no serviço","tutor"),
+        ("Peso na avaliação","peso"),("Custo (Kz)","preco")]
+r=3
+lbl_ = lambda row,col,txt,b=False,fill=None: (lambda cc: (setattr(cc,'border',BD),
+        setattr(cc,'font',Font(name="Calibri",size=10,bold=b)),
+        setattr(cc,'alignment',Alignment(vertical="top",wrap_text=True)),
+        cc.__setattr__('fill',PatternFill("solid",start_color=fill)) if fill else None, cc)[-1])(es.cell(row=row,column=col,value=txt))
+lbl_(r,1,"Campo",True,BOX); lbl_(r,2,"Estágio preliminar",True,BOX); lbl_(r,3,"Estágio curricular",True,BOX); r+=1
+for nome,chave in campos:
+    lbl_(r,1,nome,True)
+    lbl_(r,2,d["estagios"][0][chave] if d["estagios"][0][chave] is not None else "—")
+    lbl_(r,3,d["estagios"][1][chave] if d["estagios"][1][chave] is not None else "—")
+    r+=1
+r+=1
+lbl_(r,1,"Documentos a entregar",True,BOX); lbl_(r,2,"; ".join(d["estagio_docs"]),False,BOX); r+=2
+lbl_(r,1,"Momento",True,BOX); lbl_(r,2,"Data",True,BOX); lbl_(r,3,"Observações",True,BOX); r+=1
+for i,x in enumerate(d["defesa"]["predefesas"],1):
+    lbl_(r,1,f"{i}.ª pré-defesa",True); lbl_(r,2,x); lbl_(r,3,"Sábado, no bloco de projecto"); r+=1
+for nome,val,obs in [("Entrega do trabalho",d["defesa"]["entrega"],"Um mês antes da defesa"),
+                     ("Defesa de fim de curso",d["defesa"]["data"],d["defesa"]["juri"]),
+                     ("Recurso da defesa",d["defesa"]["recurso"],"Quinze dias após a defesa")]:
+    lbl_(r,1,nome,True); lbl_(r,2,val); lbl_(r,3,obs); r+=1
+
+# ---------------- FINANCEIRO ----------------
+FI=d["financeiro"]
+fi=wb.create_sheet("Financeiro")
+fi.column_dimensions["A"].width=46
+for col,wd in [("B",14),("C",34),("D",34)]: fi.column_dimensions[col].width=wd
+fi["A1"]=f"Condições financeiras — turma {M['turma']}, {M['modulo']}, {M['ano']} (valores em kwanzas)"
+fi["A1"].font=Font(name="Cambria",bold=True,size=13,color=NAVY); fi.merge_cells("A1:D1")
+r=3
+def sec_fin(r,txt):
+    fi.merge_cells(start_row=r,start_column=1,end_row=r,end_column=4)
+    cc=fi.cell(row=r,column=1,value=txt)
+    cc.font=Font(name="Cambria",bold=True,size=11,color="FFFFFFFF")
+    cc.fill=PatternFill("solid",start_color=NAVY2); return r+1
+r=sec_fin(r,"Encargos do módulo")
+lbl_(r,1,"Encargo",True,BOX); lbl_(r,2,"Valor",True,BOX); lbl_(r,3,"Regime",True,BOX); lbl_(r,4,"Prazo",True,BOX); r+=1
+first_fin=r
+for x in FI["modulo"]:
+    lbl_(r,1,x["item"],True)
+    cc=fi.cell(row=r,column=2,value=x["valor"]); cc.border=BD; cc.number_format='#,##0'
+    cc.font=Font(name="Calibri",size=10); cc.alignment=Alignment(horizontal="right")
+    lbl_(r,3,x["nota"]); lbl_(r,4,x["quando"]); r+=1
+lbl_(r,1,"Total do módulo por formando",True,BOX)
+cc=fi.cell(row=r,column=2,value=f"=SUM(B{first_fin}:B{r-1})+B{first_fin+1}*8")
+cc.border=BD; cc.number_format='#,##0'; cc.font=Font(name="Calibri",size=10,bold=True)
+cc.alignment=Alignment(horizontal="right"); cc.fill=PatternFill("solid",start_color=BOX)
+lbl_(r,3,f"a mensalidade conta {FI['mensalidades']} vezes",False,BOX)
+lbl_(r,4,f"conferência: {FI['total_modulo']:,} Kz".replace(",","."),False,BOX); r+=2
+r=sec_fin(r,"Encargos eventuais")
+lbl_(r,1,"Encargo",True,BOX); lbl_(r,2,"Valor",True,BOX); lbl_(r,3,"Regime",True,BOX); lbl_(r,4,"Quando se aplica",True,BOX); r+=1
+for x in FI["eventual"]:
+    lbl_(r,1,x["item"],True)
+    cc=fi.cell(row=r,column=2,value=x["valor"]); cc.border=BD; cc.number_format='#,##0'
+    cc.font=Font(name="Calibri",size=10); cc.alignment=Alignment(horizontal="right")
+    lbl_(r,3,x["nota"]); lbl_(r,4,x["quando"]); r+=1
+r+=1
+r=sec_fin(r,"Encargos posteriores e valores por definir")
+lbl_(r,1,"Encargo",True,BOX); lbl_(r,2,"Valor",True,BOX); lbl_(r,3,"Observações",True,BOX); r+=1
+for x in FI["futuro"]:
+    lbl_(r,1,x["item"],True)
+    if x["valor"] is None: lbl_(r,2,"a definir")
+    else:
+        cc=fi.cell(row=r,column=2,value=x["valor"]); cc.border=BD; cc.number_format='#,##0'
+        cc.font=Font(name="Calibri",size=10); cc.alignment=Alignment(horizontal="right")
+    lbl_(r,3,x["quando"]); r+=1
+r+=1
+r=sec_fin(r,"Regras de pagamento")
+for x in FI["regras"]:
+    lbl_(r,1,x); fi.merge_cells(start_row=r,start_column=1,end_row=r,end_column=4); r+=1
+fi.freeze_panes="A2"
+
 wb.save("Cronograma-Enfermagem-Geral-III-Modulo-NOV-A.xlsx")
-print("XLSX escrito ·", LAST-2, "blocos ·", len(d["seminarios"]), "seminários")
+print("XLSX escrito ·", LAST-2, "blocos ·", SB_LAST-2, "blocos de sábado ·", len(d["seminarios"]), "seminários ·", len(wb.sheetnames), "folhas")

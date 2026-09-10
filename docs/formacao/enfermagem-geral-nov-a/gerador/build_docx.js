@@ -10,7 +10,7 @@ const hf=x=>(Math.round(x*10)/10).toString().replace('.',',')+' h';
 const hn=x=>Math.round(x*10)/10;
 const W_P=9026, W_L=14678;
 const C={navy:'0F3A63',navy2:'1B4E7F',green:'0B7A20',rule:'B7C4CF',head:'0F3A63',
- zebra:'F2F6F9',aula:'FFF2A8',sem:'FFD08A',fer:'DCDCDC',gest:'D8EAC8',est:'CFE2F3',box:'EEF3F7'};
+ zebra:'F2F6F9',aula:'FFF2A8',sem:'FFD08A',fer:'DCDCDC',gest:'D8EAC8',est:'CFE2F3',sab:'DED3F0',defe:'F7C9C9',box:'EEF3F7'};
 const F='Calibri', FS='Cambria';
 
 const noB={top:{style:BorderStyle.NONE},bottom:{style:BorderStyle.NONE},
@@ -124,7 +124,10 @@ sec(2,'Equipa docente');
 par('As quatro disciplinas técnicas deste ciclo são asseguradas por dois Técnicos de Enfermagem. Cada docente é responsável por duas disciplinas e lecciona-as no mesmo dia da semana, o que evita deslocações para blocos isolados de sessenta minutos.');
 {const w=[1100,3900,2500,1526];
  const rows=d.ordem.map(k=>[k,d.disc[k].nome,d.disc[k].prof,d.disc[k].dia]);
+ rows.push(['GEN','Gestão de Enfermagem','Prof. Santos Salote','Sábado']);
+ rows.push(['PT','Projecto Tecnológico','Prof. Santos Salote','Sábado']);
  rows.push(['SEM','Seminários complementares','Formador(a) convidado(a) [a designar]','Alternado']);
+ rows.push(['—','Supervisão de estágio (pela escola)','Edilson de Almeida','Conforme escala']);
  body.push(tbl(w,[headRow(['Sigla','Disciplina','Docente','Dia'],w),
   ...rows.map((r,i)=>dataRow(r,w,i,{b:[true,false,false,false]}))]));}
 nota('Os seminários complementares são assegurados por formadores convidados das respectivas áreas, a designar pela Coordenação Pedagógica. Os dois Técnicos de Enfermagem não asseguram os seminários.');
@@ -191,7 +194,9 @@ par('O ciclo é composto por quatro disciplinas técnicas e por oito seminários
  const rows=d.ordem.map(k=>{const x=d.disc[k];
   return [k,x.nome,x.prof,`${x.total} h`,hf(x.teorica),hf(x.pratica)];});
  rows.push(['SEM','Seminários complementares (8 × 4 h)','Convidados','32 h',hf(M.sem_teorica),hf(M.sem_pratica)]);
- const tt=M.horas_total, ttT=hn(d.ordem.reduce((a,k)=>a+d.disc[k].teorica,0)+M.sem_teorica);
+ ['GEN','PT'].forEach(k=>{const g=d.sabados.disc[k];
+  rows.push([k,g.nome+' (sábados)','Santos Salote',hf(g.total),hf(g.teorica),hf(g.pratica)]);});
+ const tt=M.horas_geral, ttT=hn(d.ordem.reduce((a,k)=>a+d.disc[k].teorica,0)+M.sem_teorica+d.sabados.disc.GEN.teorica+d.sabados.disc.PT.teorica);
  body.push(tbl(w,[headRow(['Sigla','Disciplina','Docente','Total','Teórica','Prática'],w),
   ...rows.map((r,i)=>dataRow(r,w,i,{b:[true,false,false,true,false,false],
     al:[null,null,null,AlignmentType.RIGHT,AlignmentType.RIGHT,AlignmentType.RIGHT]})),
@@ -395,7 +400,97 @@ d.seminarios.forEach(s=>{
 nota('Os seminários são de frequência obrigatória e registada. A participação conta para a componente de participação da avaliação contínua, mas os seminários não constituem disciplina autónoma e não entram na média das quatro disciplinas técnicas [proposta a confirmar pela Direcção].');
 
 /* ====================== 14 · AVALIAÇÃO ====================== */
-sec(14,'Sistema de avaliação');
+
+/* ============ 14 · GESTÃO DE ENFERMAGEM E PROJECTO TECNOLÓGICO ============ */
+const SAB=d.sabados;
+sec(14,'Gestão de Enfermagem e Projecto Tecnológico');
+par(`Além das quatro disciplinas técnicas e dos seminários, o ciclo integra duas disciplinas leccionadas ao sábado: Gestão de Enfermagem e Projecto Tecnológico. Ambas são asseguradas pelo ${SAB.prof}, que é simultaneamente o tutor dos trabalhos de fim de curso.`);
+par(`Decorrem em ${SAB.n} sábados, de ${SAB.ini} a ${SAB.fim}, das 08h00 às 16h00, num total de ${hf(SAB.horas)}. Esta carga é autónoma: não integra as ${M.horas_total} horas das disciplinas técnicas e dos seminários, e as duas disciplinas têm avaliação e pauta próprias.`);
+sub('Horário do sábado');
+{const w=[2200,2600,2500,1726];
+ const rows=SAB.horario.map(h=>[h.hor, h.tp, h.disc==='—'?'Intervalo':(h.disc==='GEN'?'Gestão de Enfermagem':'Projecto Tecnológico'), `${h.dur} min`]);
+ body.push(tbl(w,[headRow(['Horário','Bloco','Disciplina','Duração'],w),
+  ...rows.map((r,i)=>dataRow(r,w,i,{b:[true,false,false,false],al:[null,null,null,AlignmentType.RIGHT]})),
+  new TableRow({children:[cell(P('08h00 – 16h00',{b:true,sz:17,c:'FFFFFF',sa:0}),{w:w[0],fill:C.navy}),
+   cell(P('Formação efectiva (descontado o intervalo de 30 minutos)',{b:true,sz:17,c:'FFFFFF',sa:0}),{w:w[1],cs:2,fill:C.navy}),
+   cell(P('450 min',{b:true,sz:17,c:'FFFFFF',sa:0,al:AlignmentType.RIGHT}),{w:w[3],fill:C.navy})]})]));}
+par('Gestão de Enfermagem ocupa a manhã, em dois tempos de 120 minutos, e Projecto Tecnológico ocupa a tarde, num bloco contínuo de 210 minutos. A partir de Janeiro de 2027, o bloco de projecto acolhe também as pré-defesas.');
+sub('Carga horária');
+{const w=[900,3400,1400,1400,1926];
+ const rows=['GEN','PT'].map(k=>{const g=SAB.disc[k];
+  return [k,g.nome,hf(g.total),hf(g.teorica),hf(g.pratica)+` (${String(g.pct_pratica).replace('.',',')} %)`];});
+ body.push(tbl(w,[headRow(['Sigla','Disciplina','Total','Teórica','Prática'],w),
+  ...rows.map((r,i)=>dataRow(r,w,i,{b:[true,false,true,false,false],
+   al:[null,null,AlignmentType.RIGHT,AlignmentType.RIGHT,AlignmentType.RIGHT]})),
+  new TableRow({children:[cell(P('Total da componente de sábado',{b:true,sz:16,c:'FFFFFF',sa:0}),{w:w[0],cs:2,fill:C.navy}),
+   cell(P(hf(SAB.horas),{b:true,sz:16,c:'FFFFFF',sa:0,al:AlignmentType.RIGHT}),{w:w[2],fill:C.navy}),
+   cell(P('',{sz:16,sa:0}),{w:w[3],fill:C.navy}),cell(P('',{sz:16,sa:0}),{w:w[4],fill:C.navy})]})]));}
+['GEN','PT'].forEach(k=>{const g=SAB.disc[k];
+ sub(`Unidades temáticas — ${g.nome}`);
+ const w=[700,5900,2426];
+ body.push(tbl(w,[headRow(['Un.','Unidade temática e conteúdos','Carga'],w),
+  ...g.unidades.map((u,i)=>new TableRow({children:[
+   cell(P(u.num,{b:true,sz:16,al:AlignmentType.CENTER,sa:0}),{w:w[0],fill:i%2?C.zebra:undefined}),
+   cell([P(u.tit,{b:true,sz:17,sa:30}),P(u.cont,{sz:16,c:'3A4E60',sa:0})],{w:w[1],fill:i%2?C.zebra:undefined}),
+   cell(P(hf(u.horas),{sz:16,al:AlignmentType.RIGHT,sa:0}),{w:w[2],fill:i%2?C.zebra:undefined})]})),
+  new TableRow({children:[cell(P('Total',{b:true,sz:16,c:'FFFFFF',sa:0}),{w:w[0],cs:2,fill:C.navy}),
+   cell(P(hf(g.total),{b:true,sz:16,c:'FFFFFF',sa:0,al:AlignmentType.RIGHT}),{w:w[2],fill:C.navy})]})]));});
+sub('Sessões');
+{const w=[1100,900,700,4400,1926];
+ const rows=[headRow(['Data','Disc.','Un.','Tema da sessão','Dur.'],w)];
+ SAB.sessoes.forEach((x,i)=>{rows.push(new TableRow({children:[
+  cell(P(x.dstr.slice(0,5),{sz:14,sa:0,b:x.disc==='GEN'}),{w:w[0],fill:x.predefesa?C.mark2||C.box:(i%2?C.zebra:undefined)}),
+  cell(P(x.disc,{b:true,sz:14,sa:0,c:C.green}),{w:w[1],fill:i%2?C.zebra:undefined}),
+  cell(P(x.unidade,{sz:13,al:AlignmentType.CENTER,sa:0}),{w:w[2],fill:i%2?C.zebra:undefined}),
+  cell(P(x.tema,{sz:14,sa:0}),{w:w[3],fill:i%2?C.zebra:undefined}),
+  cell(P(`${x.dur}′`,{sz:13,al:AlignmentType.RIGHT,sa:0}),{w:w[4],fill:i%2?C.zebra:undefined})]}));});
+ body.push(tbl(w,rows));}
+nota(`Avaliação: as duas disciplinas têm avaliação e pauta próprias, independentes das quatro disciplinas técnicas. O Dia do Trabalhador, a ${SAB.dia_trabalhador}, é ocupado por uma actividade organizada por professores e formandos, e conta como sessão. A tutoria do Projecto Tecnológico é paga em acto único de 18.000 Kz e os manuais de apoio custam 10.000 Kz, conforme o capítulo 21.`);
+
+/* ==================== 15 · ESTÁGIOS ==================== */
+sec(15,'Estágio preliminar e estágio curricular');
+par('O ciclo integra dois estágios distintos. O estágio preliminar decorre em paralelo com as aulas, nos dias em que não há formação em sala. O estágio curricular é o estágio principal do curso.');
+{const w=[2000,3500,3526];
+ const L=[['Designação','estagios',0],['Local','local'],['Apresentação','apresentacao'],
+  ['Início','ini'],['Termo','fim'],['Duração','duracao'],['Dias','dias'],
+  ['Horas por dia','horas_dia'],['Carga horária','carga'],['Supervisão pela escola','supervisor'],
+  ['Tutoria no serviço','tutor'],['Peso na avaliação','peso']];
+ const rows=[headRow(['','Estágio preliminar','Estágio curricular'],w)];
+ L.forEach((l,i)=>{ if(l[1]==='estagios') return;
+  const a=d.estagios[0][l[1]], b=d.estagios[1][l[1]];
+  rows.push(new TableRow({children:[
+   cell(P(l[0],{b:true,sz:16,sa:0}),{w:w[0],fill:i%2?C.zebra:undefined}),
+   cell(P(a===null?'—':String(a),{sz:16,sa:0}),{w:w[1],fill:i%2?C.zebra:undefined}),
+   cell(P(b===null?'—':String(b),{sz:16,sa:0}),{w:w[2],fill:i%2?C.zebra:undefined})]}));});
+ rows.push(new TableRow({children:[
+  cell(P('Custo',{b:true,sz:16,c:'FFFFFF',sa:0}),{w:w[0],fill:C.navy}),
+  cell(P(`${d.estagios[0].preco.toLocaleString('pt-PT')} Kz`,{b:true,sz:16,c:'FFFFFF',sa:0}),{w:w[1],fill:C.navy}),
+  cell(P(`${d.estagios[1].preco.toLocaleString('pt-PT')} Kz`,{b:true,sz:16,c:'FFFFFF',sa:0}),{w:w[2],fill:C.navy})]}));
+ body.push(tbl(w,rows));}
+sub('Documentos a entregar no fim de cada estágio');
+body.push(...bullets(d.estagio_docs));
+nota(`${d.estagios[0].inclui} ${d.estagios[0].seguro} A carga horária efectiva de ambos os estágios depende da escala de serviço de cada unidade hospitalar e será fixada em anexo próprio logo que as escalas sejam recebidas [a confirmar].`);
+
+/* ==================== 16 · PRÉ-DEFESAS E DEFESA ==================== */
+sec(16,'Pré-defesas e defesa de fim de curso');
+par(`O trabalho de fim de curso é elaborado em grupo. ${d.defesa.grupo}. ${d.defesa.formato}`);
+sub('Calendário');
+{const w=[3600,2200,3226];
+ const rows=[];
+ d.defesa.predefesas.forEach((x,i)=>rows.push([`${i+1}.ª pré-defesa`,x,'Sábado, no bloco de projecto']));
+ rows.push(['Entrega do trabalho escrito',d.defesa.entrega,'Um mês antes da defesa']);
+ rows.push(['Defesa de fim de curso',d.defesa.data,'Perante júri da escola-mãe']);
+ rows.push(['Recurso da defesa',d.defesa.recurso,'Quinze dias após a defesa']);
+ body.push(tbl(w,[headRow(['Momento','Data','Observações'],w),
+  ...rows.map((r,i)=>dataRow(r,w,i,{b:[true,true,false]}))]));}
+sub('Júri e documentação');
+body.push(...bullets([d.defesa.juri,
+ 'O trabalho escrito é entregue um mês antes da data da defesa.',
+ 'Não é admitido à defesa o formando com mensalidades em atraso.',
+ 'As taxas de mesa de júri, sala de defesa e faça constam do capítulo 21.',
+ 'O recurso da defesa realiza-se quinze dias após a defesa e está sujeito a taxa própria.']));
+
+sec(17,'Sistema de avaliação');
 par('A avaliação é contínua e de natureza maioritariamente prática. Aplica-se a escala de 0 a 20 valores, com aprovação a partir de 10 valores.');
 {const w=[3400,4400,1226];
  const rows=[['Assiduidade','Presença registada por sessão.','5 %'],
@@ -413,8 +508,11 @@ body.push(...bullets([
  'Escala de classificação de 0 a 20 valores; aprovação com classificação final igual ou superior a 10 valores.',
  'A componente prática é eliminatória: sem média igual ou superior a 10 valores na componente prática não há aprovação na disciplina, qualquer que seja a média das restantes componentes.',
  'A falha em qualquer critério eliminatório de biossegurança ou de segurança do doente numa estação prática anula a estação, independentemente da execução técnica.',
- 'Frequência mínima de 80 % por disciplina para admissão à avaliação final [proposta a confirmar pela Direcção].',
- 'Frequência obrigatória e registada dos oito seminários.',
+ 'Frequência mínima de 100 % por disciplina para admissão à avaliação final, conforme determinação da Direcção.',
+ 'Frequência obrigatória e registada dos oito seminários e das sessões de sábado.',
+ 'Gestão de Enfermagem e Projecto Tecnológico têm avaliação e pauta próprias, independentes das quatro disciplinas técnicas.',
+ 'A componente de estágio é classificada autonomamente: o estágio preliminar vale 60 % e o estágio curricular 40 % dessa classificação.',
+ 'Não é admitido à defesa de fim de curso o formando com mensalidades em atraso.',
  'Cada avaliação prática dispõe de grelha de observação ou lista de verificação, reproduzidas nos Anexos A e B.',
  'Situação académica final expressa nas categorias em uso nas pautas: APROVADO, EM RECURSO ou PROVA PENDENTE [a confirmar se aplicável a este módulo].',
  'Recurso: data e condições a definir pela Direcção [a confirmar].']));
@@ -423,22 +521,27 @@ sub('Calendário das avaliações');
  const rows=[['Teste escrito 1','Mês 3','Unidades I a III de cada disciplina, no bloco complementar de 60 minutos'],
   ['Avaliação prática intercalar','Mês 4','Estações com lista de verificação, no fim do mês 4'],
   ['Teste escrito 2','Mês 6','Unidades IV a VI de cada disciplina, no bloco complementar de 60 minutos'],
-  ['Avaliação final teórico-prática','Mês 8','Duas últimas semanas do ciclo, sem conteúdo novo']];
+  ['Avaliação final teórico-prática','Mês 8','Duas últimas semanas do ciclo, sem conteúdo novo'],
+  ['Pré-defesas','Janeiro a Maio de 2027','Cinco pré-defesas aos sábados, no bloco de projecto'],
+  ['Entrega do trabalho de fim de curso',d.defesa.entrega,'Um mês antes da defesa'],
+  ['Defesa de fim de curso',d.defesa.data,'Perante júri da escola-mãe'],
+  ['Recurso por disciplina','Após a publicação das pautas','Entre uma semana após as provas e 15 dias após a publicação'],
+  ['Recurso da defesa',d.defesa.recurso,'Quinze dias após a defesa']];
  body.push(tbl(w,[headRow(['Momento','Período','Âmbito'],w),
   ...rows.map((r,i)=>dataRow(r,w,i,{b:[true,true,false]}))]));}
 
 /* ====================== 15 · CALENDÁRIO (paisagem) ====================== */
 const cal=[];
-const FILL={aula:C.aula,sem:C.sem,fer:C.fer,rec:C.fer,gest:C.gest,est:C.est,normal:null};
+const FILL={aula:C.aula,sem:C.sem,fer:C.fer,rec:C.fer,gest:C.gest,est:C.est,sab:C.sab,def:C.defe,normal:null};
 const DIAS=['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
-cal.push(H('15. Calendário lectivo',HeadingLevel.HEADING_1,{sb:0}));
+cal.push(H('18. Calendário lectivo',HeadingLevel.HEADING_1,{sb:0}));
 function legenda(){
- const it=[['Dia de aula',C.aula],['Seminário',C.sem],['Feriado / interrupção',C.fer],
-  ['Estágio preliminar',C.est],['Gestão e Proj. Tecnológico',C.gest]];
- const w=Array(it.length*2).fill(0).map((_,i)=>i%2===0?420:2515);
+ const it=[['Dia de aula',C.aula],['Seminário',C.sem],['Sábado GEN/PT',C.sab],
+  ['Estágio',C.est],['Feriado / interrupção',C.fer],['Defesa',C.defe]];
+ const w=Array(it.length*2).fill(0).map((_,i)=>i%2===0?380:2066);
  return tbl(w,[new TableRow({children:it.flatMap((x,i)=>[
-  cell(P('',{sz:12,sa:0}),{w:420,fill:x[1],borders:allThin('9AA7B2')}),
-  cell(P(x[0],{sz:14,sa:0}),{w:2515,borders:noB})])})]);}
+  cell(P('',{sz:12,sa:0}),{w:380,fill:x[1],borders:allThin('9AA7B2')}),
+  cell(P(x[0],{sz:13,sa:0}),{w:2066,borders:noB})])})]);}
 d.calendario.forEach((mm,mi)=>{
  cal.push(new Paragraph({spacing:{before:mi===0?120:0,after:100},pageBreakBefore:mi>0,
   children:[new TextRun({text:`${mm.nome} de ${mm.ano}`,font:FS,size:30,bold:true,color:C.navy}),
@@ -458,7 +561,7 @@ d.calendario.forEach((mm,mi)=>{
    return cell(kids,{w:2096,fill:FILL[c.tipo]||undefined,mt:60,mb:60});})}));}
  cal.push(tbl(w,rows));
  const res=Object.keys(mm.resumo).sort().map(k=>`${k} ${mm.resumo[k]} h`).join('  ·  ');
- cal.push(P(`Resumo do mês: ${mm.ndias} dias lectivos${mm.nsem?` (dos quais ${mm.nsem} de seminário)`:''}  ·  ${res}${mm.nsem?`  ·  SEM ${mm.nsem*4} h`:''}  ·  total ${mm.horas} h`,
+ cal.push(P(`Resumo do mês: ${mm.ndias} dias lectivos${mm.nsem?`, ${mm.nsem} de seminário`:''}${mm.nsab?`, ${mm.nsab} sábados`:''}  ·  ${res}${mm.nsem?`  ·  SEM ${mm.nsem*4} h`:''}${mm.nsab?`  ·  GEN/PT ${hf(mm.nsab*7.5)}`:''}  ·  total ${hf(mm.horas)}`,
   {sz:15,i:true,c:'3A4E60',sb:100,sa:0}));
 });
 cal.push(new Paragraph({children:[new PageBreak()]}));
@@ -475,7 +578,7 @@ cal.push(P(`Gestão e Projecto Tecnológico decorre ao primeiro sábado de cada 
 
 /* ====================== 16 · CRONOGRAMA (retrato) ====================== */
 const fim2=[];
-fim2.push(H('16. Cronograma detalhado',HeadingLevel.HEADING_1,{sb:0}));
+fim2.push(H('19. Cronograma detalhado',HeadingLevel.HEADING_1,{sb:0}));
 fim2.push(P('Resumo por sessão. A versão completa, bloco a bloco, com horário e professor, consta do ficheiro Excel que acompanha este programa. Nas terças-feiras lecciona o Prof. Manuel Jorge Weber; nas quintas-feiras, o Prof. Eduardo David. Tipo: T teórica · TP teórico-prática · P prática · Avaliação.',{sz:18,i:true}));
 {const w=[560,1080,900,1180,720,3860,726];
  const rows=[headRow(['N.º','Data','Dia','Tempo','Disc.','Unidade e tema','Dur.'],w)];
@@ -496,12 +599,14 @@ fim2.push(P('Resumo por sessão. A versão completa, bloco a bloco, com horário
  fim2.push(tbl(w,rows));}
 
 /* ====================== 17 · TABELA-RESUMO ====================== */
-fim2.push(H('17. Tabela-resumo final',HeadingLevel.HEADING_1,{pb:true,sb:0}));
+fim2.push(H('20. Tabela-resumo final',HeadingLevel.HEADING_1,{pb:true,sb:0}));
 {const w=[760,2800,1500,760,760,760,760,926];
  const rows=d.ordem.map(k=>{const x=d.disc[k];
   return [k,x.nome,x.prof.replace('Prof. ',''),String(d.sessoes.filter(s=>s.disc===k).length),
    String(x.l),String(x.s),String(hn(x.teorica)).replace('.',','),String(hn(x.pratica)).replace('.',',')];});
  rows.push(['SEM','Seminários complementares','Convidados','8','—','—',String(hn(M.sem_teorica)),String(hn(M.sem_pratica))]);
+ ['GEN','PT'].forEach(k=>{const g=d.sabados.disc[k];
+  rows.push([k,g.nome+' (sábados)','Santos Salote','24','—','—',String(hn(g.teorica)).replace('.',','),String(hn(g.pratica)).replace('.',',')]);});
  body.length;
  fim2.push(tbl(w,[headRow(['Sigla','Disciplina','Docente','Sess.','180′','60′','T','P'],w),
   ...rows.map((r,i)=>dataRow(r,w,i,{sz:15,b:[true,false,false,false,false,false,false,false],
@@ -516,17 +621,54 @@ fim2.push(P('',{sz:10,sa:120}));
   ['Componente teórica',hf(d.ordem.reduce((a,k)=>a+d.disc[k].teorica,0)+M.sem_teorica)],
   ['Componente prática',hf(d.ordem.reduce((a,k)=>a+d.disc[k].pratica,0)+M.sem_pratica)],
   ['Horas semanais em semana completa','8 h (2 dias × 4 h)'],
-  ['Horas por docente','108 h cada'],
-  ['Estágio preliminar',`${M.est_ini} a ${M.est_fim} — carga a definir [a confirmar]`],
-  ['Gestão e Projecto Tecnológico','1.º sábado do mês, 08h00–16h00, a partir de Dezembro [a confirmar]'],
+  ['Horas por docente (terça e quinta)','108 h cada'],
+  ['Componente de sábado (GEN + PT)',`${d.sabados.n} sábados · ${hf(d.sabados.horas)} · Prof. Santos Salote`],
+  ['Efectivo da turma',`${M.formandos} formandos`],
+  ['Frequência mínima',M.frequencia_min],
+  ['Custo total do módulo por formando',`${d.financeiro.total_modulo.toLocaleString('pt-PT')} Kz`],
+  ['Estágio preliminar',`${d.estagios[0].ini} a ${d.estagios[0].fim} — 10 h por dia, carga a fixar pela escala`],
+  ['Estágio curricular',`${d.estagios[1].ini} a ${d.estagios[1].fim} — carga a fixar pela escala`],
   ['Defesa de fim de curso',M.defesa]];
  fim2.push(tbl(w,[...rows.map((r,i)=>dataRow(r,w,i,{b:[true,false],al:[null,AlignmentType.RIGHT]})),
   new TableRow({children:[cell(P('Carga horária total do ciclo',{b:true,sz:18,c:'FFFFFF',sa:0}),{w:w[0],fill:C.navy}),
-   cell(P(M.horas_total+' horas',{b:true,sz:18,c:'FFFFFF',sa:0,al:AlignmentType.RIGHT}),{w:w[1],fill:C.navy})]})]));}
+   cell(P(M.horas_geral+' horas',{b:true,sz:18,c:'FFFFFF',sa:0,al:AlignmentType.RIGHT}),{w:w[1],fill:C.navy})]})]));}
 fim2.push(H('Nota sobre referências normativas',HeadingLevel.HEADING_2,{sz:22}));
 fim2.push(P('Este programa não cita legislação, decretos, diplomas ou números de referência normativa, por não dispor de fonte verificada para o efeito. As designações de programas nacionais de saúde referidas nos conteúdos são utilizadas como designações técnicas correntes; os respectivos calendários, esquemas terapêuticos e algoritmos devem ser confirmados e actualizados junto das normas em vigor emitidas pela autoridade sanitária competente antes do início da formação. O reconhecimento oficial, a equivalência académica e a certificação profissional decorrentes deste ciclo dependem de acreditação a confirmar junto das entidades competentes e não são objecto do presente documento.',{sz:18}));
 
 /* ====================== ANEXO A ====================== */
+
+/* ==================== 21 · CONDIÇÕES FINANCEIRAS ==================== */
+const FIN=d.financeiro;
+const kz=v=>v===null?'a definir':`${v.toLocaleString('pt-PT')} Kz`;
+fim2.push(H('21. Condições financeiras',HeadingLevel.HEADING_1,{pb:true,sb:0}));
+fim2.push(P(`Valores aplicáveis à turma ${M.turma} no III.º Módulo do curso de ${M.curso}, ano lectivo ${M.ano}. Todos os montantes estão expressos em kwanzas.`,{sz:19}));
+fim2.push(H('Encargos do módulo',HeadingLevel.HEADING_2,{sz:22}));
+{const w=[3600,1500,2100,1826];
+ fim2.push(tbl(w,[headRow(['Encargo','Valor','Regime','Prazo'],w),
+  ...FIN.modulo.map((x,i)=>dataRow([x.item,kz(x.valor),x.nota,x.quando],w,i,
+   {sz:16,b:[true,true,false,false],al:[null,AlignmentType.RIGHT,null,null]})),
+  new TableRow({children:[
+   cell(P('Total do módulo por formando',{b:true,sz:17,c:'FFFFFF',sa:0}),{w:w[0],fill:C.navy}),
+   cell(P(kz(FIN.total_modulo),{b:true,sz:17,c:'FFFFFF',sa:0,al:AlignmentType.RIGHT}),{w:w[1],fill:C.navy}),
+   cell(P(`inclui ${FIN.mensalidades} mensalidades de ${kz(FIN.mensalidade)}`,{sz:15,c:'C9DDEE',sa:0}),{w:w[2],cs:2,fill:C.navy})]})]));}
+fim2.push(P('O total acima não inclui multas, recursos, o certificado de conclusão nem a confirmação do módulo seguinte.',{sz:17,i:true}));
+fim2.push(H('Encargos eventuais',HeadingLevel.HEADING_2,{sz:22}));
+{const w=[3600,1500,2100,1826];
+ fim2.push(tbl(w,[headRow(['Encargo','Valor','Regime','Quando se aplica'],w),
+  ...FIN.eventual.map((x,i)=>dataRow([x.item,kz(x.valor),x.nota,x.quando],w,i,
+   {sz:16,b:[true,true,false,false],al:[null,AlignmentType.RIGHT,null,null]}))]));}
+fim2.push(H('Encargos posteriores ao módulo e valores por definir',HeadingLevel.HEADING_2,{sz:22}));
+{const w=[4600,1600,2826];
+ fim2.push(tbl(w,[headRow(['Encargo','Valor','Observações'],w),
+  ...FIN.futuro.map((x,i)=>dataRow([x.item,kz(x.valor),x.quando],w,i,
+   {sz:16,b:[true,true,false],al:[null,AlignmentType.RIGHT,null]}))]));}
+fim2.push(H('Regras de pagamento',HeadingLevel.HEADING_2,{sz:22}));
+fim2.push(...bullets(FIN.regras));
+fim2.push(H('Licença de aprendizagem',HeadingLevel.HEADING_2,{sz:22}));
+fim2.push(P('A licença de aprendizagem é o documento que habilita o formando a frequentar o estágio preliminar e o estágio curricular. É requerida no início do estágio preliminar, mediante a declaração para obtenção de licença, cujo custo consta do quadro dos encargos do módulo. A licença em si não tem custo próprio junto da escola.',{sz:19}));
+fim2.push(H('Termo de frequência',HeadingLevel.HEADING_2,{sz:22}));
+fim2.push(P('O termo de frequência é o histórico académico do formando. É passado no fim de 2026, até 30 de Novembro, mediante o pagamento indicado no quadro dos encargos do módulo.',{sz:19}));
+
 fim2.push(H('Anexo A — Listas de verificação dos procedimentos',HeadingLevel.HEADING_1,{pb:true,sb:0}));
 fim2.push(P('Cada lista é aplicada na avaliação prática contínua e nas estações da avaliação final. Assinala-se «Executa» quando o item é cumprido integralmente. Os itens marcados com asterisco são eliminatórios: a sua falha anula a estação. A estação é considerada cumprida com pelo menos seis dos oito itens executados e nenhum item eliminatório em falta.',{sz:18,i:true}));
 d.ordem.forEach(k=>{

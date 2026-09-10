@@ -10,7 +10,7 @@ FER={dt.date(2026,9,17):"Dia do Herói Nacional",dt.date(2026,11,2):"Dia dos Fin
      dt.date(2027,2,9):"Carnaval",dt.date(2027,3,8):"Dia Internacional da Mulher",
      dt.date(2027,3,23):"Libertação da África Austral",dt.date(2027,3,26):"Sexta-Feira Santa",
      dt.date(2027,4,4):"Dia da Paz e Reconciliação Nacional",dt.date(2027,5,1):"Dia do Trabalhador"}
-REC=(dt.date(2026,12,21),dt.date(2027,1,1))
+REC=(dt.date(2026,12,24),dt.date(2027,1,5))   # pausa confirmada pela Direcção
 INI,FIM=dt.date(2026,9,15),dt.date(2027,5,13)
 LIM=[(dt.date(2026,9,15),dt.date(2026,10,14)),(dt.date(2026,10,15),dt.date(2026,11,14)),
      (dt.date(2026,11,15),dt.date(2026,12,14)),(dt.date(2026,12,15),dt.date(2027,1,14)),
