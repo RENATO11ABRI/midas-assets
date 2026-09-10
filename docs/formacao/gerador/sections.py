@@ -1,0 +1,171 @@
+# -*- coding: utf-8 -*-
+"""Textos institucionais e estruturas curriculares."""
+
+UNIDADES = {
+"EMC":[("I","Fundamentos do cuidado de enfermagem ao adulto",
+        "Âmbito de competência e responsabilidade do Técnico de Enfermagem; admissão e acolhimento; avaliação inicial e exame físico céfalo-caudal; sinais vitais e sinais de alerta precoce; processo do doente, notas de evolução, folha terapêutica e passagem de turno."),
+       ("II","Biossegurança, prevenção de infeção e tratamento de feridas",
+        "Infeções associadas aos cuidados de saúde e cadeia de transmissão; precauções-padrão e higienização das mãos; equipamento de proteção individual e isolamentos; gestão de resíduos; assepsia, desinfeção e esterilização; feridas e cicatrização; penso simples e húmido, drenagens, remoção de suturas; úlceras de pressão e posicionamentos."),
+       ("III","Enfermagem cardiovascular e respiratória",
+        "Hipertensão arterial e insuficiência cardíaca; balanço hídrico e vigilância; síndromes coronárias agudas; DPOC, asma e pneumonia; cinesiterapia respiratória; aspiração de secreções e colheita de expetoração; oxigenoterapia e aerossolterapia."),
+       ("IV","Enfermagem digestiva, renal, endócrina e neurológica",
+        "Hepatopatias, ascite e hemorragia digestiva; sonda nasogástrica e alimentação entérica; insuficiência renal e balanço hídrico; cateterismo vesical; diabetes mellitus, glicemia capilar e insulinoterapia; pé diabético; acidente vascular cerebral, disfagia e reabilitação precoce; doente inconsciente e acamado."),
+       ("V","Enfermagem perioperatória",
+        "Preparação pré-operatória; lista de verificação de segurança cirúrgica; circuitos e princípios de assepsia no bloco operatório; cuidados pós-operatórios imediatos; dor, drenos, deiscência e infeção do local cirúrgico."),
+       ("VI","Doenças infeciosas prevalentes e doente crónico",
+        "Cuidados de enfermagem na malária grave, tuberculose, VIH/SIDA e cólera; isolamento e reidratação; adesão terapêutica; doente crónico, oncológico e paliativo; continuidade de cuidados após a alta."),
+       ("VII","Consolidação e avaliação final",
+        "Estações de competência; revisão integrada das unidades; avaliação escrita final e devolução comentada dos resultados.")],
+"UEPS":[("I","Organização da urgência e abordagem sistemática à vítima",
+        "Organização e fluxos do serviço de urgência; âmbito de atuação do Técnico de Enfermagem; cadeia de sobrevivência; triagem e classificação de risco; abordagem ABCDE; permeabilização da via aérea, posição lateral de segurança, aspiração e adjuvantes."),
+       ("II","Suporte Básico de Vida e desfibrilhação",
+        "Reconhecimento da paragem cardiorrespiratória; ventilação com insuflador manual e máscara; SBV no adulto; desfibrilhação automática externa; SBV pediátrico e no lactente; desobstrução da via aérea por corpo estranho."),
+       ("III","Emergências clínicas",
+        "Acesso venoso periférico em urgência; choque e fluidoterapia inicial; anafilaxia; convulsões e estado de mal convulsivo; alteração do estado de consciência; hipoglicemia, cetoacidose e desidratação grave."),
+       ("IV","Emergência traumatológica",
+        "Avaliação primária e secundária da vítima de trauma; controlo de hemorragia externa, penso compressivo e torniquete; entorses, luxações e fraturas; imobilização com talas e ligaduras; traumatismo craniencefálico; trauma da coluna, estabilização cervical e rolamento em bloco; mobilização e transporte de vítimas."),
+       ("V","Emergências ambientais e por agentes externos",
+        "Queimaduras: extensão, profundidade, arrefecimento e reposição de fluidos; intoxicações e envenenamentos; mordeduras e picadas; afogamento e choque elétrico; profilaxia do tétano e da raiva."),
+       ("VI","Emergência coletiva, material e avaliação final",
+        "Carro de urgência e material de emergência; verificação diária e reposição; registo do episódio de urgência; princípios de triagem em situação de multivítimas; simulação integrada e avaliação prática final.")],
+"SMON":[("I","Saúde sexual, reprodutiva e planeamento familiar",
+        "Conceitos de saúde sexual e reprodutiva; direitos da mulher e ética no cuidado; anatomofisiologia do aparelho reprodutor feminino e ciclo menstrual; métodos contracetivos, aconselhamento e seguimento; infeções de transmissão sexual."),
+       ("II","Gravidez e vigilância pré-natal",
+        "Diagnóstico de gravidez e modificações fisiológicas maternas; cálculo da idade gestacional e da data provável do parto; consulta pré-natal e cartão da grávida; altura uterina, manobras de Leopold e auscultação do foco fetal; nutrição, suplementação, vacinação antitetânica e educação para a saúde."),
+       ("III","Gravidez de risco e prevenção da transmissão vertical",
+        "Anemia e malária na gravidez; doenças hipertensivas, pré-eclâmpsia e eclâmpsia; pesquisa de proteinúria; hemorragias da gravidez — aborto, gravidez ectópica, placenta prévia e descolamento; prevenção da transmissão vertical do VIH, sífilis e hepatite B."),
+       ("IV","Trabalho de parto e assistência ao parto",
+        "Fisiologia e períodos do trabalho de parto; admissão da parturiente; partograma, linha de alerta e linha de ação; assistência ao parto normal, campo estéril, proteção do períneo e clampagem do cordão; dequitadura e manejo ativo do terceiro período; simulação de parto em modelo."),
+       ("V","Emergências obstétricas e puerpério",
+        "Hemorragia pós-parto: causas, massagem uterina, uterotónicos e compressão bimanual; distócia de ombros, prolapso do cordão e apresentações anómalas; puerpério normal e patológico; involução uterina, lóquios e infeção puerperal."),
+       ("VI","Enfermagem neonatal e avaliação final",
+        "Cuidados imediatos ao recém-nascido e índice de Apgar; reanimação neonatal básica; aleitamento materno e aconselhamento; recém-nascido de baixo peso e prematuro, termorregulação e método canguru; icterícia e sépsis neonatal; avaliação prática final em estações.")],
+"EPSC":[("I","Fundamentos da enfermagem pediátrica e avaliação da criança",
+        "Princípios da enfermagem pediátrica, direitos da criança e cuidados centrados na família; comunicação com a criança; crescimento e desenvolvimento, curvas e antropometria; particularidades anatomofisiológicas; sinais vitais por faixa etária; sinais gerais de perigo e critérios de encaminhamento."),
+       ("II","Nutrição infantil e desnutrição aguda",
+        "Aleitamento exclusivo e diversificação alimentar; erros alimentares frequentes; rastreio da desnutrição aguda com perímetro braquial e pesquisa de edema; classificação e cuidados; reabilitação nutricional com alimentos terapêuticos e vigilância do ganho ponderal."),
+       ("III","Imunização e Programa Alargado de Vacinação",
+        "Calendário vacinal; conservação de vacinas e cadeia de frio; técnica de administração por via e faixa etária; registo vacinal; vigilância de eventos adversos pós-vacinação; recuperação de faltosos."),
+       ("IV","Doenças prevalentes da infância",
+        "Pneumonia: contagem da frequência respiratória, tiragem e classificação; bronquiolite, asma e laringite; oxigenoterapia e nebulização pediátrica; doença diarreica e graus de desidratação; planos A, B e C e terapia de reidratação oral; malária na criança; febre e doenças exantemáticas."),
+       ("V","Procedimentos e terapêutica pediátrica",
+        "Cálculo de doses por peso e dupla verificação; administração de medicamentos por via oral, intramuscular e endovenosa; punção venosa periférica; fluidoterapia e ritmo de gotejo; colheita de amostras e imobilização segura."),
+       ("VI","Criança hospitalizada, proteção e avaliação final",
+        "Avaliação e controlo da dor por escalas adequadas à idade; medidas não farmacológicas de conforto; acolhimento e brincar terapêutico; emergências pediátricas frequentes; sinais de maus-tratos e negligência e dever de comunicação; avaliação prática final.")],
+}
+
+FUND = {
+"EMC":"O internamento de adultos representa a maior fatia da atividade assistencial das unidades hospitalares angolanas e é o contexto onde o Técnico de Enfermagem exerce a sua função de forma mais contínua e autónoma. Concluídas as disciplinas de Técnicas de Enfermagem, Farmacologia, Anatomia e Doenças Correntes, o formando domina o gesto isolado e reconhece a doença; falta-lhe integrar ambos na gestão de um doente concreto ao longo de um turno. Esta disciplina faz essa passagem: organiza o cuidado por sistemas, articula a técnica com o raciocínio clínico e instala uma cultura de biossegurança, prevenção de infeção e segurança do doente que atravessa todos os procedimentos.",
+"UEPS":"A capacidade de reconhecer precocemente a deterioração clínica e de agir nos primeiros minutos determina o prognóstico de forma mais decisiva do que qualquer intervenção posterior. Em contextos com recursos diferenciados desigualmente distribuídos e com tempos de transporte prolongados, o Técnico de Enfermagem é frequentemente o primeiro — e por vezes o único — profissional junto da vítima. A disciplina instala um método único de abordagem, treinado até à automatização, e reserva a maior parte do seu tempo à repetição prática em manequim e em cenário simulado, porque em emergência a competência que não foi treinada não está disponível.",
+"SMON":"A mortalidade materna e neonatal continua a ser um dos indicadores mais sensíveis da qualidade dos cuidados de saúde e responde de forma direta à competência de quem acompanha a mulher na consulta pré-natal, no trabalho de parto e nas primeiras horas de vida do recém-nascido. Grande parte das mortes evitáveis resulta de sinais de alerta não reconhecidos ou reconhecidos tarde. Esta disciplina prepara o Técnico de Enfermagem para vigiar com método, registar com rigor, reconhecer precocemente a complicação e encaminhar em tempo útil, dominando as manobras de primeira linha que não podem esperar pela chegada do médico.",
+"EPSC":"A criança não é um adulto pequeno: a dose calcula-se, o sinal vital muda com a idade, a desidratação instala-se em horas e o quadro respiratório agrava-se sem aviso. A abordagem integrada das doenças da infância, a vigilância nutricional e a imunização concentram grande parte do impacto alcançável em saúde infantil, e são precisamente as áreas onde o Técnico de Enfermagem intervém com maior frequência. A disciplina organiza esse conjunto em torno de três competências centrais: avaliar corretamente, classificar com critério e decidir se a criança fica, é tratada ou é encaminhada.",
+}
+
+OBJ_GERAL = {
+"EMC":"Capacitar o formando para prestar cuidados de enfermagem seguros, sistematizados e humanizados ao doente adulto em contexto de internamento médico e cirúrgico, aplicando os princípios de biossegurança, prevenção de infeção e segurança do doente em todos os procedimentos e registando de forma rigorosa a sua intervenção.",
+"UEPS":"Capacitar o formando para reconhecer, priorizar e intervir de forma imediata, metódica e segura perante situações de urgência e emergência, no adulto e na criança, executando as manobras de suporte básico de vida e de primeiros socorros e assegurando o encaminhamento adequado da vítima.",
+"SMON":"Capacitar o formando para acompanhar a mulher ao longo do ciclo gravídico-puerperal e o recém-nascido nas primeiras horas de vida, executando a vigilância pré-natal, assistindo ao parto normal, reconhecendo precocemente as complicações obstétricas e neonatais e atuando com as manobras de primeira linha e o encaminhamento devido.",
+"EPSC":"Capacitar o formando para avaliar, classificar e cuidar da criança dos zero aos cinco anos e da criança em idade escolar, aplicando a abordagem integrada das doenças da infância, executando com segurança os procedimentos e a terapêutica pediátrica e promovendo a nutrição, a imunização e a proteção da criança.",
+}
+
+OBJ_ESP = {
+"EMC":["Executar a admissão, o acolhimento e a avaliação inicial do doente adulto, incluindo o exame físico céfalo-caudal.",
+ "Identificar precocemente sinais de deterioração clínica e comunicá-los à equipa segundo um formato estruturado.",
+ "Aplicar as precauções-padrão, os isolamentos e as regras de gestão de resíduos em todos os cuidados prestados.",
+ "Executar a técnica de penso, os cuidados a drenagens e a prevenção e o tratamento de úlceras de pressão.",
+ "Prestar cuidados de enfermagem ao doente cardiovascular, respiratório, digestivo, renal, endócrino e neurológico.",
+ "Executar oxigenoterapia, aerossolterapia, aspiração de secreções, cateterismo vesical e colocação de sonda nasogástrica.",
+ "Preparar o doente para a cirurgia e prestar cuidados pós-operatórios, reconhecendo as complicações mais frequentes.",
+ "Prestar cuidados ao doente com doença infeciosa prevalente, crónica ou em situação paliativa.",
+ "Elaborar registos de enfermagem completos, legíveis e cronologicamente corretos."],
+"UEPS":["Descrever a organização do serviço de urgência e delimitar o âmbito da sua própria atuação.",
+ "Aplicar a abordagem ABCDE de forma sistemática e reavaliar a vítima em intervalos definidos.",
+ "Triar e priorizar vítimas segundo critérios de gravidade.",
+ "Executar Suporte Básico de Vida no adulto, na criança e no lactente com qualidade verificável.",
+ "Operar o desfibrilhador automático externo cumprindo integralmente as regras de segurança.",
+ "Desobstruir a via aérea por corpo estranho nas diferentes faixas etárias.",
+ "Controlar hemorragias externas por compressão direta, penso compressivo e torniquete.",
+ "Imobilizar fraturas e a coluna vertebral e transferir a vítima com técnica segura.",
+ "Prestar os primeiros cuidados em queimaduras, intoxicações, mordeduras, afogamento e choque elétrico.",
+ "Verificar, repor e responsabilizar-se pelo carro de urgência e registar o episódio."],
+"SMON":["Prestar aconselhamento em planeamento familiar e administrar os métodos contracetivos de competência técnica.",
+ "Realizar a consulta pré-natal, preencher o cartão da grávida e calcular a idade gestacional e a data provável do parto.",
+ "Executar as manobras de Leopold, medir a altura uterina e auscultar o foco fetal.",
+ "Reconhecer precocemente os sinais de pré-eclâmpsia, hemorragia e infeção e desencadear o encaminhamento.",
+ "Preencher e interpretar o partograma e reconhecer o desvio face à linha de alerta e à linha de ação.",
+ "Assistir ao parto normal e ao terceiro período com manejo ativo e revisão da placenta.",
+ "Executar as manobras de primeira linha na hemorragia pós-parto.",
+ "Prestar os cuidados imediatos ao recém-nascido e executar a reanimação neonatal básica.",
+ "Apoiar o estabelecimento do aleitamento materno e resolver as dificuldades mais frequentes.",
+ "Aplicar as medidas de prevenção da transmissão vertical do VIH, da sífilis e da hepatite B."],
+"EPSC":["Avaliar o crescimento e o desenvolvimento e interpretar as curvas de crescimento.",
+ "Medir e interpretar os sinais vitais pediátricos de acordo com a faixa etária.",
+ "Identificar os sinais gerais de perigo e decidir sobre o encaminhamento imediato.",
+ "Rastrear e classificar a desnutrição aguda e acompanhar a reabilitação nutricional.",
+ "Administrar vacinas com técnica correta, assegurar a cadeia de frio e completar o registo vacinal.",
+ "Classificar a pneumonia pela contagem da frequência respiratória e pela presença de tiragem.",
+ "Avaliar o grau de desidratação e aplicar os planos de tratamento A, B e C.",
+ "Calcular doses pediátricas por peso e aplicar a regra da dupla verificação.",
+ "Executar punção venosa periférica e fluidoterapia pediátrica com cálculo do ritmo de gotejo.",
+ "Avaliar a dor da criança e aplicar medidas não farmacológicas de conforto.",
+ "Reconhecer sinais de maus-tratos e negligência e cumprir o dever de comunicação."],
+}
+
+COMPET = {
+"EMC":["Sistematiza o cuidado a um grupo de doentes ao longo de um turno, estabelecendo prioridades.",
+ "Executa com destreza e assepsia os procedimentos invasivos do seu âmbito de competência.",
+ "Protege-se a si, ao doente e à equipa através da aplicação consistente das medidas de biossegurança.",
+ "Comunica de forma estruturada com a equipa e de forma compreensível com o doente e a família.",
+ "Documenta a sua intervenção de modo que outro profissional possa continuar o cuidado sem perda de informação."],
+"UEPS":["Mantém o método sob pressão de tempo e em ambiente adverso.",
+ "Executa manobras de suporte de vida com qualidade e cadência corretas, sem hesitação.",
+ "Decide rapidamente o nível de prioridade da vítima e o destino do encaminhamento.",
+ "Trabalha em equipa em cenário de emergência, assumindo e cedendo funções com clareza.",
+ "Assegura permanentemente a segurança do local, da vítima e do socorrista."],
+"SMON":["Conduz a vigilância pré-natal com método e regista com rigor.",
+ "Reconhece o sinal de alerta obstétrico e neonatal antes de o quadro se instalar.",
+ "Assiste ao parto normal preservando a assepsia, o períneo e a dignidade da mulher.",
+ "Executa as manobras salvadoras de primeira linha na hemorragia pós-parto e na reanimação neonatal.",
+ "Aconselha e apoia a mulher e a família com respeito pelo seu contexto cultural."],
+"EPSC":["Avalia a criança de forma completa e adequada à idade, envolvendo o cuidador.",
+ "Classifica corretamente e decide entre tratar, vigiar ou encaminhar.",
+ "Calcula e administra terapêutica pediátrica com margem de erro nula.",
+ "Executa procedimentos com técnica correta, minimizando a dor e o medo.",
+ "Educa o cuidador de forma verificável, confirmando a compreensão da instrução."],
+}
+
+TECNICAS = {
+"EMC":"Higienização das mãos pelos momentos definidos · colocação e remoção de EPI · preparação de campo estéril · penso simples e penso húmido · cuidados a drenagens · remoção de suturas · posicionamentos terapêuticos e prevenção de úlceras de pressão · avaliação e registo de sinais vitais · balanço hídrico · oxigenoterapia por óculos nasais, máscara simples e máscara com reservatório · aerossolterapia · aspiração de secreções · colheita de expetoração · colocação e cuidados com sonda nasogástrica · administração de alimentação entérica · cateterismo vesical masculino e feminino · glicemia capilar · administração de insulina · preparação pré-operatória e lista de verificação de segurança cirúrgica.",
+"UEPS":"Abordagem ABCDE · permeabilização da via aérea e posição lateral de segurança · aspiração de secreções · colocação de tubo orofaríngeo · ventilação com insuflador manual e máscara · compressões torácicas e ciclos de SBV no adulto, na criança e no lactente · operação do desfibrilhador automático externo · manobras de desobstrução da via aérea · compressão direta, penso compressivo e aplicação de torniquete · imobilização com talas e ligaduras · colocação de colar cervical · rolamento em bloco e transferência para plano duro · técnicas de levantamento e transporte em maca e cadeira · arrefecimento e penso de queimadura · punção venosa periférica em urgência · verificação e reposição do carro de urgência.",
+"SMON":"Aconselhamento e administração de métodos contracetivos · medição da altura uterina · manobras de Leopold · auscultação do foco fetal · medição da tensão arterial na grávida e pesquisa de proteinúria · preenchimento do cartão da grávida · preenchimento e interpretação do partograma · preparação do material e do campo para o parto · assistência ao parto normal e proteção do períneo · clampagem e corte do cordão umbilical · manejo ativo do terceiro período e revisão da placenta · massagem uterina e compressão bimanual do útero · administração de uterotónicos · secagem e contacto pele a pele · determinação do índice de Apgar · reanimação neonatal básica com ventilação por máscara · apoio à pega e ao aleitamento materno · método canguru.",
+"EPSC":"Pesagem, medição do comprimento e da estatura e medição do perímetro cefálico · leitura e marcação de curvas de crescimento · medição do perímetro braquial e pesquisa de edema bilateral · contagem da frequência respiratória num minuto e pesquisa de tiragem · avaliação do grau de desidratação · preparação e administração de solução de reidratação oral · administração de vacinas por via oral, intradérmica, subcutânea e intramuscular · verificação e registo da cadeia de frio · cálculo de doses por peso e dupla verificação · administração de medicamentos por via oral, intramuscular e endovenosa · punção venosa periférica pediátrica · cálculo e regulação do ritmo de gotejo · imobilização segura para procedimentos · aplicação de escalas de dor pediátricas · nebulização e oxigenoterapia pediátrica.",
+}
+
+METODOLOGIA = {
+"EMC":"O primeiro tempo letivo abre com exposição breve e demonstração da técnica pelo formador, sobre caso clínico apresentado no início da sessão. O segundo tempo é integralmente ocupado por treino prático supervisionado em manequim e em simulação entre pares, com correção individual. O bloco complementar de 60 minutos é reservado a estudo de caso, resolução de situações clínicas, exercícios de registo e consolidação. Cada procedimento é executado por todos os formandos contra uma grelha de observação com critérios explícitos.",
+"UEPS":"A disciplina privilegia a repetição deliberada. Cada manobra é demonstrada uma vez em velocidade normal, uma segunda vez decomposta em passos, e é depois treinada em ciclos curtos e sucessivos até que a execução se torne automática. As sessões longas terminam sempre em cenário simulado integrado, com atribuição de funções, cronometragem e debriefing estruturado. O bloco complementar destina-se a discussão de casos, verificação de material e revisão de algoritmos.",
+"SMON":"As unidades de vigilância pré-natal são trabalhadas em consulta simulada, com role-play formando-grávida e preenchimento efetivo do cartão e do partograma. As unidades de parto e neonatologia decorrem em modelo obstétrico e manequim neonatal, com treino individual e em par. O bloco complementar é utilizado para interpretação de partogramas, análise de casos de mortalidade evitável e exercícios de aconselhamento.",
+"EPSC":"A avaliação da criança é treinada com material antropométrico real e com registo em fichas e curvas de crescimento. Os cálculos de dose e de fluidoterapia são trabalhados em séries de exercícios corrigidos em sala, com exigência de acerto integral. Os procedimentos são executados em manequim pediátrico e em braço de punção. O bloco complementar é dedicado a estudo de casos com decisão de classificação e encaminhamento, e a exercícios de educação do cuidador.",
+}
+
+MATERIAIS = {
+"EMC":"Sala de práticas com cama hospitalar articulada e mesa de cabeceira · manequim de adulto para cuidados gerais · braço de punção · simulador de cateterismo vesical · material de penso, tabuleiros e kits estéreis · esfigmomanómetros, estetoscópios, termómetros, oxímetro de pulso e glicómetro · dispositivos de oxigenoterapia e nebulizador · sondas nasogástricas e vesicais · aspirador de secreções · EPI completo e contentores de resíduos por categoria · impressos do processo do doente, folhas de evolução e de terapêutica.",
+"UEPS":"Manequins de SBV para adulto, criança e lactente com indicador de qualidade de compressão · desfibrilhador automático externo de treino com elétrodos reutilizáveis · insufladores manuais e máscaras de vários tamanhos · tubos orofaríngeos · aspirador portátil · colares cervicais, plano duro com imobilizadores de cabeça e cintos · talas de imobilização e ligaduras · torniquetes de treino · maca e cadeira de transporte · material de simulação de feridas e hemorragia · carro de urgência para treino de verificação · cronómetros e fichas de debriefing.",
+"SMON":"Modelo pélvico obstétrico com feto e placenta · manequim neonatal com via aérea permeável · insuflador neonatal e máscaras de tamanho 0 e 1 · fita métrica obstétrica, estetoscópio de Pinard e sonicaid · esfigmomanómetro e tiras de pesquisa de proteinúria · balança neonatal e fita métrica · material para assistência ao parto e clampes de cordão · amostras de métodos contracetivos para demonstração · impressos de cartão da grávida e de partograma.",
+"EPSC":"Manequins de lactente e de criança · braço e couro cabeludo de punção pediátrica · balança pediátrica, infantómetro, estadiómetro e fita de perímetro cefálico · fitas de perímetro braquial · curvas de crescimento impressas · frigorífico ou caixa térmica com termómetro para treino de cadeia de frio · seringas, agulhas e simuladores de vacina · sistemas de soro e câmaras graduadas · nebulizador pediátrico e dispositivos de oxigénio · saquetas de sais de reidratação oral e recipientes graduados · escalas de dor pediátricas plastificadas.",
+}
+
+RESULTADOS = {
+"EMC":"No final da disciplina o formando assume um grupo de doentes adultos em contexto de internamento, organiza o turno por prioridades, executa com segurança os procedimentos do seu âmbito, aplica sistematicamente as medidas de prevenção de infeção, reconhece a deterioração clínica e comunica-a em tempo útil, e deixa registos que permitem a continuidade do cuidado.",
+"UEPS":"No final da disciplina o formando aborda qualquer vítima pelo método ABCDE sem hesitação, executa SBV com qualidade verificável no adulto, na criança e no lactente, opera o desfibrilhador automático externo em segurança, controla uma hemorragia externa, imobiliza e transporta uma vítima de trauma, e presta os primeiros cuidados nas emergências ambientais mais frequentes, encaminhando corretamente.",
+"SMON":"No final da disciplina o formando conduz uma consulta pré-natal completa, preenche e interpreta um partograma, assiste a um parto normal sem complicações, reconhece e atua perante uma hemorragia pós-parto, executa a reanimação neonatal básica e apoia o estabelecimento do aleitamento materno, encaminhando em tempo útil todas as situações que excedem a sua competência.",
+"EPSC":"No final da disciplina o formando avalia uma criança de forma completa, classifica-a corretamente segundo a abordagem integrada, decide entre tratar e encaminhar, calcula e administra terapêutica pediátrica sem erro, executa punção venosa e fluidoterapia, administra vacinas assegurando a cadeia de frio e educa o cuidador de forma verificável.",
+}
+
+AVAL_PRATICA = {
+"EMC":"Avaliação prática final em cinco estações cronometradas de dez minutos: (1) higienização das mãos, colocação e remoção de EPI; (2) execução de penso em ferida cirúrgica com técnica asséptica; (3) montagem e início de oxigenoterapia com verificação de segurança; (4) cateterismo vesical em simulador; (5) avaliação de um doente com apresentação estruturada do caso e registo escrito. Cada estação é pontuada por grelha de observação com critérios eliminatórios de biossegurança.",
+"UEPS":"Avaliação prática final em quatro estações: (1) SBV no adulto durante dois minutos com avaliação da profundidade, cadência e relação compressão-ventilação, seguido de aplicação do desfibrilhador automático externo; (2) controlo de hemorragia externa e aplicação de torniquete; (3) imobilização de fratura de membro e de coluna cervical com transferência para plano duro; (4) cenário integrado de vítima única com abordagem ABCDE, decisão e encaminhamento. A falha em qualquer critério de segurança é eliminatória.",
+"SMON":"Avaliação prática final em quatro estações: (1) consulta pré-natal simulada com medição da altura uterina, manobras de Leopold, auscultação do foco fetal e preenchimento do cartão; (2) preenchimento e interpretação de um partograma com tomada de decisão; (3) assistência ao parto normal em modelo, incluindo dequitadura e revisão da placenta; (4) cuidados imediatos ao recém-nascido e reanimação neonatal básica com ventilação por máscara.",
+"EPSC":"Avaliação prática final em quatro estações: (1) avaliação antropométrica completa com marcação na curva de crescimento e medição do perímetro braquial; (2) avaliação de criança com tosse — contagem da frequência respiratória, pesquisa de tiragem e classificação; (3) avaliação do grau de desidratação, escolha do plano de tratamento e preparação da solução de reidratação oral; (4) cálculo de dose por peso e administração de terapêutica em manequim com dupla verificação.",
+}
+print("sections.py OK")
