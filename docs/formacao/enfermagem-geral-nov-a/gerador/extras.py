@@ -125,25 +125,25 @@ DEFESA_INFO = dict(
 
 # ------------------------------------------------------------- FINANCEIRO ---
 FIN_MOD = [
- ("Confirmação do III.º Módulo", 1600, "Acto único", "No início do módulo"),
+ ("Confirmação do III.º Módulo", 1600, "Acto único, por formando", "No início do módulo"),
  ("Mensalidade", 15000, "9 mensalidades, de Outubro de 2026 a Junho de 2027", "Até ao dia 10 de cada mês"),
- ("Comparticipação para aulas práticas", 10000, "Acto único", "No início do módulo"),
- ("Túnica", 20000, "Acto único", "No início do módulo"),
- ("Estágio preliminar (3 meses)", 30000, "Acto único", "Antes do início do estágio"),
- ("Estágio curricular (6 meses)", 60000, "Acto único", "Até à primeira semana de Janeiro de 2027"),
+ ("Comparticipação para aulas práticas", 10000, "Acto único, por formando", "No início do módulo"),
+ ("Túnica", 20000, "Acto único, por formando", "No início do módulo"),
+ ("Estágio preliminar (3 meses)", 30000, "Acto único, por formando", "Antes do início do estágio"),
+ ("Estágio curricular (6 meses)", 60000, "Acto único, por formando", "Até à primeira semana de Janeiro de 2027"),
  ("Tutoria do Projecto Tecnológico", 18000, "Pagamento único ao tutor", "Durante o módulo"),
  ("Manuais de apoio", 10000, "Conjunto completo", "Durante o módulo"),
- ("Declaração para obtenção da licença de aprendizagem", 10000, "Acto único", "Até 10 de Outubro de 2026"),
- ("Termo de frequência", 40000, "Acto único", "Até 30 de Novembro de 2026"),
- ("Declaração de frequência", 8000, "Acto único", "No fim do curso"),
- ("Mesa de júri da defesa", 20000, "Acto único", "Antes da defesa"),
- ("Sala da defesa", 10000, "Acto único", "Antes da defesa"),
- ("Faixa de finalista", 3000, "Acto único", "Antes da defesa"),
+ ("Declaração para obtenção da licença de aprendizagem", 10000, "Acto único, por formando", "Até 10 de Outubro de 2026"),
+ ("Termo de frequência", 40000, "Acto único, por formando", "Até 30 de Novembro de 2026"),
+ ("Declaração de frequência", 8000, "Acto único, por formando", "No fim do curso"),
+ ("Mesa de júri da defesa", 20000, "Acto único, por formando", "Antes da defesa"),
+ ("Sala da defesa", 10000, "Acto único, por formando", "Antes da defesa"),
+ ("Faixa de finalista", 3000, "Acto único, por formando", "Antes da defesa"),
 ]
 FIN_EVENT = [
  ("Multa por atraso no pagamento da mensalidade", 2000, "Por mensalidade em atraso", "A partir do dia 11"),
  ("Recurso por disciplina", 5000, "Por disciplina", "Entre uma semana após as provas e 15 dias após a publicação das pautas"),
- ("Recurso da defesa", 30000, "Acto único", "Quinze dias após a defesa (18/06/2027)"),
+ ("Recurso da defesa", 30000, "Acto único, por formando", "Quinze dias após a defesa (18/06/2027)"),
 ]
 FIN_FUTURO = [
  ("Certificado de conclusão do módulo", None, "Valor por definir [a confirmar]"),
@@ -158,6 +158,7 @@ FIN_REGRAS = [
  "A mensalidade vence-se até ao dia 10 de cada mês; a partir do dia 11 acresce a multa de 2.000 Kz.",
  "O formando com mensalidades em atraso não é admitido à defesa de fim de curso.",
  "Os documentos e as declarações só são emitidos a formandos com a situação de propinas regularizada.",
+ "Todos os encargos deste programa são devidos por formando, incluindo as taxas de mesa de júri, de sala de defesa e de faixa de finalista: num grupo de trabalho de dez elementos, cada elemento liquida a sua própria taxa.",
 ]
 ASSIDUIDADE = ("A frequência exigida é de 100 %. Não são admitidas faltas. A falta que venha a "
  "ocorrer tem de ser justificada perante a Coordenação Pedagógica para ser removida do registo "
