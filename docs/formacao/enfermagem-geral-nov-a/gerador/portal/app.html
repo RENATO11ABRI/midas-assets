@@ -1,0 +1,308 @@
+<div class="gate" id="gate" hidden>
+  <div class="box">
+    <img src="__LOGO__" alt="MIDAS 26">
+    <div class="inst">Centro de Formação Técnica em Saúde</div>
+    <h1>Turma NOV-A</h1>
+    <p class="sub">Enfermagem Geral · III.º Módulo · Unidade do Zango · 2026/2027</p>
+    <label for="g-cod">Código de acesso</label>
+    <input id="g-cod" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Entregue pela Secretaria" maxlength="24">
+    <button class="btn pri" id="g-ok">Entrar</button>
+    <p class="err" id="g-err" hidden></p>
+    <div class="or"><span>ou</span></div>
+    <label for="g-nome">Consultar o programa sem código</label>
+    <input id="g-nome" type="text" autocomplete="name" placeholder="O seu nome" maxlength="60">
+    <button class="btn" id="g-anon">Continuar em modo de consulta</button>
+    <p class="fine">Com o código de acesso consulta as suas notas, a colocação em estágio e a situação de propinas, cifradas de ponta a ponta — só o seu código as abre. Sem código, o portal mostra o programa e guarda o seu progresso apenas neste aparelho.</p>
+  </div>
+</div>
+
+<div class="app" id="app">
+  <aside class="rail">
+    <div class="brand"><img src="__LOGO__" alt=""><div><b>Turma NOV-A</b><small>Enfermagem Geral · III.º Módulo</small></div></div>
+    <nav class="nav" id="nav">
+      <a href="#/hoje" data-v="hoje"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a2 2 0 0 1-2 2h-4v-6H9v6H5a2 2 0 0 1-2-2z"/></svg><span>Hoje</span></a>
+      <a href="#/calendario" data-v="calendario"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Calendário</span></a>
+      <a href="#/disciplinas" data-v="disciplinas"><svg viewBox="0 0 24 24"><path d="M4 4h6a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H4zM20 4h-6a3 3 0 0 0-3 3v13a2 2 0 0 1 2-2h7z"/></svg><span>Disciplinas</span></a>
+      <a href="#/sessoes" data-v="sessoes"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>Sessões</span></a>
+      <a href="#/estagios" data-v="estagios"><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6M12 9v3M10.5 10.5h3"/></svg><span>Estágios</span></a>
+      <a href="#/notas" data-v="notas"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>Notas</span></a>
+      <a href="#/propinas" data-v="propinas"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20M6 15h4"/></svg><span>Propinas</span><span class="badge warn" id="nav-pag" hidden>!</span></a>
+      <a href="#/avisos" data-v="avisos"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg><span>Avisos</span><span class="badge" id="nav-badge" hidden>0</span></a>
+    </nav>
+    <div class="foot"><a href="#/secretaria">Secretaria</a><br>Grupo Midas Angola · MIDAS 26</div>
+  </aside>
+  <main class="main">
+    <header class="top"><h1 id="title">Hoje</h1><div class="who" id="who"></div></header>
+    <div class="wrap" id="view"></div>
+  </main>
+</div>
+
+<div class="veil" id="veil"></div>
+<aside class="side" id="side" aria-hidden="true"><div class="sh"><h2 id="side-t"></h2><button id="side-x" aria-label="Fechar">×</button></div><div class="sb" id="side-b"></div></aside>
+<div class="toast" id="toast"></div>
+
+<script>
+const D=__DADOS__;
+/* ============================ utilitários ============================ */
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const MES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const MESC=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const DIA=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+const DIAC=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const fmt=iso=>{const [y,m,d]=iso.split('-');return `${d}/${m}/${y}`};
+const dObj=iso=>{const [y,m,d]=iso.split('-').map(Number);return new Date(y,m-1,d)};
+const isoOf=dt=>`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+const addD=(iso,n)=>{const t=dObj(iso);t.setDate(t.getDate()+n);return isoOf(t)};
+const wdOf=iso=>dObj(iso).getDay();
+const diff=(a,b)=>Math.round((dObj(b)-dObj(a))/864e5);
+const hf=h=>(Math.round(h*10)/10).toString().replace('.',',')+' h';
+const kz=v=>v==null?'a definir':String(v).replace(/\B(?=(\d{3})+(?!\d))/g,'.')+' Kz';
+const HOJE=isoOf(new Date());
+const NOMES={T:'Teórica',TP:'Teórico-prática',P:'Prática',AVE:'Avaliação escrita',AVP:'Avaliação prática'};
+const tipoCls=t=>t==='P'?'P':(t.startsWith('AV')?'AV':'');
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),2400)}
+function quando(iso){if(!iso)return '';const d=new Date(iso);if(isNaN(d))return esc(iso);return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}h${String(d.getMinutes()).padStart(2,'0')}`}
+
+/* ============================ estado local ============================ */
+const store={
+ get(k,dflt){try{const v=localStorage.getItem('nova.'+k);return v==null?dflt:JSON.parse(v)}catch(e){return dflt}},
+ set(k,v){try{localStorage.setItem('nova.'+k,JSON.stringify(v))}catch(e){}},
+ del(k){try{localStorage.removeItem('nova.'+k)}catch(e){}}};
+let perfil=store.get('perfil',null);
+let presencas=store.get('presencas',{}), notasP=store.get('notas',{}), pagos=store.get('pagos2',{}), checks=store.get('checks',{});
+const salva=()=>{store.set('presencas',presencas);store.set('notas',notasP);store.set('pagos2',pagos);store.set('checks',checks)};
+let ficha=null, fichaErro=null, unsubFicha=null;   // ficha cifrada do estudante (só com código)
+
+/* ============================ cifra (WebCrypto) ============================ */
+const enc=new TextEncoder(), dec=new TextDecoder();
+const b64=u=>btoa(String.fromCharCode(...new Uint8Array(u))), unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const normCod=c=>String(c||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+async function idDe(cod){const h=await crypto.subtle.digest('SHA-256',enc.encode('nova-a:'+normCod(cod)));return [...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('')}
+async function chaveDe(cod,salt){const km=await crypto.subtle.importKey('raw',enc.encode(normCod(cod)),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:120000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
+async function cifrar(cod,obj){const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));const k=await chaveDe(cod,salt);const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},k,enc.encode(JSON.stringify(obj)));return {v:1,salt:b64(salt),iv:b64(iv),ct:b64(ct),actualizado:new Date().toISOString()}}
+async function decifrar(cod,doc){const k=await chaveDe(cod,unb64(doc.salt));const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(doc.iv)},k,unb64(doc.ct));return JSON.parse(dec.decode(pt))}
+function gerarCodigo(){const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';const r=crypto.getRandomValues(new Uint8Array(8));const s=[...r].map(b=>A[b%A.length]).join('');return `NOVA-${s.slice(0,4)}-${s.slice(4)}`}
+
+/* ============================ índices ============================ */
+const SES=D.sessoes, byId={}, byDate={};
+SES.forEach(s=>{byId[s.id]=s;(byDate[s.data]=byDate[s.data]||[]).push(s)});
+const FER={}; D.feriados.forEach(f=>FER[f.data]=f.nome);
+const PD=new Set(D.sabados.predefesas); const EST=D.estagios;
+function dayInfo(iso){const ss=byDate[iso]||[];const w=wdOf(iso);
+ if(iso===D.meta.defesa)return{tipo:'def',txt:'Defesa de fim de curso',ss};
+ if(ss.length){if(ss[0].disc==='SEM')return{tipo:'sem',txt:`Seminário ${ss[0].n} — ${ss[0].unidade_tit}`,ss};
+  if(w===6)return{tipo:'sab',txt:iso===D.sabados.dia_trabalhador?'Dia do Trabalhador — actividade GEN/PT':'GEN 240′ • PT 210′',ss,pd:PD.has(iso)};
+  const lo=ss.find(x=>x.dur===180),cu=ss.find(x=>x.dur===60);return{tipo:'aula',txt:`${lo.disc} 180′ • ${cu.disc} 60′`,ss,av:ss.filter(x=>x.tipo.startsWith('AV')).map(x=>x.disc)}}
+ if(FER[iso])return{tipo:'fer',txt:FER[iso],ss};
+ if(iso>=D.meta.rec[0]&&iso<=D.meta.rec[1])return{tipo:'rec',txt:'Interrupção lectiva',ss};
+ if(iso===D.meta.entrega)return{tipo:'est',txt:'Entrega do trabalho de fim de curso',ss};
+ if(iso===D.meta.recurso)return{tipo:'est',txt:'Recurso da defesa',ss};
+ if(iso===EST[0].apresentacao)return{tipo:'est',txt:'Apresentação ao local de estágio',ss};
+ for(const e of EST){if(iso>=e.ini&&iso<=e.fim&&[1,3,5,0].includes(w))return{tipo:'est',txt:e.nome,ss}}
+ return{tipo:'normal',txt:'',ss}}
+const horasTot=D.meta.horas_geral;
+function progresso(){let h=0,n=0;for(const id in presencas){if(presencas[id]&&byId[id]){h+=byId[id].dur/60;n++}}return{h,n}}
+function progDisc(k){const ss=SES.filter(s=>s.disc===k);const done=ss.filter(s=>presencas[s.id]);return{n:ss.length,d:done.length,h:done.reduce((a,s)=>a+s.dur/60,0),tot:ss.reduce((a,s)=>a+s.dur/60,0)}}
+
+/* ============================ propinas: prazos e próximo pagamento ============================ */
+const F=D.financeiro;
+function dues(){const out=[];F.meses.forEach(m=>out.push({id:'mes-'+m.k,tipo:'mensalidade',item:`Mensalidade de ${m.nome}`,valor:F.mensalidade,prazo:m.prazo,multa:2000}));
+ F.modulo.forEach((x,i)=>{if(x.item==='Mensalidade')return;out.push({id:'item-'+i,tipo:'encargo',item:x.item,valor:x.valor,prazo:x.prazo,indic:!!x.indicativo,quando:x.quando})});
+ return out.sort((a,b)=>a.prazo<b.prazo?-1:1)}
+function pago(id){ if(ficha&&ficha.propinas){const p=ficha.propinas;if(id.startsWith('mes-'))return (p.meses||[]).includes(id.slice(4));return (p.itens||[]).includes(id)} return !!pagos[id]}
+function situacaoPag(){const all=dues();const atraso=all.filter(d=>!pago(d.id)&&d.prazo<HOJE);const prox=all.find(d=>!pago(d.id)&&d.prazo>=HOJE);const pagoTot=all.filter(d=>pago(d.id)).reduce((a,d)=>a+d.valor,0);const tot=all.reduce((a,d)=>a+d.valor,0);return{all,atraso,prox,pagoTot,tot,falta:tot-pagoTot}}
+function badgePag(){const s=situacaoPag();const b=$('#nav-pag');const urg=s.atraso.length||(s.prox&&diff(HOJE,s.prox.prazo)<=5);b.hidden=!urg}
+
+/* ============================ perfil / entrar ============================ */
+function iniciais(n){return String(n||'').trim().split(/\s+/).slice(0,2).map(x=>x[0]||'').join('').toUpperCase()||'·'}
+function renderWho(){const w=$('#who');if(!perfil){w.innerHTML='';return}
+ const nome=(ficha&&ficha.nome)||perfil.nome||'Estudante';
+ w.innerHTML=`<span class="av ${perfil.codigo?'ok':''}">${esc(iniciais(nome))}</span><span>${esc(nome.split(' ')[0])}${perfil.codigo?'':' <small>· consulta</small>'}</span><button id="sair" title="Sair">sair</button>`;
+ $('#sair').onclick=()=>{if(confirm('Sair do portal neste aparelho? O progresso local fica guardado; a ficha só volta a abrir com o código.')){perfil=null;ficha=null;store.del('perfil');if(unsubFicha){unsubFicha();unsubFicha=null}gate()}}}
+async function abrirFicha(cod){ if(!db){throw new Error('sem-db')} const id=await idDe(cod);const snap=await db.doc('alunos/'+id).get(); if(!snap.exists){throw new Error('nao-existe')} const f=await decifrar(cod,snap.data()); return {id,f}}
+function observarFicha(){ if(!db||!perfil||!perfil.codigo||unsubFicha)return; idDe(perfil.codigo).then(id=>{unsubFicha=db.doc('alunos/'+id).onSnapshot(async s=>{if(!s.exists){ficha=null;fichaErro='A sua ficha foi removida. Contacte a Secretaria.';return}try{ficha=await decifrar(perfil.codigo,s.data());fichaErro=null;renderWho();badgePag();if(['hoje','notas','propinas','estagios'].includes(cur.v))route()}catch(e){fichaErro='Não foi possível abrir a ficha com este código.'}},()=>{})})}
+function gate(){const g=$('#gate');if(perfil){g.hidden=true;renderWho();route();return}
+ g.hidden=false;$('#g-cod').focus();const err=$('#g-err');
+ $('#g-ok').onclick=async()=>{const cod=normCod($('#g-cod').value);err.hidden=true;if(cod.length<6){err.textContent='Escreva o código tal como consta do cartão entregue pela Secretaria.';err.hidden=false;return}
+  $('#g-ok').disabled=true;$('#g-ok').textContent='A verificar…';
+  try{ if(!dbReady){await new Promise(r=>{const t=setInterval(()=>{if(dbReady){clearInterval(t);r()}},100)})}
+   const {f}=await abrirFicha(cod);perfil={nome:f.nome,codigo:cod,desde:HOJE};store.set('perfil',perfil);ficha=f;g.hidden=true;renderWho();observarFicha();badgePag();route();toast(`Ficha aberta. Bom trabalho, ${f.nome.split(' ')[0]}.`)}
+  catch(e){err.textContent=e.message==='sem-db'?'A ligação à Secretaria não está disponível nesta vista. Abra o portal em claude.ai.':e.message==='nao-existe'?'Código não reconhecido. Confirme com a Secretaria.':'Código incorrecto.';err.hidden=false}
+  finally{$('#g-ok').disabled=false;$('#g-ok').textContent='Entrar'}};
+ $('#g-anon').onclick=()=>{const n=$('#g-nome').value.trim();if(n.length<2){toast('Escreva o seu nome.');return}perfil={nome:n,desde:HOJE};store.set('perfil',perfil);g.hidden=true;renderWho();route()};
+ $('#g-cod').onkeydown=e=>{if(e.key==='Enter')$('#g-ok').click()};$('#g-nome').onkeydown=e=>{if(e.key==='Enter')$('#g-anon').click()}}
+
+/* ============================ painel lateral ============================ */
+function openSide(title,html){$('#side-t').textContent=title;$('#side-b').innerHTML=html;$('#side').classList.add('on');$('#veil').classList.add('on');$('#side').setAttribute('aria-hidden','false');$('#side-x').focus()}
+function closeSide(){$('#side').classList.remove('on');$('#veil').classList.remove('on');$('#side').setAttribute('aria-hidden','true')}
+$('#side-x').onclick=closeSide;$('#veil').onclick=closeSide;document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSide()});
+function blocoHtml(s,withAct=true){const d=D.disc[s.disc];const done=!!presencas[s.id];
+ return `<div class="blk" style="--c:${d.cor}"><div class="hr"><span class="sig" style="--c:${d.cor}">${s.disc}</span><span class="h">${esc(s.horario)} · ${s.dur}′ · ${esc(s.tempo)}</span><span class="tipo ${tipoCls(s.tipo)}">${NOMES[s.tipo]||s.tipo}</span></div><h4>${esc(s.tema)}</h4><p>U${esc(s.unidade)} — ${esc(s.unidade_tit)}${s.disc!=='SEM'?` · ${esc(s.prof)}`:''}</p>
+  ${withAct?`<div class="act"><label class="tog"><input type="checkbox" data-pres="${s.id}" ${done?'checked':''}> Estive presente</label><a class="btn sm" href="#/disciplinas/${s.disc}">Ver disciplina</a></div><textarea data-nota="${s.id}" placeholder="Notas pessoais sobre esta sessão">${esc(notasP[s.id]||'')}</textarea>`:''}</div>`}
+function bindActs(root){$$('[data-pres]',root).forEach(c=>c.onchange=()=>{presencas[c.dataset.pres]=c.checked;if(!c.checked)delete presencas[c.dataset.pres];salva();toast(c.checked?'Presença registada.':'Presença removida.');refreshInline()});
+ $$('[data-nota]',root).forEach(t=>t.oninput=()=>{const v=t.value.trim();if(v)notasP[t.dataset.nota]=v;else delete notasP[t.dataset.nota];salva()})}
+function refreshInline(){if(cur.v==='hoje')hoje();if(cur.v==='calendario')calendario(cur.a);if(cur.v==='disciplinas'&&cur.a)disciplina(cur.a,cur.b);if(cur.v==='sessoes')sessoes()}
+function openDay(iso){const i=dayInfo(iso);const w=wdOf(iso);let h=`<div class="kv"><dt>Data</dt><dd><b>${DIA[w]}, ${fmt(iso)}</b></dd>${i.txt?`<dt>Dia</dt><dd>${esc(i.txt)}</dd>`:''}</div>`;
+ if(i.ss.length)h+=i.ss.map(s=>blocoHtml(s)).join('');
+ else if(i.tipo==='est'){const e=EST.find(e=>iso>=e.ini&&iso<=e.fim);h+=e?`<div class="blk" style="--c:var(--est-ink)"><h4>${esc(e.nome)}</h4><p>${esc(e.local)}<br>${esc(e.dias)}<br>${esc(e.horas_dia)}</p><div class="act"><a class="btn sm" href="#/estagios">Ver estágios</a></div></div>`:''}
+ else if(i.tipo==='def')h+=`<div class="blk" style="--c:var(--def-ink)"><h4>Defesa de fim de curso</h4><p>${esc(D.defesa.juri)}</p><div class="act"><a class="btn sm" href="#/estagios">Ver defesa</a></div></div>`;
+ else if(!i.txt)h+=`<div class="empty">Sem actividade lectiva neste dia.</div>`;
+ openSide(`${DIAC[w]} ${fmt(iso).slice(0,5)}`,h);bindActs($('#side-b'))}
+function openSession(id){const s=byId[id];openSide(`${s.disc} · ${fmt(s.data)}`,blocoHtml(s));bindActs($('#side-b'))}
+document.addEventListener('click',e=>{const a=e.target.closest('a[href^="#/"]');if(a&&$('#side').classList.contains('on'))closeSide();const d=e.target.closest('[data-day]');if(d){openDay(d.dataset.day);return}const s=e.target.closest('[data-sess]');if(s&&!e.target.closest('input,label,a'))openSession(s.dataset.sess)});
+
+/* ============================ router ============================ */
+let cur={v:'hoje',a:null,b:null};
+function route(){if(!perfil)return;const p=location.hash.replace(/^#\/?/,'').split('/');const v=p[0]||'hoje';cur={v,a:p[1]||null,b:p[2]||null};
+ $$('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.v===v));
+ ({hoje,calendario:()=>calendario(cur.a),disciplinas:()=>cur.a?disciplina(cur.a,cur.b):disciplinas(),sessoes,estagios,notas,propinas,avisos,secretaria}[v]||hoje)();window.scrollTo({top:0})}
+window.addEventListener('hashchange',route);
+function setTitle(t){$('#title').textContent=t;document.title=`${t} · Turma NOV-A`}
+const semFicha=(o)=>`<div class="card"><div class="bd"><div class="locked"><div class="lk"></div><div><b>${o}</b><p>Esta informação é pessoal e só abre com o seu código de acesso, entregue pela Secretaria. Saia e volte a entrar com o código.</p></div></div></div></div>`;
+
+/* ============================ HOJE ============================ */
+function hoje(){setTitle('Hoje');const v=$('#view');const {h,n}=progresso();const pct=Math.min(100,h/horasTot*100);const ini=D.meta.ini,fim=D.meta.defesa;let lead;
+ if(HOJE<ini){const d=diff(HOJE,ini);lead=`<span class="label">Início do módulo</span><h2>${d===1?'A primeira aula é amanhã':`Faltam ${d} dias para a primeira aula`}</h2><p>Terça-feira, ${fmt(ini)}, às 08h00, na Unidade do Zango. A apresentação ao local de estágio é a ${fmt(EST[0].apresentacao)}, no Hospital do Capalanga.</p>`}
+ else if(HOJE>fim){lead=`<span class="label">Módulo concluído</span><h2>A defesa realizou-se a ${fmt(fim)}</h2><p>O recurso da defesa realiza-se a ${fmt(D.meta.recurso)}.</p>`}
+ else{const sem=Math.floor(diff(ini,HOJE)/7)+1;const tot=Math.ceil(diff(ini,fim)/7);const dd=diff(HOJE,fim);const di=dayInfo(HOJE);lead=`<span class="label">Semana ${sem} de ${tot}</span><h2>${DIA[wdOf(HOJE)]}, ${fmt(HOJE).slice(0,5)}</h2><p>${di.txt?`Hoje: ${esc(di.txt)}.`:'Hoje não há actividade lectiva.'} Faltam ${dd} dias para a defesa de fim de curso.</p>`}
+ const w0=addD(HOJE,-((wdOf(HOJE)+6)%7));const dias=[...Array(7)].map((_,i)=>addD(w0,i));
+ const evs=[];for(let i=0,d=HOJE;i<400&&evs.length<6;i++,d=addD(d,1)){const inf=dayInfo(d);if((inf.tipo!=='normal'&&inf.tipo!=='est')||(inf.tipo==='est'&&/Apresentação|Entrega|Recurso/.test(inf.txt)))evs.push({d,inf})}
+ const sp=situacaoPag();const pagCard=sp.atraso.length?`<div class="pay danger"><span class="label">Pagamento em atraso</span><b>${esc(sp.atraso[0].item)}</b><p>Venceu a ${fmt(sp.atraso[0].prazo)}${sp.atraso[0].multa?` · acresce multa de ${kz(sp.atraso[0].multa)}`:''}${sp.atraso.length>1?` · e mais ${sp.atraso.length-1} em atraso`:''}</p><a class="btn sm" href="#/propinas">Ver propinas</a></div>`
+  :sp.prox?`<div class="pay ${diff(HOJE,sp.prox.prazo)<=5?'warn':''}"><span class="label">Próximo pagamento</span><b>${esc(sp.prox.item)} · ${kz(sp.prox.valor)}</b><p>Até ${fmt(sp.prox.prazo)} · ${diff(HOJE,sp.prox.prazo)===0?'hoje':`faltam ${diff(HOJE,sp.prox.prazo)} dias`}${sp.prox.indic?' · prazo indicativo':''}</p><a class="btn sm" href="#/propinas">Ver propinas</a></div>`
+  :`<div class="pay ok"><span class="label">Propinas</span><b>Sem pagamentos pendentes</b><p>Tudo o que tinha prazo está assinalado como pago.</p></div>`;
+ const pauta=(ficha&&ficha.historico&&ficha.historico.length)?`<div class="card"><div class="hd"><h2>Pauta do ${esc(ficha.historico[ficha.historico.length-1].modulo)}</h2><span class="meta">${sitTag(ficha.historico[ficha.historico.length-1].situacao)}</span></div><div class="bd"><p class="prose">A sua pauta final está disponível, disciplina a disciplina.</p><a class="btn sm" href="#/notas">Ver a pauta</a></div></div>`:'';
+ const recados=(ficha&&ficha.recados&&ficha.recados.length)?`<div class="card"><div class="hd"><h2>Recados da Secretaria</h2><span class="meta">pessoais</span></div><div>${ficha.recados.slice().reverse().slice(0,3).map(r=>`<div class="aviso"><div class="w">${quando(r.quando)}</div><p>${esc(r.texto)}</p></div>`).join('')}</div></div>`:'';
+ v.innerHTML=`<section class="hero"><div class="lead">${lead}<div class="cta"><a class="btn pri" href="#/calendario">Calendário</a><a class="btn" href="#/disciplinas">Disciplinas</a>${perfil.codigo?'<a class="btn" href="#/notas">As minhas notas</a>':''}</div></div>
+  <div class="stackc">${pagCard}<div class="card"><div class="prog"><div class="ring"><svg viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="42"/><circle class="fg" cx="50" cy="50" r="42" stroke-dasharray="${2*Math.PI*42}" stroke-dashoffset="${2*Math.PI*42*(1-pct/100)}"/></svg><div class="n"><div><b>${Math.round(pct)}%</b><br><small>${hf(h).replace(' h','')} / ${horasTot} h</small></div></div></div><div class="txt"><h3>Presenças registadas</h3><p>${n} de ${SES.length} sessões. Assinale a presença em cada sessão para acompanhar as 428 horas.</p></div></div></div></div></section>
+ <section><div class="label" style="margin-bottom:8px">Esta semana · ${fmt(dias[0]).slice(0,5)} – ${fmt(dias[6]).slice(0,5)}</div><div class="week">${dias.map(d=>{const i=dayInfo(d);const w=wdOf(d);const ss=i.ss;return `<div class="wd ${d===HOJE?'today':''}" data-day="${d}"><div class="dn"><b>${d.slice(8)}</b><span>${DIAC[w]}</span></div>${ss.length?ss.map(s=>`<div class="ev ${i.tipo}" title="${esc(s.tema)}"><b>${s.disc}</b> ${s.dur}′${s.tipo.startsWith('AV')?' · AV':''}</div>`).join(''):(i.txt?`<div class="ev ${i.tipo}">${esc(i.txt)}</div>`:`<div class="ev none">—</div>`)}${i.pd?'<div class="ev pd">Pré-defesa</div>':''}</div>`}).join('')}</div></section>
+ ${pauta}${recados}
+ <section class="grid2"><div class="card"><div class="hd"><h2>Próximos momentos</h2><span class="meta">a partir de hoje</span></div><div class="next">${evs.length?evs.map(({d,inf})=>{const dd=diff(HOJE,d);return `<div class="it" data-day="${d}"><div class="d"><b>${d.slice(8)}</b><small>${MESC[+d.slice(5,7)-1]}</small></div><div class="t"><b>${esc(inf.txt)}</b><span>${DIA[wdOf(d)]}${inf.ss.length&&inf.tipo==='aula'?' · '+esc(inf.ss.find(x=>x.dur===180).tema):''}</span></div><div class="in">${dd===0?'hoje':dd===1?'amanhã':`em ${dd} dias`}</div></div>`}).join(''):'<div class="empty">Sem eventos próximos.</div>'}</div></div>
+ <div class="card"><div class="hd"><h2>Datas do módulo</h2></div><div class="bd"><div class="tl">${[[EST[0].apresentacao,'Apresentação ao Hospital do Capalanga','Estágio preliminar'],[D.meta.ini,'Primeira aula','Terça-feira, 08h00'],[EST[0].ini,'Início do estágio preliminar','Segunda, quarta, sexta e domingo, conforme escala'],[D.sabados.ini,'Primeiro sábado de GEN/PT','Todos os sábados até '+fmt(D.sabados.fim)],[D.meta.rec[0],'Interrupção lectiva','Até '+fmt(D.meta.rec[1])],[EST[1].ini,'Início do estágio curricular','Seis meses em quatro unidades'],[D.defesa.predefesas[0],'1.ª pré-defesa','Sábado, no bloco de projecto'],[D.meta.entrega,'Entrega do trabalho de fim de curso','Um mês antes da defesa'],[D.meta.fim,'Última aula das disciplinas',''],[D.meta.defesa,'Defesa de fim de curso','Júri da escola-mãe']].sort((a,b)=>a[0]<b[0]?-1:1).map(([d,t,s])=>`<div class="e ${d<HOJE?'past':''} ${d===D.meta.defesa||d===D.meta.entrega?'hot':''}"><span class="w">${fmt(d)} · ${DIAC[wdOf(d)]}</span><b>${t}</b>${s?`<p>${s}</p>`:''}</div>`).join('')}</div></div></div></section>`}
+
+/* ============================ CALENDÁRIO ============================ */
+function calendario(ym){setTitle('Calendário');const v=$('#view');const meses=D.calendario;let idx=meses.findIndex(m=>`${m.ano}-${String(m.mes).padStart(2,'0')}`===ym);
+ if(idx<0){idx=meses.findIndex(m=>HOJE<=`${m.ano}-${String(m.mes).padStart(2,'0')}-31`);if(idx<0)idx=0}
+ const m=meses[idx];const key=`${m.ano}-${String(m.mes).padStart(2,'0')}`;
+ const cells=m.cells.map(c=>{if(!c)return '<div class="c off"></div>';const iso=`${key}-${String(c.d).padStart(2,'0')}`;const i=dayInfo(iso);const w=wdOf(iso);const done=i.ss.length&&i.ss.every(s=>presencas[s.id]);
+  return `<div class="c ${i.tipo!=='normal'?i.tipo:''} ${(w===0||w===6)&&i.tipo==='normal'?'we':''} ${i.tipo!=='normal'?'has':''} ${iso===HOJE?'today':''}" ${i.tipo!=='normal'?`data-day="${iso}"`:''}><span class="n">${c.d}</span>${i.txt?`<span class="t">${esc(i.txt)}</span>`:''}${i.av&&i.av.length?`<span class="av">AV</span>`:''}${i.pd?`<span class="av">PRÉ-DEF.</span>`:''}${done?'<span class="ok">✓</span>':''}</div>`}).join('');
+ const k=i=>`${meses[i].ano}-${String(meses[i].mes).padStart(2,'0')}`;
+ v.innerHTML=`<div class="calnav"><a class="btn sm" href="#/calendario/${idx>0?k(idx-1):key}" ${idx===0?'style="visibility:hidden"':''}>← ${idx>0?MESC[meses[idx-1].mes-1]:''}</a><h2>${m.nome} de ${m.ano}</h2><span class="meta">${m.ndias} dias lectivos · ${hf(m.horas)}</span><a class="btn sm" href="#/calendario/${idx<meses.length-1?k(idx+1):key}" ${idx===meses.length-1?'style="visibility:hidden"':''}>${idx<meses.length-1?MESC[meses[idx+1].mes-1]:''} →</a></div>
+ <div class="cal">${['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'].map(x=>`<div class="h">${x}</div>`).join('')}${cells}</div>
+ <div class="leg"><span><i style="background:var(--aula)"></i>Aula (terça e quinta)</span><span><i style="background:var(--sab)"></i>Sábado GEN/PT</span><span><i style="background:var(--sem);box-shadow:inset 0 0 0 2px var(--green)"></i>Seminário</span><span><i style="background:var(--est)"></i>Estágio</span><span><i style="background:var(--fer)"></i>Feriado / interrupção</span><span><i style="background:var(--def)"></i>Defesa</span><span><i style="background:var(--green);border-color:var(--green)"></i>Presença completa</span></div>
+ <p class="note">Toque num dia para ver os blocos, os temas e o professor, registar a presença e escrever notas. Em cada dia de aula, a primeira sigla ocupa o 1.º e o 2.º tempos (180′) e a segunda o bloco complementar (60′).</p>`}
+
+/* ============================ DISCIPLINAS ============================ */
+function disciplinas(){setTitle('Disciplinas');const v=$('#view');
+ v.innerHTML=`<p class="prose">Sete componentes ao longo dos oito meses: quatro disciplinas técnicas às terças e quintas, duas ao sábado e os seminários.</p><div class="dgrid">${D.ordem.map(k=>{const d=D.disc[k];const p=progDisc(k);const nt=ficha&&ficha.notas&&ficha.notas[k];return `<a class="dcard" style="--c:${d.cor}" href="#/disciplinas/${k}"><div class="dc-h"><span class="sig" style="--c:${d.cor}">${k}</span>${nt&&nt.cf!=null?`<span class="grade ${+nt.cf>=10?'ok':'bad'}">${esc(nt.cf)}</span>`:''}</div><h3>${esc(d.nome)}</h3><span class="pf">${esc(d.prof)} · ${esc(d.dia)}</span><div class="st"><div><b>${String(d.total).replace('.',',')}</b><small>horas</small></div><div><b>${p.n}</b><small>sessões</small></div><div><b>${String(d.pct).replace('.',',')}%</b><small>prática</small></div></div><div class="bar"><i style="width:${p.tot?p.h/p.tot*100:0}%;background:${d.cor}"></i></div><span class="pf">${p.d} de ${p.n} sessões presentes</span></a>`}).join('')}</div>`}
+function disciplina(k,tab){const d=D.disc[k];if(!d){location.hash='#/disciplinas';return}setTitle(d.nome);tab=tab||'programa';const v=$('#view');const p=progDisc(k);const ss=SES.filter(s=>s.disc===k);
+ const tabs=[['programa','Programa'],['unidades','Unidades'],['sessoes',`Sessões (${ss.length})`],...(d.listas.length?[['listas','Listas de verificação']]:[]),['avaliacao','Avaliação']];let body='';
+ if(tab==='programa'){body=`<div class="prose">${d.fund?`<h3 class="h3">Fundamentação</h3><p>${esc(d.fund)}</p>`:''}${d.objg?`<h3 class="h3">Objectivo geral</h3><p>${esc(d.objg)}</p>`:''}${d.obje.length?`<h3 class="h3">No fim da disciplina, o formando é capaz de</h3><ul>${d.obje.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}${d.saida.length?`<h3 class="h3">Competências de saída verificáveis</h3><ul>${d.saida.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}${d.metod?`<h3 class="h3">Como decorrem as aulas</h3><p>${esc(d.metod)}</p>`:''}${d.pre?`<h3 class="h3">Pré-requisitos mobilizados</h3><p>${esc(d.pre)}</p>`:''}${k==='SEM'?`<h3 class="h3">Os oito seminários</h3><div class="acc">${D.seminarios.map(s=>`<details><summary><span class="u">S${s.n}</span>${esc(s.area)}<span class="h">${fmt(s.data)} · ${s.dia.slice(0,3)}</span></summary><div class="body">${esc(s.tema)}</div></details>`).join('')}</div>`:''}</div>`}
+ else if(tab==='unidades'){body=d.unidades.length?`<div class="acc">${d.unidades.map(u=>`<details><summary><span class="u">U${u.num}</span>${esc(u.tit)}<span class="h">${u.mes?`mês ${u.mes} · `:''}${hf(u.horas)}</span></summary><div class="body">${esc(u.cont)}</div></details>`).join('')}</div>`:'<div class="empty">Sem unidades definidas.</div>'}
+ else if(tab==='sessoes'){body=`<div class="card"><div class="slist">${ss.map(s=>`<div class="srow ${presencas[s.id]?'done':''}" data-sess="${s.id}"><label class="chk" title="Presença"><input type="checkbox" class="sr" data-pres="${s.id}" ${presencas[s.id]?'checked':''}>${presencas[s.id]?'✓':''}</label><div class="dt"><b>${fmt(s.data).slice(0,5)}</b>${DIAC[wdOf(s.data)]} · ${s.dur}′</div><div class="tm">${esc(s.tema)}<small>U${esc(s.unidade)} — ${esc(s.unidade_tit)}${notasP[s.id]?' · <em>com notas</em>':''}</small></div><div class="rt"><span class="tipo ${tipoCls(s.tipo)}">${NOMES[s.tipo]||s.tipo}</span>${s.predefesa?'<span class="tipo AV">Pré-defesa</span>':''}</div></div>`).join('')}</div></div>`}
+ else if(tab==='listas'){body=`<p class="prose">Listas de auto-verificação para preparar as estações práticas. Os dois primeiros itens de cada lista são eliminatórios. Aprovação com pelo menos seis dos oito itens.</p><div class="grid2">${d.listas.map(l=>{const st=checks[l.cod]||[];return `<div class="chkl" style="--c:${d.cor}"><div class="h"><span class="cod">${l.cod}</span><b>${esc(l.tit)}</b><span class="pr">${st.length}/${l.itens.length}</span></div>${l.itens.map((it,i)=>`<label class="${i<2?'elim':''}"><input type="checkbox" data-chk="${l.cod}" data-i="${i}" ${st.includes(i)?'checked':''}>${esc(it)}</label>`).join('')}</div>`}).join('')}</div>`}
+ else{const nt=ficha&&ficha.notas&&ficha.notas[k];body=`<div class="prose">${nt?`<div class="card" style="margin-bottom:16px"><div class="hd"><h2>A minha classificação</h2><span class="meta">lançada pela Secretaria</span></div><div class="bd">${notaTabela(k,nt)}</div></div>`:''}<p>${esc(d.avalp)}</p>${!['SEM','GEN','PT'].includes(k)?`<p>Ponderação: assiduidade 5 %, participação 5 %, trabalhos e estudos de caso 15 %, testes escritos 20 %, demonstrações e avaliações práticas 30 %, avaliação final teórico-prática 25 %. <b>A componente prática é eliminatória.</b></p>`:''}${d.result?`<h3 class="h3">O que se espera no fim</h3><p>${esc(d.result)}</p>`:''}<a class="btn" href="#/notas">Ver todas as notas e o sistema de avaliação</a></div>`}
+ v.innerHTML=`<div class="dhead" style="--c:${d.cor}"><div><span class="sig big" style="--c:${d.cor}">${k}</span><h2>${esc(d.nome)}</h2><div class="pf">${esc(d.prof)} · ${esc(d.dia)}${k==='GEN'?' · 08h00–12h30':k==='PT'?' · 12h30–16h00':k==='SEM'?'':' · 08h00–12h15'}</div><div class="bar" style="margin-top:12px;max-width:360px"><i style="width:${p.tot?p.h/p.tot*100:0}%;background:${d.cor}"></i></div><div class="pf" style="margin-top:4px">${p.d} de ${p.n} sessões presentes · ${hf(p.h)} de ${hf(p.tot)}</div></div><div class="kpis"><div><b>${String(d.total).replace('.',',')}</b><small>Horas</small></div><div><b>${String(d.teorica).replace('.',',')}</b><small>Teórica</small></div><div><b>${String(d.pratica).replace('.',',')}</b><small>Prática</small></div><div><b>${String(d.pct).replace('.',',')}%</b><small>Prática</small></div></div></div><div class="tabs">${tabs.map(([id,l])=>`<button class="${tab===id?'on':''}" onclick="location.hash='#/disciplinas/${k}/${id}'">${l}</button>`).join('')}</div>${body}`;
+ bindActs(v);$$('[data-chk]',v).forEach(c=>c.onchange=()=>{const arr=new Set(checks[c.dataset.chk]||[]);c.checked?arr.add(+c.dataset.i):arr.delete(+c.dataset.i);checks[c.dataset.chk]=[...arr];salva();c.closest('.chkl').querySelector('.pr').textContent=`${arr.size}/${c.closest('.chkl').querySelectorAll('input').length}`});
+ if(tab==='sessoes')$$('.srow .chk',v).forEach(l=>l.onclick=e=>e.stopPropagation())}
+
+/* ============================ SESSÕES ============================ */
+function sessoes(){setTitle('Sessões');const v=$('#view');const st=store.get('filtros',{q:'',d:'',t:''});
+ v.innerHTML=`<div class="filters"><input id="f-q" type="search" placeholder="Procurar por tema, unidade ou professor" value="${esc(st.q)}"><select id="f-d"><option value="">Todas as disciplinas</option>${D.ordem.map(k=>`<option value="${k}" ${st.d===k?'selected':''}>${k} — ${esc(D.disc[k].nome)}</option>`).join('')}</select><select id="f-t"><option value="">Todos os tipos</option>${Object.entries(NOMES).map(([k,n])=>`<option value="${k}" ${st.t===k?'selected':''}>${n}</option>`).join('')}</select><span class="cnt" id="f-n"></span></div><div class="card" id="f-out"></div>`;
+ const run=()=>{const q=$('#f-q').value.trim().toLowerCase(),d=$('#f-d').value,t=$('#f-t').value;store.set('filtros',{q,d,t});const r=SES.filter(s=>(!d||s.disc===d)&&(!t||s.tipo===t)&&(!q||(s.tema+' '+s.unidade_tit+' '+s.prof+' '+s.disc).toLowerCase().includes(q)));$('#f-n').textContent=`${r.length} de ${SES.length}`;let m='';
+  $('#f-out').innerHTML=r.length?`<div class="slist">${r.map(s=>{const mm=s.data.slice(0,7);const head=mm!==m?`<div class="mhead">${MES[+mm.slice(5)-1]} ${mm.slice(0,4)}</div>`:'';m=mm;const c=D.disc[s.disc].cor;return head+`<div class="srow ${presencas[s.id]?'done':''}" data-sess="${s.id}"><label class="chk"><input type="checkbox" class="sr" data-pres="${s.id}" ${presencas[s.id]?'checked':''}>${presencas[s.id]?'✓':''}</label><div class="dt"><b>${fmt(s.data).slice(0,5)}</b>${DIAC[wdOf(s.data)]} · ${s.dur}′</div><div class="tm">${esc(s.tema)}<small><span class="sig" style="--c:${c};font-size:9.5px;padding:0 5px">${s.disc}</span> U${esc(s.unidade)} — ${esc(s.unidade_tit)}</small></div><div class="rt"><span class="tipo ${tipoCls(s.tipo)}">${NOMES[s.tipo]||s.tipo}</span></div></div>`}).join('')}</div>`:'<div class="empty">Nenhuma sessão corresponde à pesquisa.</div>';bindActs($('#f-out'));$$('.srow .chk',$('#f-out')).forEach(l=>l.onclick=e=>e.stopPropagation())};
+ $('#f-q').oninput=run;$('#f-d').onchange=run;$('#f-t').onchange=run;run()}
+
+/* ============================ ESTÁGIOS E DEFESA ============================ */
+let escala=null;
+function estagios(){setTitle('Estágios e defesa');const v=$('#view');const df=D.defesa;
+ const est=(e,i)=>{const me=ficha&&ficha.estagio&&ficha.estagio[i===0?'pre':'cur'];return `<div class="card"><div class="hd"><h2>${esc(e.nome)}</h2><span class="meta">${e.duracao}</span></div>${me&&(me.local||me.turno||me.tutor)?`<div class="mine"><span class="label">A minha colocação</span><dl class="kv">${me.local?`<dt>Unidade</dt><dd><b>${esc(me.local)}</b></dd>`:''}${me.servico?`<dt>Serviço</dt><dd>${esc(me.servico)}</dd>`:''}${me.turno?`<dt>Turno</dt><dd>${esc(me.turno)}</dd>`:''}${me.dias?`<dt>Dias</dt><dd>${esc(me.dias)}</dd>`:''}${me.tutor?`<dt>Tutor</dt><dd>${esc(me.tutor)}</dd>`:''}${me.inicio?`<dt>Início</dt><dd>${esc(me.inicio)}</dd>`:''}${me.obs?`<dt>Observações</dt><dd>${esc(me.obs)}</dd>`:''}</dl></div>`:''}<div class="bd"><dl class="kv"><dt>Local</dt><dd>${esc(e.local)}</dd>${e.apresentacao?`<dt>Apresentação</dt><dd>${fmt(e.apresentacao)} · ${DIA[wdOf(e.apresentacao)]}</dd>`:''}<dt>Início</dt><dd>${fmt(e.ini)} · ${DIA[wdOf(e.ini)]}</dd><dt>Termo</dt><dd>${fmt(e.fim)} · ${DIA[wdOf(e.fim)]}</dd><dt>Dias</dt><dd>${esc(e.dias)}</dd><dt>Horas por dia</dt><dd>${esc(e.horas_dia)}</dd><dt>Supervisão</dt><dd>${esc(e.supervisor)}</dd><dt>Peso</dt><dd><b>${esc(e.peso)}</b></dd><dt>Custo</dt><dd><b>${kz(e.preco)}</b></dd></dl></div></div>`};
+ v.innerHTML=`${perfil.codigo?'':'<p class="note">Com o código de acesso vê aqui a sua colocação — unidade, serviço, turno e tutor — logo que a Secretaria a lançar.</p>'}<div class="grid2">${est(EST[0],0)}${est(EST[1],1)}</div>
+ <div class="card"><div class="hd"><h2>Escala da turma</h2><span class="meta">publicada pela Secretaria</span></div><div class="bd">${escala&&escala.texto?`<pre class="escala">${esc(escala.texto)}</pre><p class="meta-p">Actualizada ${quando(escala.quando)}</p>`:'<div class="empty">A escala geral ainda não foi publicada.</div>'}</div></div>
+ <div class="card"><div class="hd"><h2>Documentos a entregar no fim de cada estágio</h2></div><div class="bd prose"><ul>${D.estagio_docs.map(x=>`<li>${esc(x)}</li>`).join('')}</ul><p>A componente de estágio é classificada à parte das disciplinas: o estágio preliminar vale 60 % e o curricular 40 % dessa classificação.</p></div></div>
+ <div class="grid2"><div class="card"><div class="hd"><h2>Pré-defesas e defesa</h2><span class="meta">${DIAC[wdOf(df.data)]} ${fmt(df.data)}</span></div><div class="bd"><div class="tl">${df.predefesas.map((d,i)=>`<div class="e ${d<HOJE?'past':''}"><span class="w">${fmt(d)} · Sábado, bloco de projecto</span><b>${i+1}.ª pré-defesa</b><p>${['Tema, problema e objectivos','Metodologia e instrumentos','Resultados preliminares','Trabalho completo','Ensaio geral perante júri simulado'][i]}</p></div>`).join('')}<div class="e hot"><span class="w">${fmt(df.entrega)} · ${DIA[wdOf(df.entrega)]}</span><b>Entrega do trabalho escrito</b><p>Um mês antes da defesa.</p></div><div class="e hot"><span class="w">${fmt(df.data)} · ${DIA[wdOf(df.data)]}</span><b>Defesa de fim de curso</b><p>${esc(df.juri)}</p></div><div class="e"><span class="w">${fmt(df.recurso)}</span><b>Recurso da defesa</b><p>Quinze dias após a defesa · ${kz(30000)}</p></div></div></div></div>
+ <div class="card"><div class="hd"><h2>Regras da defesa</h2></div><div class="bd prose"><p>${esc(df.grupo)}. ${esc(df.formato)}</p><ul><li>${esc(df.juri)}.</li><li>O trabalho escrito é entregue um mês antes da defesa.</li><li><b>Não é admitido à defesa quem tiver mensalidades em atraso.</b></li><li>Taxas por formando: mesa de júri ${kz(20000)}, sala ${kz(10000)}, faixa de finalista ${kz(3000)}.</li></ul><h3 class="h3">Os sábados de GEN/PT</h3><p>${D.sabados.n} sábados de ${fmt(D.sabados.ini)} a ${fmt(D.sabados.fim)}, das 08h00 às 16h00, com o ${esc(D.sabados.prof)}, que é também o tutor dos trabalhos.</p></div></div></div>`}
+
+/* ============================ NOTAS ============================ */
+const SIT={APROVADO:'ok','EM RECURSO':'warn','PROVA PENDENTE':'warn','PROVA PENDENTE / NOTA 00':'warn',REPROVADO:'bad','SEM REGISTO':''};
+const sitTag=s=>s?`<span class="sit ${SIT[s]||''}">${esc(s)}</span>`:'—';
+function historico(H){return (H||[]).map(h=>`<div class="card"><div class="hd"><h2>${esc(h.modulo)}${h.ano?` · ${esc(h.ano)}`:''}</h2><span class="meta">pauta final${h.publicado?` · ${fmt(h.publicado)}`:''}</span></div><div class="bd"><div class="tw"><table class="t notas"><thead><tr><th>Disciplina</th><th>Docente</th><th>MF1</th><th>MF2</th><th>Média final</th><th>Situação</th></tr></thead><tbody>${(h.disciplinas||[]).map(d=>`<tr><td><b>${esc(d.nome)}</b>${d.obs?`<br><small class="meta">${esc(d.obs)}</small>`:''}</td><td>${esc(d.prof||'')}</td><td class="n">${d.mf1!=null&&d.mf1!==''?esc(d.mf1):'—'}</td><td class="n">${d.mf2!=null&&d.mf2!==''?esc(d.mf2):'—'}</td><td class="n cf">${d.mf!=null&&d.mf!==''?esc(d.mf):'—'}</td><td>${sitTag(d.sit)}</td></tr>`).join('')}<tr class="tot"><td colspan="5">Situação final do módulo</td><td>${sitTag(h.situacao)}</td></tr></tbody></table></div>${h.nota?`<p class="meta-p">${esc(h.nota)}</p>`:''}</div></div>`).join('')}
+function notaTabela(k,nt){const cols=['SEM','GEN','PT'].includes(k)?[['cf','Classificação']]:[['t1','Teste 1'],['pi','Prática intercalar'],['t2','Teste 2'],['pf','Avaliação final'],['cf','Classificação']];
+ return `<div class="tw"><table class="t notas"><thead><tr>${cols.map(c=>`<th>${c[1]}</th>`).join('')}<th>Situação</th></tr></thead><tbody><tr>${cols.map(c=>`<td class="n ${c[0]==='cf'?'cf':''}">${nt[c[0]]!=null&&nt[c[0]]!==''?esc(nt[c[0]]):'—'}</td>`).join('')}<td>${nt.sit?`<span class="sit ${SIT[nt.sit]||''}">${esc(nt.sit)}</span>`:'—'}</td></tr></tbody></table></div>${nt.obs?`<p class="meta-p">${esc(nt.obs)}</p>`:''}`}
+function notas(){setTitle('Notas');const v=$('#view');const cores=['#1B4E7F','#2F6FA8','#3E80B8','#0E8F27','#17A836','#3FBA57'];
+ let mine='';
+ if(!perfil.codigo)mine=semFicha('As suas notas');
+ else if(fichaErro)mine=`<div class="card"><div class="bd"><div class="empty">${esc(fichaErro)}</div></div></div>`;
+ else if(!ficha)mine=`<div class="card"><div class="bd"><div class="empty">A abrir a sua ficha…</div></div></div>`;
+ else{const N=ficha.notas||{};const has=Object.keys(N).length;
+  mine=`<div class="card"><div class="hd"><h2>${esc(ficha.nome)}</h2><span class="meta">${ficha.numero?`${/n\.º/.test(ficha.numero)?'':'n.º '}${esc(ficha.numero)} · `:''}III.º Módulo · actualizado ${quando(ficha.actualizado)}</span></div>${has?`<div class="bd">${D.ordem.filter(k=>k!=='SEM').map(k=>N[k]?`<div class="nblock" style="--c:${D.disc[k].cor}"><div class="nh"><span class="sig" style="--c:${D.disc[k].cor}">${k}</span><b>${esc(D.disc[k].nome)}</b></div>${notaTabela(k,N[k])}</div>`:'').join('')}${N.EST?`<div class="nblock" style="--c:var(--est-ink)"><div class="nh"><span class="sig" style="--c:var(--est-ink)">EST</span><b>Estágios</b></div><div class="tw"><table class="t notas"><thead><tr><th>Preliminar (60 %)</th><th>Curricular (40 %)</th><th>Classificação</th><th>Situação</th></tr></thead><tbody><tr><td class="n">${N.EST.pre??'—'}</td><td class="n">${N.EST.cur??'—'}</td><td class="n cf">${N.EST.cf??'—'}</td><td>${N.EST.sit?`<span class="sit ${SIT[N.EST.sit]||''}">${esc(N.EST.sit)}</span>`:'—'}</td></tr></tbody></table></div></div>`:''}</div>`:'<div class="bd"><div class="empty">Ainda não há notas lançadas neste módulo. Aparecem aqui logo que a Secretaria as publicar.</div></div>'}</div>`+historico(ficha.historico)}
+ v.innerHTML=`${mine}<div class="card"><div class="hd"><h2>Como sou avaliado</h2><span class="meta">escala de 0 a 20 · aprovação a 10</span></div><div class="bd"><div class="stack">${D.avaliacao.map(([n,p],i)=>`<i style="flex:${p};background:${cores[i]}" title="${n} ${p}%">${p}%</i>`).join('')}</div><div class="tw"><table class="t" style="margin-top:10px"><thead><tr><th>Componente</th><th>Peso</th></tr></thead><tbody>${D.avaliacao.map(([n,p],i)=>`<tr><td><span class="dot" style="--c:${cores[i]};margin-right:8px"></span><b>${n}</b></td><td class="n">${p} %</td></tr>`).join('')}<tr class="tot"><td>Classificação final da disciplina</td><td class="n">100 %</td></tr></tbody></table></div><div class="note warn" style="margin-top:14px"><b>Regras que eliminam.</b> Sem média ≥ 10 na componente prática não há aprovação. A falha num item eliminatório de biossegurança anula a estação. ${esc(D.meta.assiduidade)}</div><h3 class="h3">Calendário das avaliações</h3><div class="tw"><table class="t"><tbody><tr><td><b>Teste escrito 1</b></td><td>Mês 3</td><td>Unidades I a III, no bloco complementar</td></tr><tr><td><b>Avaliação prática intercalar</b></td><td>Mês 4</td><td>Estações com lista de verificação</td></tr><tr><td><b>Teste escrito 2</b></td><td>Mês 6</td><td>Unidades IV a VI, no bloco complementar</td></tr><tr><td><b>Avaliação final teórico-prática</b></td><td>Mês 8</td><td>Duas últimas semanas, sem matéria nova</td></tr><tr><td><b>Recurso por disciplina</b></td><td>Após as pautas</td><td>Entre uma semana após as provas e 15 dias após a publicação · ${kz(5000)}</td></tr></tbody></table></div><p class="prose" style="margin-top:10px">Meses pedagógicos, de 15 a 14: ${D.meses.map(m=>`M${m.n} ${fmt(m.ini).slice(0,5)}–${fmt(m.fim).slice(0,5)}`).join(' · ')}.</p></div></div>`}
+
+/* ============================ PROPINAS ============================ */
+function propinas(){setTitle('Propinas');const v=$('#view');const s=situacaoPag();const fonte=ficha&&ficha.propinas?'secretaria':'local';
+ const linha=d=>{const p=pago(d.id);const atr=!p&&d.prazo<HOJE;const dd=diff(HOJE,d.prazo);return `<tr class="${p?'pago':atr?'atraso':''}">${fonte==='local'?`<td class="chk"><input type="checkbox" data-pago="${d.id}" ${p?'checked':''} aria-label="Pago"></td>`:`<td class="chk">${p?'<span class="ok-dot" title="Confirmado pela Secretaria"></span>':atr?'<span class="bad-dot" title="Em atraso"></span>':''}</td>`}<td><b>${esc(d.item)}</b>${d.indic?'<br><small class="mute">prazo indicativo</small>':''}</td><td class="mono">${fmt(d.prazo)}${!p&&!atr&&dd<=30?`<br><small class="mute">${dd===0?'hoje':`em ${dd} dias`}</small>`:''}${atr?`<br><small class="bad">em atraso${d.multa?` · multa ${kz(d.multa)}`:''}</small>`:''}</td><td class="n">${kz(d.valor)}</td></tr>`};
+ v.innerHTML=`<section class="grid2"><div class="pay big ${s.atraso.length?'danger':s.prox&&diff(HOJE,s.prox.prazo)<=5?'warn':'ok'}">${s.atraso.length?`<span class="label">Em atraso</span><b>${esc(s.atraso[0].item)} · ${kz(s.atraso[0].valor)}</b><p>Venceu a ${fmt(s.atraso[0].prazo)}${s.atraso[0].multa?`. Com a multa, ${kz(s.atraso[0].valor+s.atraso[0].multa)}`:''}.${s.atraso.length>1?` Há mais ${s.atraso.length-1} pagamento${s.atraso.length>2?'s':''} em atraso.`:''}</p>`:s.prox?`<span class="label">Próximo pagamento</span><b>${esc(s.prox.item)} · ${kz(s.prox.valor)}</b><p>Até ${fmt(s.prox.prazo)}, ${DIA[wdOf(s.prox.prazo)].toLowerCase()} — ${diff(HOJE,s.prox.prazo)===0?'hoje':`faltam ${diff(HOJE,s.prox.prazo)} dias`}. Pagamento por TPA.</p>`:`<span class="label">Propinas</span><b>Sem pagamentos pendentes</b><p>Tudo o que tinha prazo está assinalado como pago.</p>`}</div>
+  <div class="card"><div class="bd"><div class="kv2"><div><span class="label">Pago</span><b>${kz(s.pagoTot)}</b></div><div><span class="label">Em falta</span><b>${kz(s.falta)}</b></div><div><span class="label">Total do módulo</span><b>${kz(s.tot)}</b></div></div><div class="bar" style="margin-top:12px"><i style="width:${Math.min(100,s.pagoTot/s.tot*100)}%"></i></div><p class="meta-p">${fonte==='secretaria'?'Situação confirmada pela Secretaria. O comprovativo válido é o recibo.':'Registo pessoal, neste aparelho. Com o código de acesso vê aqui a situação confirmada pela Secretaria.'}</p></div></div></section>
+ <div class="card"><div class="hd"><h2>Calendário de pagamentos</h2><span class="meta">por formando · TPA</span></div><div class="tw"><table class="t pag"><thead><tr><th></th><th>Encargo</th><th>Prazo</th><th>Valor</th></tr></thead><tbody>${s.all.map(linha).join('')}<tr class="tot"><td></td><td>Total do módulo</td><td></td><td class="n">${kz(s.tot)}</td></tr></tbody></table></div></div>
+ <div class="card"><div class="hd"><h2>Encargos eventuais</h2></div><div class="tw"><table class="t"><tbody>${F.eventual.map(x=>`<tr><td><b>${esc(x.item)}</b></td><td>${esc(x.quando)}</td><td class="n">${kz(x.valor)}</td></tr>`).join('')}${F.futuro.map(x=>`<tr><td><b>${esc(x.item)}</b></td><td>${esc(x.quando)}</td><td class="n">${kz(x.valor)}</td></tr>`).join('')}</tbody></table></div></div>
+ <div class="card"><div class="hd"><h2>Regras de pagamento</h2></div><div class="bd prose"><ul>${F.regras.map(r=>`<li>${esc(r)}</li>`).join('')}</ul><p>${esc(F.nota_conf)}</p></div></div>`;
+ $$('[data-pago]',v).forEach(c=>c.onchange=()=>{pagos[c.dataset.pago]=c.checked;if(!c.checked)delete pagos[c.dataset.pago];salva();badgePag();propinas()})}
+
+/* ============================ AVISOS E DÚVIDAS (db) ============================ */
+let db=null,dbReady=false,avisosCache=[],duvidasCache=[];
+(async()=>{try{db=window.claude?.use?await window.claude.use('db'):null}catch(e){db=null}dbReady=true;
+ if(db){try{db.collection('avisos').orderBy('quando','desc').limit(50).onSnapshot(s=>{avisosCache=s.docs.map(x=>({id:x.id,...x.data()}));const b=$('#nav-badge');b.hidden=!avisosCache.length;b.textContent=avisosCache.length;if(cur.v==='avisos')avisos()},()=>{});
+  db.collection('duvidas').orderBy('criado','desc').limit(100).onSnapshot(s=>{duvidasCache=s.docs.map(x=>({id:x.id,...x.data()}));if(cur.v==='avisos')avisos()},()=>{});
+  db.doc('estagio/escala').onSnapshot(s=>{escala=s.exists?s.data():null;if(cur.v==='estagios')estagios()},()=>{});
+  observarFicha()}catch(e){}}
+ if(cur.v==='avisos')avisos();badgePag()})();
+function avisos(){setTitle('Avisos e dúvidas');const v=$('#view');const semDb=dbReady&&!db;
+ v.innerHTML=`<div class="grid2"><div class="card"><div class="hd"><h2>Avisos da Direcção</h2><span class="meta">em directo</span></div><div>${!dbReady?'<div class="empty">A ligar…</div>':semDb?'<div class="empty">O mural não está disponível nesta vista. Abra o portal em claude.ai.</div>':avisosCache.length?avisosCache.map(a=>`<div class="aviso"><div class="w">${quando(a.quando)}${a.autor?` · ${esc(a.autor)}`:''}</div><b>${esc(a.titulo||'Aviso')}</b><p>${esc(a.texto||'')}</p></div>`).join(''):'<div class="empty">Ainda não há avisos.</div>'}</div></div>
+ <div class="card"><div class="hd"><h2>Dúvidas da turma</h2><span class="meta">${duvidasCache.length} colocadas</span></div><div class="bd">${semDb?'<div class="empty">Indisponível nesta vista.</div>':`<div class="form"><label class="label" for="dv-t">Nova dúvida</label><textarea id="dv-t" placeholder="Sobre o programa, as datas, as avaliações ou os estágios" maxlength="600"></textarea><div class="row"><span class="msg">Publicada em nome de <b>${esc((ficha&&ficha.nome)||perfil.nome)}</b>, visível a toda a turma.</span><button class="btn pri sm" id="dv-ok" ${!dbReady?'disabled':''}>Publicar</button></div></div>`}</div><div>${duvidasCache.map(q=>`<div class="duv"><div class="q">${esc(q.texto)}</div><div class="by">${esc(q.nome)} · ${quando(q.criado)}</div>${q.resposta?`<div class="a"><div class="label">Resposta da Direcção${q.respondido?` · ${quando(q.respondido)}`:''}</div>${esc(q.resposta)}</div>`:''}</div>`).join('')}</div></div></div>
+ <p class="note">Os avisos são publicados apenas pela Direcção. As dúvidas são visíveis a toda a turma e respondidas neste mural.</p>`;
+ const b=$('#dv-ok');if(b)b.onclick=async()=>{const t=$('#dv-t').value.trim();if(t.length<5){toast('Escreva a dúvida com mais detalhe.');return}b.disabled=true;try{await db.collection('duvidas').add({nome:(ficha&&ficha.nome)||perfil.nome,texto:t,criado:new Date().toISOString()});$('#dv-t').value='';toast('Dúvida publicada.')}catch(e){toast('Não foi possível publicar. Tente de novo.');b.disabled=false}}}
+
+/* ============================ SECRETARIA (só a Direcção escreve) ============================ */
+let podeEscrever=null;
+async function testarEscrita(){if(podeEscrever!==null)return podeEscrever;if(!db){podeEscrever=false;return false}try{await db.doc('secretaria/_verificacao').set({quando:new Date().toISOString()});podeEscrever=true}catch(e){podeEscrever=false}return podeEscrever}
+const NOTAS_CAMPOS=k=>['SEM','GEN','PT'].includes(k)?[['cf','Classificação']]:[['t1','Teste 1'],['pi','Prát. interc.'],['t2','Teste 2'],['pf','Aval. final'],['cf','Classificação']];
+async function secretaria(){setTitle('Secretaria');const v=$('#view');v.innerHTML='<div class="empty">A verificar o acesso…</div>';
+ if(!dbReady){await new Promise(r=>{const t=setInterval(()=>{if(dbReady){clearInterval(t);r()}},100)})}
+ const ok=await testarEscrita();
+ if(!ok){v.innerHTML=`<div class="card"><div class="bd"><div class="locked"><div class="lk"></div><div><b>Acesso reservado à Direcção</b><p>Esta área permite lançar notas, colocações em estágio, situação de propinas, recados, a escala da turma e avisos. ${db?'A sua sessão não tem permissão de escrita.':'Abra o portal em claude.ai com a conta da Direcção.'}</p></div></div></div></div>`;return}
+ const F0={nome:'',numero:'',notas:{},propinas:{meses:[],itens:[]},estagio:{pre:{},cur:{}},recados:[]};
+ v.innerHTML=`<p class="note">Cada ficha é cifrada com o código do estudante antes de ser guardada. Guarde o código no cartão do estudante — sem ele a ficha não abre, nem para a Direcção. Para alterar uma ficha existente, abra-a primeiro com o código.</p>
+ <div class="grid2"><div class="card"><div class="hd"><h2>Ficha do estudante</h2></div><div class="bd form">
+  <div class="frow"><div><label class="label" for="s-cod">Código de acesso</label><div class="inl"><input id="s-cod" type="text" autocapitalize="characters" spellcheck="false" placeholder="NOVA-XXXX-XXXX"><button class="btn sm" id="s-gerar" type="button">Gerar</button><button class="btn sm" id="s-abrir" type="button">Abrir</button></div></div></div>
+  <div class="frow"><div><label class="label" for="s-nome">Nome completo</label><input id="s-nome" type="text"></div><div><label class="label" for="s-num">N.º de processo</label><input id="s-num" type="text"></div></div>
+  <h3 class="h3">Notas</h3><div class="tw"><table class="t edit"><thead><tr><th>Disc.</th>${['Teste 1','Prát. interc.','Teste 2','Aval. final','Classificação','Situação'].map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${D.ordem.filter(k=>k!=='SEM').concat(['EST']).map(k=>{const cs=k==='EST'?[['pre','Prelim.'],['cur','Curric.'],['cf','Class.']]:NOTAS_CAMPOS(k);const full=['t1','pi','t2','pf','cf'];return `<tr><td><b>${k}</b></td>${k==='EST'?`<td><input data-n="EST.pre" placeholder="60 %"></td><td></td><td><input data-n="EST.cur" placeholder="40 %"></td><td></td><td><input data-n="EST.cf"></td>`:full.map(c=>cs.find(x=>x[0]===c)?`<td><input data-n="${k}.${c}" inputmode="decimal"></td>`:'<td></td>').join('')}<td><select data-n="${k}.sit"><option value="">—</option><option>APROVADO</option><option>EM RECURSO</option><option>PROVA PENDENTE</option><option>REPROVADO</option></select></td></tr>`}).join('')}</tbody></table></div>
+  <h3 class="h3">Propinas confirmadas</h3><div class="chips">${F.meses.map(m=>`<label class="chip"><input type="checkbox" data-mes="${m.k}">${m.nome.replace(' de 20',' ')}</label>`).join('')}</div><div class="chips">${F.modulo.map((x,i)=>x.item==='Mensalidade'?'':`<label class="chip"><input type="checkbox" data-item="item-${i}">${esc(x.item)}</label>`).join('')}</div>
+  <h3 class="h3">Colocação em estágio</h3><div class="frow">${['pre','cur'].map(e=>`<div><span class="label">${e==='pre'?'Preliminar':'Curricular'}</span>${['local','servico','turno','dias','tutor','inicio','obs'].map(f=>`<input data-e="${e}.${f}" placeholder="${{local:'Unidade hospitalar',servico:'Serviço',turno:'Turno',dias:'Dias da semana',tutor:'Tutor do serviço',inicio:'Início',obs:'Observações'}[f]}">`).join('')}</div>`).join('')}</div>
+  <h3 class="h3">Recado pessoal</h3><textarea id="s-recado" placeholder="Fica visível apenas a este estudante, no ecrã Hoje"></textarea>
+  <div class="row"><span class="msg" id="s-msg"></span><button class="btn pri" id="s-guardar">Guardar ficha cifrada</button></div></div></div>
+ <div class="stackc"><div class="card"><div class="hd"><h2>Novo aviso</h2><span class="meta">toda a turma</span></div><div class="bd form"><input id="a-tit" type="text" placeholder="Título"><textarea id="a-txt" placeholder="Texto do aviso"></textarea><div class="row"><button class="btn pri sm" id="a-ok">Publicar aviso</button></div></div></div>
+  <div class="card"><div class="hd"><h2>Escala da turma</h2><span class="meta">estágios</span></div><div class="bd form"><textarea id="e-txt" style="min-height:160px;font-family:var(--mono);font-size:12.5px" placeholder="Hospital do Capalanga — Medicina, turno da manhã: nomes…">${escala&&escala.texto?esc(escala.texto):''}</textarea><div class="row"><button class="btn pri sm" id="e-ok">Publicar escala</button></div></div></div>
+  <div class="card"><div class="hd"><h2>Responder a dúvidas</h2></div><div>${duvidasCache.filter(q=>!q.resposta).length?duvidasCache.filter(q=>!q.resposta).map(q=>`<div class="duv"><div class="q">${esc(q.texto)}</div><div class="by">${esc(q.nome)} · ${quando(q.criado)}</div><div class="form" style="margin-top:8px"><textarea data-resp="${q.id}" placeholder="Resposta"></textarea><div class="row"><button class="btn sm" data-respok="${q.id}">Responder</button></div></div></div>`).join(''):'<div class="empty">Não há dúvidas por responder.</div>'}</div></div></div></div>`;
+ let fichaId=null,fichaAberta=null;
+ const getv=sel=>$(sel).value.trim();
+ $('#s-gerar').onclick=()=>{$('#s-cod').value=gerarCodigo();$('#s-msg').textContent='Código novo. Entregue-o ao estudante.'};
+ $('#s-abrir').onclick=async()=>{const cod=normCod(getv('#s-cod'));if(cod.length<6){toast('Indique o código.');return}try{const {id,f}=await abrirFicha(cod);fichaId=id;fichaAberta=f;$('#s-nome').value=f.nome||'';$('#s-num').value=f.numero||'';
+   $$('[data-n]',v).forEach(i=>{const [k,c]=i.dataset.n.split('.');i.value=(f.notas&&f.notas[k]&&f.notas[k][c]!=null)?f.notas[k][c]:''});
+   $$('[data-mes]',v).forEach(i=>i.checked=(f.propinas&&f.propinas.meses||[]).includes(i.dataset.mes));$$('[data-item]',v).forEach(i=>i.checked=(f.propinas&&f.propinas.itens||[]).includes(i.dataset.item));
+   $$('[data-e]',v).forEach(i=>{const [e,c]=i.dataset.e.split('.');i.value=(f.estagio&&f.estagio[e]&&f.estagio[e][c])||''});
+   $('#s-msg').textContent=`Ficha de ${f.nome} aberta (${(f.recados||[]).length} recados). Alterações ficam na mesma ficha.`}catch(e){$('#s-msg').textContent=e.message==='nao-existe'?'Não existe ficha com este código — ao guardar, cria-se uma nova.':'Não foi possível abrir: código incorrecto.';fichaAberta=null}};
+ $('#s-guardar').onclick=async()=>{const cod=normCod(getv('#s-cod'));const nome=getv('#s-nome');if(cod.length<6||nome.length<2){toast('Código e nome são obrigatórios.');return}
+  const f=fichaAberta?JSON.parse(JSON.stringify(fichaAberta)):JSON.parse(JSON.stringify(F0));f.nome=nome;f.numero=getv('#s-num');f.notas={};
+  $$('[data-n]',v).forEach(i=>{const [k,c]=i.dataset.n.split('.');const val=i.value.trim();if(val==='')return;(f.notas[k]=f.notas[k]||{})[c]=val});
+  f.propinas={meses:$$('[data-mes]:checked',v).map(i=>i.dataset.mes),itens:$$('[data-item]:checked',v).map(i=>i.dataset.item)};
+  f.estagio={pre:{},cur:{}};$$('[data-e]',v).forEach(i=>{const [e,c]=i.dataset.e.split('.');const val=i.value.trim();if(val)f.estagio[e][c]=val});
+  const rec=getv('#s-recado');if(rec){f.recados=(f.recados||[]);f.recados.push({quando:new Date().toISOString(),texto:rec})}
+  f.actualizado=new Date().toISOString();
+  try{const doc=await cifrar(cod,f);doc.nome_iniciais=iniciais(nome);const id=await idDe(cod);await db.doc('alunos/'+id).set(doc);fichaAberta=f;fichaId=id;$('#s-recado').value='';$('#s-msg').textContent=`Ficha de ${nome} guardada e cifrada.`;toast('Ficha guardada.')}catch(e){toast('Falha ao guardar: '+(e.message||e))}};
+ $('#a-ok').onclick=async()=>{const t=getv('#a-tit'),x=getv('#a-txt');if(t.length<3||x.length<3){toast('Título e texto são obrigatórios.');return}try{await db.collection('avisos').add({titulo:t,texto:x,autor:'Direcção',quando:new Date().toISOString()});$('#a-tit').value='';$('#a-txt').value='';toast('Aviso publicado.')}catch(e){toast('Falha ao publicar.')}};
+ $('#e-ok').onclick=async()=>{try{await db.doc('estagio/escala').set({texto:getv('#e-txt'),quando:new Date().toISOString()});toast('Escala publicada.')}catch(e){toast('Falha ao publicar.')}};
+ $$('[data-respok]',v).forEach(b=>b.onclick=async()=>{const id=b.dataset.respok;const t=$(`[data-resp="${id}"]`,v).value.trim();if(t.length<2)return;try{await db.doc('duvidas/'+id).update({resposta:t,respondido:new Date().toISOString()});toast('Resposta publicada.');secretaria()}catch(e){toast('Falha ao responder.')}})}
+
+/* ============================ arranque ============================ */
+gate();
+</script>
