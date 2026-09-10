@@ -86,6 +86,12 @@ node ficha.js cifrar NOVA-XXXX-XXXX f.json   # documento cifrado para write_db e
 node ficha.js decifrar NOVA-XXXX-XXXX d.json # verificação
 ```
 
+Campos da ficha em claro: `nome`, `numero`, `notas` (por sigla de disciplina do III.º
+Módulo), `propinas` (`meses`, `itens`), `estagio` (`pre`, `cur`), `recados` e `historico`
+— a lista de pautas de módulos anteriores, cada uma com `modulo`, `ano`, `disciplinas`
+(`nome`, `prof`, `mf1`, `mf2`, `mf`, `sit`, `obs`) e `situacao`. O portal mostra o
+histórico em **Notas** e um atalho no ecrã **Hoje**; a Secretaria preserva-o ao guardar.
+
 A Direcção pode também lançar tudo pelo próprio portal, na área **Secretaria**, que só
 aceita a conta com permissão de escrita. Os códigos de acesso são segredos: nunca os
 guarde no repositório.
