@@ -59,3 +59,14 @@ O número de temas em `temas.py` tem de coincidir com o número de sessões que
 `core.py` atribui a cada disciplina. `export.py` valida essa correspondência e falha
 com `assert` se houver desencontro, tal como valida os mínimos de componente prática
 (EMC 50 %, UEPS 60 %, SMON 50 %, EPSC 50 %) e o total de 248 horas.
+
+## Portal dos estudantes
+
+`python3 build_portal.py` monta `../portal-nov-a.html` — o portal que os estudantes
+usam no telemóvel ou no computador — a partir do mesmo `dados.json`. Os ficheiros
+fonte estão em `portal/` (`css.html` e `app.html`) e `portal_data.py` prepara o
+objecto de dados que a página embebe.
+
+O portal é publicado como Artifact em claude.ai, onde tem o mural de avisos e as
+dúvidas em directo. A cópia neste repositório funciona em qualquer servidor estático
+— o progresso pessoal fica no aparelho do estudante — mas sem o mural em directo.
