@@ -12,9 +12,13 @@ cd docs/formacao/enfermagem-geral-nov-a/gerador
 npm install docx          # apenas na primeira vez
 pip install openpyxl      # apenas na primeira vez
 python3 export.py         # calcula tudo e escreve dados.json
-node build_docx.js        # escreve o .docx
-python3 build_xlsx.py     # escreve o .xlsx
+node build_docx.js        # escreve o .docx na pasta acima
+python3 build_xlsx.py     # escreve o .xlsx na pasta acima
 ```
+
+Ambos os ficheiros são escritos em `docs/formacao/enfermagem-geral-nov-a/`, não na
+pasta do gerador. O logótipo da capa é lido de `assets/logo-midas26.png`; para usar
+outro ficheiro, defina `MIDAS_LOGO`.
 
 `export.py` é a **fonte única**: o Word e o Excel lêem ambos o `dados.json` que ele
 produz, pelo que os totais não podem divergir entre os dois ficheiros.
@@ -29,7 +33,8 @@ produz, pelo que os totais não podem divergir entre os dois ficheiros.
 | `prog.py` | Fundamentação, objectivos, competências, metodologia, materiais e resultados de cada disciplina |
 | `export.py` | Calcula cargas e blocos e escreve `dados.json` |
 | `build_docx.js` | Monta o documento Word (3 secções: retrato, calendário em paisagem, retrato) |
-| `build_xlsx.py` | Monta o livro Excel (Cronograma, Verificação com fórmulas, Seminários) |
+| `extras.py` | Componente de sábado (GEN e PT), estágios, defesas e condições financeiras |
+| `build_xlsx.py` | Monta o livro Excel (Cronograma, Verificação, Seminários, Sábados, Estágios e defesa, Financeiro) |
 
 ## Convenções de cálculo
 

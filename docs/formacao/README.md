@@ -1,36 +1,44 @@
 # Formação — Centro de Formação Técnica em Saúde
 
-Esta pasta contém **dois programas distintos**, para dois ciclos que não são o mesmo.
-A Direcção tem de decidir qual vigora, ou confirmar que coexistem.
+## Enfermagem Geral — III.º Módulo — turma NOV-A
 
-## 1. Enfermagem Geral — III.º Módulo — turma NOV-A
+Programa em vigor. Ciclo de **15/09/2026 a 13/05/2027**, com defesa de fim de curso
+a **03/06/2027**. Carga global de **428 horas**.
 
-Pasta `enfermagem-geral-nov-a/`. Ciclo de 15/09/2026 a 13/05/2027, **248 horas** em
-62 dias lectivos. Entregue em Word e Excel, com estágio preliminar no Hospital do
-Capalanga e eixo de Gestão e Projecto Tecnológico ao primeiro sábado do mês.
+| Componente | Quando | Carga |
+|---|---|---:|
+| Quatro disciplinas técnicas | Terças e quintas, 08h00–12h15 | 216 h |
+| Oito seminários complementares | Um por mês | 32 h |
+| Gestão de Enfermagem e Projecto Tecnológico | Todos os sábados, 08h00–16h00 | 180 h |
+| **Total** | | **428 h** |
 
-- `Programa-Enfermagem-Geral-III-Modulo-NOV-A.docx` — programa completo, 17 secções,
-  calendário lectivo de 9 meses em A4 horizontal e anexos com listas de verificação
-- `Cronograma-Enfermagem-Geral-III-Modulo-NOV-A.xlsx` — 248 blocos e folha de
-  verificação com fórmulas
-- `gerador/` — recalcula ambos a partir de uma fonte única
+Fora desta contagem: estágio preliminar (05/10/2026 a 05/01/2027) e estágio
+curricular (06/01 a 05/07/2027), cuja carga depende da escala dos hospitais.
 
-## 2. Ciclo de Aprofundamento (versão anterior)
+### Ficheiros
 
-`programa-enfermagem-midas26.html` e `gerador/`. Ciclo de 06/10/2026 a 27/05/2027,
-**244 horas** em 61 dias lectivos, entregue em HTML pronto a imprimir.
+- `enfermagem-geral-nov-a/Programa-Enfermagem-Geral-III-Modulo-NOV-A.docx` — programa
+  completo em 21 secções, com calendário lectivo de 10 meses em A4 horizontal, anexos
+  com listas de verificação e condições financeiras
+- `enfermagem-geral-nov-a/Cronograma-Enfermagem-Geral-III-Modulo-NOV-A.xlsx` — seis
+  folhas: Cronograma, Verificação por fórmulas, Seminários, Sábados, Estágios e defesa,
+  e Financeiro
+- `enfermagem-geral-nov-a/gerador/` — recalcula ambos a partir de uma fonte única
 
-## Diferenças entre os dois
+### Regenerar
 
-| | Ciclo NOV-A (1) | Ciclo de Aprofundamento (2) |
-|---|---|---|
-| Período | 15/09/2026 – 13/05/2027 | 06/10/2026 – 27/05/2027 |
-| Dias lectivos | 62 | 61 |
-| Carga total | 248 h | 244 h |
-| EMC / UEPS / SMON / EPSC | 59 / 49 / 55 / 53 h | 59 / 49 / 56 / 48 h |
-| Feriados considerados | inclui 17 Set e 2 Nov; não inclui 4 Jan | inclui 4 Jan; não inclui 17 Set nem 2 Nov |
-| Rotação às terças | ciclo de 5 semanas A-A-B-A-B | ciclo de 5 semanas A-B-A-B-A |
-| Estágio e sábados | sim | não |
-| Formato | .docx + .xlsx | .html |
+```bash
+cd enfermagem-geral-nov-a/gerador
+npm install docx && pip install openpyxl   # apenas na primeira vez
+python3 export.py && node build_docx.js && python3 build_xlsx.py
+```
 
-As quatro disciplinas, as siglas e a equipa docente são as mesmas nos dois.
+Os dois ficheiros são reescritos na pasta acima. `export.py` é a fonte única: o Word e
+o Excel lêem ambos o `dados.json` que ele produz, pelo que os totais não podem divergir.
+
+## Histórico
+
+O **Ciclo de Aprofundamento** (06/10/2026 a 27/05/2027, 244 h, em HTML) foi a primeira
+versão deste trabalho e foi **substituído** pelo programa acima por decisão da Direcção.
+Mantém-se no histórico do repositório e pode ser recuperado a partir do commit anterior
+à sua remoção.

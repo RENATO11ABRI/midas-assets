@@ -1,2 +1,4 @@
 __pycache__/
 *.py[cod]
+dados.json
+node_modules/

@@ -301,5 +301,8 @@ for x in FI["regras"]:
     lbl_(r,1,x); fi.merge_cells(start_row=r,start_column=1,end_row=r,end_column=4); r+=1
 fi.freeze_panes="A2"
 
-wb.save("Cronograma-Enfermagem-Geral-III-Modulo-NOV-A.xlsx")
-print("XLSX escrito ·", LAST-2, "blocos ·", SB_LAST-2, "blocos de sábado ·", len(d["seminarios"]), "seminários ·", len(wb.sheetnames), "folhas")
+import os as _os
+_HERE=_os.path.dirname(_os.path.abspath(__file__))
+_DEST=_os.path.normpath(_os.path.join(_HERE,"..","Cronograma-Enfermagem-Geral-III-Modulo-NOV-A.xlsx"))
+wb.save(_DEST)
+print("XLSX escrito ·", _DEST, "·", LAST-2, "blocos ·", SB_LAST-2, "blocos de sábado ·", len(d["seminarios"]), "seminários ·", len(wb.sheetnames), "folhas")

@@ -1,6 +1,7 @@
 const fs=require('fs');
 const D=require('docx');
-const {Document,Packer,Paragraph,TextRun,HeadingLevel,AlignmentType,Table,TableRow,TableCell,
+const path=require('path');
+const {Document,Packer,Paragraph,TextRun,HeadingLevel,AlignmentType,Table,TableRow,TableCell,ImageRun,
  WidthType,ShadingType,BorderStyle,PageBreak,PageOrientation,Header,Footer,PageNumber,
  TableOfContents,LevelFormat,VerticalAlign,convertInchesToTwip}=D;
 
@@ -55,8 +56,20 @@ function dataRow(cells,widths,i,o={}){return new TableRow({children:
   {w:widths[j],fill:(i%2===1)?C.zebra:undefined}))});}
 
 /* ============================ CAPA ============================ */
+const LOGO=(()=>{
+ const cand=[process.env.MIDAS_LOGO,
+   path.resolve(__dirname,'..','..','..','..','assets','logo-midas26.png'),
+   path.resolve(__dirname,'assets','logo-midas26.png'),
+   path.resolve(__dirname,'logo-midas26.png')].filter(Boolean);
+ return cand.find(x=>fs.existsSync(x));
+})();
+const temLogo=Boolean(LOGO);
 const capa=[
- new Paragraph({spacing:{before:900,after:0},alignment:AlignmentType.CENTER,children:[
+ ...(temLogo?[new Paragraph({spacing:{before:520,after:120},alignment:AlignmentType.CENTER,children:[
+   new ImageRun({type:'png',data:fs.readFileSync(LOGO),
+     transformation:{width:150,height:150},
+     altText:{name:'MIDAS 26',description:'Logótipo MIDAS 26 — Do Zero ao Emprego',title:'MIDAS 26'}})]})]:[]),
+ new Paragraph({spacing:{before:temLogo?0:900,after:0},alignment:AlignmentType.CENTER,children:[
   new TextRun({text:M.grupo.toUpperCase(),font:F,size:20,bold:true,color:C.green,characterSpacing:60})]}),
  new Paragraph({spacing:{before:60,after:600},alignment:AlignmentType.CENTER,children:[
   new TextRun({text:M.inst.toUpperCase(),font:F,size:18,color:C.navy2,characterSpacing:50})]}),
@@ -756,5 +769,8 @@ const doc=new Document({
   {properties:{page:A4L},footers:{default:foot()},children:cal},
   {properties:{page:A4P},footers:{default:foot()},children:fim2}]});
 
-Packer.toBuffer(doc).then(b=>{fs.writeFileSync('Programa-Enfermagem-Geral-III-Modulo-NOV-A.docx',b);
- console.log('DOCX escrito:',b.length,'bytes');});
+const DEST=path.resolve(__dirname,
+ fs.existsSync(path.resolve(__dirname,'..','..','..','..','assets','logo-midas26.png'))?'..':'.',
+ 'Programa-Enfermagem-Geral-III-Modulo-NOV-A.docx');
+Packer.toBuffer(doc).then(b=>{fs.writeFileSync(DEST,b);
+ console.log('DOCX escrito:',DEST,'-',b.length,'bytes');});
