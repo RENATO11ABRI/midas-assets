@@ -117,7 +117,8 @@ EST_DOCS = ["Folha de presenças assinada pelo serviço",
 # ---------------------------------------------------------------- DEFESA ---
 DEFESA_INFO = dict(
  data=DEFESA, entrega=ENTREGA_TRABALHO, recurso=RECURSO_DEFESA,
- grupo="Grupos de trabalho, com um máximo de 10 elementos por grupo",
+ grupo=("Os 31 formandos organizam-se em três grupos de trabalho — um de 11 e dois de 10 "
+        "elementos — cada um com um trabalho de fim de curso próprio"),
  juri="Júri presidido pela escola-mãe, composto por um presidente e três vogais",
  predefesas=PRE_DEFESAS,
  formato="As pré-defesas realizam-se aos sábados, no bloco de projecto, perante júri, a partir de Janeiro de 2027.")
@@ -137,7 +138,7 @@ FIN_MOD = [
  ("Declaração de frequência", 8000, "Acto único", "No fim do curso"),
  ("Mesa de júri da defesa", 20000, "Acto único", "Antes da defesa"),
  ("Sala da defesa", 10000, "Acto único", "Antes da defesa"),
- ("Faça", 3000, "Acto único", "Antes da defesa"),
+ ("Faixa de finalista", 3000, "Acto único", "Antes da defesa"),
 ]
 FIN_EVENT = [
  ("Multa por atraso no pagamento da mensalidade", 2000, "Por mensalidade em atraso", "A partir do dia 11"),
@@ -145,10 +146,12 @@ FIN_EVENT = [
  ("Recurso da defesa", 30000, "Acto único", "Quinze dias após a defesa (18/06/2027)"),
 ]
 FIN_FUTURO = [
- ("Confirmação ou renovação de matrícula para o módulo seguinte", 10000, "No início do módulo seguinte"),
  ("Certificado de conclusão do módulo", None, "Valor por definir [a confirmar]"),
  ("Segunda via de documento", None, "Valor por definir [a confirmar]"),
 ]
+FIN_NOTA_CONF = ("A confirmação de matrícula do II.º Módulo custa 10.000 Kz. A confirmação do "
+ "III.º Módulo, aplicável a esta turma, custa 1.600 Kz e é o valor inscrito no quadro "
+ "dos encargos do módulo.")
 FIN_REGRAS = [
  "O pagamento é efectuado exclusivamente por terminal de pagamento automático (TPA).",
  "Não há descontos por pagamento adiantado, por irmãos nem por antiguidade.",
@@ -156,3 +159,7 @@ FIN_REGRAS = [
  "O formando com mensalidades em atraso não é admitido à defesa de fim de curso.",
  "Os documentos e as declarações só são emitidos a formandos com a situação de propinas regularizada.",
 ]
+ASSIDUIDADE = ("A frequência exigida é de 100 %. Não são admitidas faltas. A falta que venha a "
+ "ocorrer tem de ser justificada perante a Coordenação Pedagógica para ser removida do registo "
+ "de assiduidade; sem justificação aceite, o formando não é admitido à avaliação final da "
+ "disciplina em causa.")

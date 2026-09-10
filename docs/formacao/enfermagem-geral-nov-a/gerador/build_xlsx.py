@@ -285,7 +285,7 @@ for x in FI["eventual"]:
     cc.font=Font(name="Calibri",size=10); cc.alignment=Alignment(horizontal="right")
     lbl_(r,3,x["nota"]); lbl_(r,4,x["quando"]); r+=1
 r+=1
-r=sec_fin(r,"Encargos posteriores e valores por definir")
+r=sec_fin(r,"Valores por definir")
 lbl_(r,1,"Encargo",True,BOX); lbl_(r,2,"Valor",True,BOX); lbl_(r,3,"Observações",True,BOX); r+=1
 for x in FI["futuro"]:
     lbl_(r,1,x["item"],True)
@@ -295,6 +295,7 @@ for x in FI["futuro"]:
         cc.font=Font(name="Calibri",size=10); cc.alignment=Alignment(horizontal="right")
     lbl_(r,3,x["quando"]); r+=1
 r+=1
+lbl_(r,1,FI["nota_conf"]); fi.merge_cells(start_row=r,start_column=1,end_row=r,end_column=4); r+=2
 r=sec_fin(r,"Regras de pagamento")
 for x in FI["regras"]:
     lbl_(r,1,x); fi.merge_cells(start_row=r,start_column=1,end_row=r,end_column=4); r+=1

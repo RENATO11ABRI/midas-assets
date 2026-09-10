@@ -8,6 +8,7 @@ const d=JSON.parse(fs.readFileSync('dados.json','utf8'));
 const M=d.meta;
 const hf=x=>(Math.round(x*10)/10).toString().replace('.',',')+' h';
 const hn=x=>Math.round(x*10)/10;
+const nf=v=>String(v).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
 const W_P=9026, W_L=14678;
 const C={navy:'0F3A63',navy2:'1B4E7F',green:'0B7A20',rule:'B7C4CF',head:'0F3A63',
  zebra:'F2F6F9',aula:'FFF2A8',sem:'FFD08A',fer:'DCDCDC',gest:'D8EAC8',est:'CFE2F3',sab:'DED3F0',defe:'F7C9C9',box:'EEF3F7'};
@@ -464,8 +465,8 @@ par('O ciclo integra dois estágios distintos. O estágio preliminar decorre em 
    cell(P(b===null?'—':String(b),{sz:16,sa:0}),{w:w[2],fill:i%2?C.zebra:undefined})]}));});
  rows.push(new TableRow({children:[
   cell(P('Custo',{b:true,sz:16,c:'FFFFFF',sa:0}),{w:w[0],fill:C.navy}),
-  cell(P(`${d.estagios[0].preco.toLocaleString('pt-PT')} Kz`,{b:true,sz:16,c:'FFFFFF',sa:0}),{w:w[1],fill:C.navy}),
-  cell(P(`${d.estagios[1].preco.toLocaleString('pt-PT')} Kz`,{b:true,sz:16,c:'FFFFFF',sa:0}),{w:w[2],fill:C.navy})]}));
+  cell(P(`${nf(d.estagios[0].preco)} Kz`,{b:true,sz:16,c:'FFFFFF',sa:0}),{w:w[1],fill:C.navy}),
+  cell(P(`${nf(d.estagios[1].preco)} Kz`,{b:true,sz:16,c:'FFFFFF',sa:0}),{w:w[2],fill:C.navy})]}));
  body.push(tbl(w,rows));}
 sub('Documentos a entregar no fim de cada estágio');
 body.push(...bullets(d.estagio_docs));
@@ -487,7 +488,7 @@ sub('Júri e documentação');
 body.push(...bullets([d.defesa.juri,
  'O trabalho escrito é entregue um mês antes da data da defesa.',
  'Não é admitido à defesa o formando com mensalidades em atraso.',
- 'As taxas de mesa de júri, sala de defesa e faça constam do capítulo 21.',
+ 'As taxas de mesa de júri, sala de defesa e faixa de finalista constam do capítulo 21.',
  'O recurso da defesa realiza-se quinze dias após a defesa e está sujeito a taxa própria.']));
 
 sec(17,'Sistema de avaliação');
@@ -508,7 +509,7 @@ body.push(...bullets([
  'Escala de classificação de 0 a 20 valores; aprovação com classificação final igual ou superior a 10 valores.',
  'A componente prática é eliminatória: sem média igual ou superior a 10 valores na componente prática não há aprovação na disciplina, qualquer que seja a média das restantes componentes.',
  'A falha em qualquer critério eliminatório de biossegurança ou de segurança do doente numa estação prática anula a estação, independentemente da execução técnica.',
- 'Frequência mínima de 100 % por disciplina para admissão à avaliação final, conforme determinação da Direcção.',
+ M.assiduidade,
  'Frequência obrigatória e registada dos oito seminários e das sessões de sábado.',
  'Gestão de Enfermagem e Projecto Tecnológico têm avaliação e pauta próprias, independentes das quatro disciplinas técnicas.',
  'A componente de estágio é classificada autonomamente: o estágio preliminar vale 60 % e o estágio curricular 40 % dessa classificação.',
@@ -625,7 +626,7 @@ fim2.push(P('',{sz:10,sa:120}));
   ['Componente de sábado (GEN + PT)',`${d.sabados.n} sábados · ${hf(d.sabados.horas)} · Prof. Santos Salote`],
   ['Efectivo da turma',`${M.formandos} formandos`],
   ['Frequência mínima',M.frequencia_min],
-  ['Custo total do módulo por formando',`${d.financeiro.total_modulo.toLocaleString('pt-PT')} Kz`],
+  ['Custo total do módulo por formando',`${nf(d.financeiro.total_modulo)} Kz`],
   ['Estágio preliminar',`${d.estagios[0].ini} a ${d.estagios[0].fim} — 10 h por dia, carga a fixar pela escala`],
   ['Estágio curricular',`${d.estagios[1].ini} a ${d.estagios[1].fim} — carga a fixar pela escala`],
   ['Defesa de fim de curso',M.defesa]];
@@ -639,7 +640,7 @@ fim2.push(P('Este programa não cita legislação, decretos, diplomas ou número
 
 /* ==================== 21 · CONDIÇÕES FINANCEIRAS ==================== */
 const FIN=d.financeiro;
-const kz=v=>v===null?'a definir':`${v.toLocaleString('pt-PT')} Kz`;
+const kz=v=>v===null?'a definir':`${nf(v)} Kz`;
 fim2.push(H('21. Condições financeiras',HeadingLevel.HEADING_1,{pb:true,sb:0}));
 fim2.push(P(`Valores aplicáveis à turma ${M.turma} no III.º Módulo do curso de ${M.curso}, ano lectivo ${M.ano}. Todos os montantes estão expressos em kwanzas.`,{sz:19}));
 fim2.push(H('Encargos do módulo',HeadingLevel.HEADING_2,{sz:22}));
@@ -651,13 +652,14 @@ fim2.push(H('Encargos do módulo',HeadingLevel.HEADING_2,{sz:22}));
    cell(P('Total do módulo por formando',{b:true,sz:17,c:'FFFFFF',sa:0}),{w:w[0],fill:C.navy}),
    cell(P(kz(FIN.total_modulo),{b:true,sz:17,c:'FFFFFF',sa:0,al:AlignmentType.RIGHT}),{w:w[1],fill:C.navy}),
    cell(P(`inclui ${FIN.mensalidades} mensalidades de ${kz(FIN.mensalidade)}`,{sz:15,c:'C9DDEE',sa:0}),{w:w[2],cs:2,fill:C.navy})]})]));}
-fim2.push(P('O total acima não inclui multas, recursos, o certificado de conclusão nem a confirmação do módulo seguinte.',{sz:17,i:true}));
+fim2.push(P('O total acima não inclui multas, recursos nem o certificado de conclusão.',{sz:17,i:true}));
+fim2.push(P(FIN.nota_conf,{sz:17,i:true}));
 fim2.push(H('Encargos eventuais',HeadingLevel.HEADING_2,{sz:22}));
 {const w=[3600,1500,2100,1826];
  fim2.push(tbl(w,[headRow(['Encargo','Valor','Regime','Quando se aplica'],w),
   ...FIN.eventual.map((x,i)=>dataRow([x.item,kz(x.valor),x.nota,x.quando],w,i,
    {sz:16,b:[true,true,false,false],al:[null,AlignmentType.RIGHT,null,null]}))]));}
-fim2.push(H('Encargos posteriores ao módulo e valores por definir',HeadingLevel.HEADING_2,{sz:22}));
+fim2.push(H('Valores por definir',HeadingLevel.HEADING_2,{sz:22}));
 {const w=[4600,1600,2826];
  fim2.push(tbl(w,[headRow(['Encargo','Valor','Observações'],w),
   ...FIN.futuro.map((x,i)=>dataRow([x.item,kz(x.valor),x.quando],w,i,

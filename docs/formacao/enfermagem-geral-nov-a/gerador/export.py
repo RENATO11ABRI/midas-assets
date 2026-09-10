@@ -248,13 +248,14 @@ dados["financeiro"]=dict(
   modulo=[dict(item=a,valor=b,nota=c,quando=d_) for a,b,c,d_ in X.FIN_MOD],
   eventual=[dict(item=a,valor=b,nota=c,quando=d_) for a,b,c,d_ in X.FIN_EVENT],
   futuro=[dict(item=a,valor=b,quando=c) for a,b,c in X.FIN_FUTURO],
-  regras=X.FIN_REGRAS,
+  regras=X.FIN_REGRAS, nota_conf=X.FIN_NOTA_CONF,
   total_modulo=sum(x[1] for x in X.FIN_MOD if x[0]!="Mensalidade")+15000*9,
   mensalidades=9, mensalidade=15000)
 dados["meta"]["formandos"]=31
 dados["meta"]["horas_sabados"]=GEN_H+PT_H
 dados["meta"]["horas_geral"]=dados["meta"]["horas_total"]+GEN_H+PT_H
 dados["meta"]["frequencia_min"]="100 %"
+dados["meta"]["assiduidade"]=X.ASSIDUIDADE
 dados["meta"]["director"]="Manuel Pedro de Almeida, Director-Geral"
 
 json.dump(dados, open("dados.json","w",encoding="utf-8"), ensure_ascii=False, indent=1)
