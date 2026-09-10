@@ -84,5 +84,21 @@ D=dict(
  avaliacao=[("Assiduidade",5),("Participação",5),("Trabalhos e estudos de caso",15),("Testes escritos (2)",20),
             ("Demonstrações e avaliações práticas",30),("Avaliação final teórico-prática",25)],
 )
+
+# ---- prazos concretos de cada encargo e mensalidades (só para o portal) ----
+PRAZO={"Confirmação do III.º Módulo":"2026-09-15","Comparticipação para aulas práticas":"2026-09-15","Túnica":"2026-09-15",
+ "Estágio preliminar (3 meses)":"2026-10-05","Declaração para obtenção da licença de aprendizagem":"2026-10-10",
+ "Termo de frequência":"2026-11-30","Tutoria do Projecto Tecnológico":"2026-12-05","Manuais de apoio":"2026-12-05",
+ "Estágio curricular (6 meses)":"2027-01-08","Mesa de júri da defesa":"2027-05-03","Sala da defesa":"2027-05-03",
+ "Faixa de finalista":"2027-05-03","Declaração de frequência":"2027-05-13"}
+INDIC={"Confirmação do III.º Módulo","Comparticipação para aulas práticas","Túnica","Tutoria do Projecto Tecnológico","Manuais de apoio","Declaração de frequência"}
+for x in D["financeiro"]["modulo"]:
+    if x["item"]=="Mensalidade": x["prazo"]=None; continue
+    x["prazo"]=PRAZO[x["item"]]; x["indicativo"]=x["item"] in INDIC
+D["financeiro"]["meses"]=[dict(k=k,nome=n,prazo=k+"-10") for k,n in [("2026-10","Outubro de 2026"),("2026-11","Novembro de 2026"),
+ ("2026-12","Dezembro de 2026"),("2027-01","Janeiro de 2027"),("2027-02","Fevereiro de 2027"),("2027-03","Março de 2027"),
+ ("2027-04","Abril de 2027"),("2027-05","Maio de 2027"),("2027-06","Junho de 2027")]]
+D["meta"]["portal_versao"]="2"
+
 json.dump(D, open("portal_D.json","w",encoding="utf-8"), ensure_ascii=False, separators=(",",":"))
 import os; print("portal_D.json:", os.path.getsize("portal_D.json")//1024, "KB ·", len(sess), "sessões ·", len(disc), "disciplinas")

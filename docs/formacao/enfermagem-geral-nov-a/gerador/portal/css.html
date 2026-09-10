@@ -266,4 +266,49 @@ table.t tr.pago td{opacity:.55;text-decoration:line-through} table.t tr.pago td.
   .srow{grid-template-columns:22px 64px 1fr;} .srow .rt{grid-column:2/4;flex-direction:row}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ---------- v2: entrar ---------- */
+.gate .inst{text-align:center;font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-bottom:6px}
+.gate .or{display:flex;align-items:center;gap:12px;margin:18px 0 14px;color:var(--mute);font-size:12px} .gate .or::before,.gate .or::after{content:"";flex:1;height:1px;background:var(--line)}
+.gate .err{color:var(--danger);font-size:13px;margin:-6px 0 10px;line-height:1.4}
+.gate .btn:not(.pri){background:var(--panel3)}
+.who .av.ok{background:var(--brand)} .who small{color:var(--mute);font-weight:400}
+.badge.warn{background:var(--warn);color:#fff}
+.rail .foot a{color:var(--rail-mute);text-decoration:none;font-weight:600} .rail .foot a:hover{color:var(--rail-ink)}
+.stackc{display:flex;flex-direction:column;gap:16px}
+.h3{font-size:15.5px;margin:18px 0 8px;font-family:var(--serif)}
+.meta-p{font-size:12.5px;color:var(--mute);margin:8px 0 0}
+.mute{color:var(--mute)} .bad{color:var(--danger);font-weight:600}
+/* ---------- v2: pagamento ---------- */
+.pay{background:var(--panel);border:1px solid var(--line);border-left:5px solid var(--brand2);border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:4px}
+.pay b{font-size:16px;line-height:1.3} .pay p{font-size:13px;color:var(--ink2);margin:0} .pay .btn{align-self:flex-start;margin-top:8px}
+.pay.warn{border-left-color:var(--warn);background:color-mix(in srgb,var(--warnbg) 55%,var(--panel))} .pay.warn .label{color:var(--warn)}
+.pay.danger{border-left-color:var(--danger);background:color-mix(in srgb,var(--dangerbg) 55%,var(--panel))} .pay.danger .label{color:var(--danger)} .pay.danger b{color:var(--danger)}
+.pay.ok{border-left-color:var(--green)} .pay.ok .label{color:var(--green2)}
+.pay.big{padding:22px 24px} .pay.big b{font-size:20px;font-family:var(--serif)}
+.kv2{display:grid;grid-template-columns:repeat(3,1fr);gap:12px} .kv2 b{display:block;font-family:var(--mono);font-size:19px;font-weight:600;margin-top:3px}
+table.t tr.atraso td{background:color-mix(in srgb,var(--dangerbg) 45%,transparent)}
+.ok-dot,.bad-dot{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--green)} .bad-dot{background:var(--danger)}
+/* ---------- v2: ficha, notas, estágio ---------- */
+.locked{display:flex;gap:16px;align-items:flex-start;padding:6px 2px} .locked .lk{width:38px;height:44px;flex:none;border:2px solid var(--brand2);border-radius:5px;position:relative;margin-top:2px}
+.locked .lk::before{content:"";position:absolute;left:8px;right:8px;top:-14px;height:20px;border:2px solid var(--brand2);border-bottom:0;border-radius:10px 10px 0 0}
+.locked .lk::after{content:"";position:absolute;left:50%;top:50%;width:6px;height:10px;background:var(--brand2);transform:translate(-50%,-50%);border-radius:2px}
+.locked b{font-size:15.5px;display:block;margin-bottom:4px} .locked p{font-size:13.5px;color:var(--ink2);margin:0}
+.mine{padding:14px 18px;background:var(--greenbg);border-bottom:1px solid var(--line2)} .mine .label{color:var(--green2);margin-bottom:6px;display:block}
+.escala{font-family:var(--mono);font-size:12.5px;line-height:1.55;white-space:pre-wrap;margin:0;color:var(--ink2)}
+.dc-h{display:flex;justify-content:space-between;align-items:center}
+.grade{font-family:var(--mono);font-size:15px;font-weight:600;padding:2px 9px;border-radius:5px;background:var(--greenbg);color:var(--green2)} .grade.bad{background:var(--dangerbg);color:var(--danger)}
+.nblock{border:1px solid var(--line);border-left:4px solid var(--c);border-radius:8px;padding:12px 14px;margin-bottom:12px} .nblock .nh{display:flex;gap:10px;align-items:center;margin-bottom:8px} .nblock .nh b{font-size:14.5px}
+table.notas td.cf{font-weight:700;color:var(--ink);font-size:15px}
+.sit{font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.06em;padding:2px 8px;border-radius:4px;border:1px solid var(--line);background:var(--panel2);color:var(--ink2);white-space:nowrap}
+.sit.ok{background:var(--greenbg);color:var(--green2);border-color:var(--green)} .sit.warn{background:var(--warnbg);color:var(--warn);border-color:var(--warn)} .sit.bad{background:var(--dangerbg);color:var(--danger);border-color:var(--danger)}
+/* ---------- v2: secretaria ---------- */
+.form input[type=text],.form input:not([type]){font:inherit;font-size:14px;padding:9px 11px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--ink);width:100%}
+.frow{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px} .frow>div{display:flex;flex-direction:column;gap:6px}
+.inl{display:flex;gap:6px} .inl input{flex:1;min-width:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px} .chip{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:5px 10px;border:1px solid var(--line);border-radius:999px;background:var(--panel3);cursor:pointer} .chip input{accent-color:var(--green)} .chip:has(input:checked){background:var(--greenbg);border-color:var(--green);color:var(--green2)}
+table.edit td{padding:5px 6px} table.edit input,table.edit select{font:inherit;font-size:13px;padding:5px 7px;border:1px solid var(--line);border-radius:5px;background:var(--panel);color:var(--ink);width:100%;min-width:64px}
+/* ---------- v2: hero sem ornamento ---------- */
+.hero .lead::after{display:none}
+@media (max-width:860px){ .nav a span:not(.badge){font-size:9.5px} .kv2{grid-template-columns:1fr 1fr} .pay.big b{font-size:17px} }
 </style>

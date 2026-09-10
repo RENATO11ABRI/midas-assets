@@ -70,3 +70,22 @@ objecto de dados que a página embebe.
 O portal é publicado como Artifact em claude.ai, onde tem o mural de avisos e as
 dúvidas em directo. A cópia neste repositório funciona em qualquer servidor estático
 — o progresso pessoal fica no aparelho do estudante — mas sem o mural em directo.
+
+### Fichas cifradas e ferramenta da Secretaria
+
+Cada estudante tem uma ficha (notas, colocação em estágio, propinas confirmadas,
+recados) guardada **cifrada** em `alunos/<id>`, onde o `id` deriva do código de acesso e
+a chave AES-256-GCM deriva do mesmo código (PBKDF2, 120 000 iterações). Só quem tem o
+código abre a ficha — nem a Direcção, nem quem leia a base de dados.
+
+`ficha.js` reproduz a cifra do portal em Node, com os mesmos parâmetros:
+
+```bash
+node ficha.js gerar 31                       # códigos de acesso novos
+node ficha.js cifrar NOVA-XXXX-XXXX f.json   # documento cifrado para write_db em alunos/<id>
+node ficha.js decifrar NOVA-XXXX-XXXX d.json # verificação
+```
+
+A Direcção pode também lançar tudo pelo próprio portal, na área **Secretaria**, que só
+aceita a conta com permissão de escrita. Os códigos de acesso são segredos: nunca os
+guarde no repositório.
